@@ -4,7 +4,7 @@
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
-BEGIN { $| = 1; $test=1, print "1..68)\n"; }
+BEGIN { $| = 1; $test=1, print "1..71)\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -203,6 +203,12 @@ testSetAttribute('input.miff','quality',25);
 testSetAttribute('input.miff','scene',5);
 
 ++$test;
+testSetAttribute('input.miff','subimage',9);
+
+++$test;
+testSetAttribute('input.miff','subrange',16);
+
+++$test;
 testSetAttribute('input.miff','server','mymachine:0.0');
 
 ++$test;
@@ -210,6 +216,10 @@ testSetAttribute('input.miff','size','25x25');
 
 ++$test;
 testSetAttribute('input.miff','size','25x25');
+
+# I have no idea what this does
+++$test;
+testSetAttribute('input.miff','tile','some value');
 
 ++$test;
 testSetAttribute('input.miff','texture','granite:');

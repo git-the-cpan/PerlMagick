@@ -30,7 +30,7 @@ print("Draw text using font ...\n");
 testReadCompare(q!label:The quick brown fox jumps over the lazy dog.!,
                 q!../reference/ttf/label.miff!,
                 q!font=>'input.ttf', fill=>'#0000FF', pointsize=>14, depth=>8!,
-                6.1e-08, 1.02e-05);
+                8.7e-08, 1.02e-05);
 
 #
 # 3) Test drawing text using annotate
@@ -47,6 +47,6 @@ testFilterCompare('xc:#FFFFFF',
                   font=>'input.ttf',
                   fill=>'#FF0000',
                   pointsize=>14!,
-                  4.5e-08, 1.1e-05);
+                  4.5e-07, 1.1e-05);
 
 1;

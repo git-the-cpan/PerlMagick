@@ -84,9 +84,9 @@ testGetAttribute('input.miff','view',undef);
 testGetAttribute('input.miff','width','70');
 
 ++$test;
-testGetAttribute('input.miff','x-resolution','0');
+testGetAttribute('input.miff','x-resolution','72');
 
 ++$test;
-testGetAttribute('input.miff','y-resolution','0');
+testGetAttribute('input.miff','y-resolution','72');
 
 1;

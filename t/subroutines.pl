@@ -1,3 +1,10 @@
+# Copyright (C) 2003 GraphicsMagick Group
+# Copyright (C) 2002 ImageMagick Studio
+# Copyright (C) 1999 E. I. du Pont de Nemours and Company
+#
+# This program is covered by multiple licenses, which are described in
+# Copyright.txt. You should have received a copy of Copyright.txt with this
+# package; otherwise see http://www.graphicsmagick.org/www/Copyright.html.
 #
 # Common subroutines to support tests
 #
@@ -37,18 +44,36 @@ elsif ($QuantumDepth == 32)
 # Test reading a 16-bit file in which two signatures are possible,
 # depending on whether 16-bit pixels data has been enabled
 #
-# Usage: testRead( read filename, expected md5 [, expected md5_16] );
+# Usage: testRead( read filename, expected ref_8 [, expected ref_16] );
 #
 sub testRead {
-  my( $infile, $md5, $md5_16 ) =  @_;
+  my( $infile, $ref_8, $ref_16, $ref_32 ) =  @_;
 
-  my($image,$magick,$success);
+  my($image,$magick,$success,$depth,$ref_signature);
 
   $failure=0;
 
-  if ( !defined( $md5_16 ) )
+  if ( !defined( $ref_16 ) )
     {
-      $md5_16 = $md5;
+      $ref_16 = $ref_8;
+    }
+  if ( !defined( $ref_32 ) )
+    {
+      $ref_32 = $ref_16;
+    }
+
+  $depth=quantumDepth();
+  if ($depth == 32)
+    {
+      $ref_signature=$ref_32;
+    }
+  elsif ($depth == 16)
+    {
+      $ref_signature=$ref_16;
+    }
+  else
+    {
+      $ref_signature=$ref_8;
     }
 
   $magick='';
@@ -63,19 +88,21 @@ sub testRead {
     $image=Image::Magick->new;
     $image->Set(size=>'512x512');
     $status=$image->ReadImage("$infile");
-    if( "$status" ) {
+    if( "$status" && !($status =~ /Exception 315/)) {
       print "ReadImage $infile: $status";
       ++$failure;
     } else {
+      undef $status;
       $magick=$image->Get('magick');
       $signature=$image->Get('signature');
-      if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
-        print "Image: $infile, signatures do not match.\n";
-        print "       Computed: $signature\n";
-        print "       Expected: $md5\n";
-        if ( $md5 ne $md5_16 ) {
-          print "      if 16-bit: $md5_16\n";
-        }
+      
+      if ( $signature ne $ref_signature ) {
+        print "ReadImage()\n";
+	print "Image: $infile, signatures do not match.\n";
+	print "     Computed: $signature\n";
+	print "     Expected: $ref_signature\n";
+	print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
+        print "     Depth:    $depth\n";
         ++$failure;
         #$image->Display();
       }
@@ -99,18 +126,18 @@ sub testRead {
           $image=Image::Magick->new(magick=>$magick);
           $status=$image->BlobToImage( $blob );
           undef $blob;
-          if( "$status" ) {
+          if( "$status" && !($status =~ /Exception 315/)) {
             print "BlobToImage $infile: $status";
             ++$failure;
           } else {
             $signature=$image->Get('signature');
-            if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
+            if ( $signature ne $ref_signature ) {
+              print "BlobToImage()\n";
               print "Image: $infile, signatures do not match.\n";
-              print "       Computed: $signature\n";
-              print "       Expected: $md5\n";
-              if ( $md5 ne $md5_16 ) {
-                print "      if 16-bit: $md5_16\n";
-              }
+              print "     Computed: $signature\n";
+              print "     Expected: $ref_signature\n";
+              print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
+              print "     Depth:    $depth\n";
               #$image->Display();
               ++$failure;
             }
@@ -139,38 +166,44 @@ sub testReadCompare {
       $normalized_mean_error_max, $normalized_maximum_error_max) = @_;
   my($srcimage, $refimage, $normalized_mean_error, $normalized_maximum_error);
 
-  if ( !defined( $md5_16 ) )
-    {
-      $md5_16 = $md5;
-    }
-
   $errorinfo='';
 
   # Create images
   $srcimage=Image::Magick->new;
   $refimage=Image::Magick->new;  
 
-  eval "\$status=\$srcimage->Set($read_options);";
-  if ("$status")
-    {
-      $errorinfo = "Set($read_options): $status";
-      goto COMPARE_RUNTIME_ERROR;
-    }
-
-  $status=$srcimage->ReadImage($srcimage_name);
+  if ( "$read_options" ne "" ) {
+    eval "\$status=\$srcimage->Set($read_options);";
+    if ("$status")
+      {
+        $errorinfo = "Set($read_options): $status";
+        warn("$errorinfo");
+        goto COMPARE_RUNTIME_ERROR;
+      }
+  }
+  
+  $status=$srcimage->ReadImage("$srcimage_name");
   if ("$status")
     {
       $errorinfo = "Readimage ($srcimage_name): $status";
+      warn("$errorinfo");
       goto COMPARE_RUNTIME_ERROR;
     }
 
-#  $status=$srcimage->write(filename=>"$refimage_name", compression=>'None');
-#  warn "$status" if $status;
+#  if ("$srcimage_name" eq "input.wpg") {
+#    $srcimage->write(filename=>"$refimage_name", compression=>'None');
+#  }
+
+  #print("writing file $refimage_name\n");
+  #$srcimage->Quantize(colors=>256);
+  #$status=$srcimage->write(filename=>"$refimage_name", compression=>'rle');
+  #warn "$status" if $status;
 
   $status=$refimage->ReadImage("$refimage_name");
   if ("$status")
     {
       $errorinfo = "Readimage ($refimage_name): $status";
+       warn("$errorinfo");
       goto COMPARE_RUNTIME_ERROR;
     }
 
@@ -188,6 +221,7 @@ sub testReadCompare {
   if ("$status")
     {
       $errorinfo = "Compare($refimage_name): $status";
+      warn("$errorinfo");
       goto COMPARE_RUNTIME_ERROR;
     }
 
@@ -196,6 +230,7 @@ sub testReadCompare {
   if ( !defined($normalized_mean_error) )
     {
       $errorinfo = "GetAttribute('mean-error') returned undefined value!";
+      warn("$errorinfo");
       goto COMPARE_RUNTIME_ERROR;
     }
   $normalized_maximum_error=0;
@@ -203,21 +238,26 @@ sub testReadCompare {
   if ( ! defined($normalized_maximum_error) )
     {
       $errorinfo = "GetAttribute('maximum-error') returned undefined value!";
+      warn("$errorinfo");
       goto COMPARE_RUNTIME_ERROR;
     }
   if ( ($normalized_mean_error > $normalized_mean_error_max) ||
        ($normalized_maximum_error > $normalized_maximum_error_max) )
     {
       print("mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
+      #$srcimage->Display();
       print "not ok $test\n";
       return 1
     }
 
+  undef $srcimage;
+  undef $refimage;
   print "ok $test\n";
   return 0;
 
  COMPARE_RUNTIME_ERROR:
-  warn("$errorinfo");
+  undef $srcimage;
+  undef $refimage;
   print "not ok $test\n";
   return 1
 }
@@ -226,12 +266,35 @@ sub testReadCompare {
 # Test reading a file which requires a file size to read (GRAY, RGB, CMYK)
 # or supports multiple resolutions (JBIG, JPEG, PCD)
 #
-# Usage: testRead( read filename, size, depth, expected md5 [, expected md5_16] );
+# Usage: testRead( read filename, size, depth, expected ref_8 [, expected ref_16] );
 #
 sub testReadSized {
-  my( $infile, $size, $depth, $md5, $md5_16 ) =  @_;
+  my( $infile, $size, $depth, $ref_8, $ref_16, $ref_32 ) =  @_;
   
-  my($image);
+  my($image,$ref_signature);
+
+  if ( !defined( $ref_16 ) )
+    {
+      $ref_16 = $ref_8;
+    }
+  if ( !defined( $ref_32 ) )
+    {
+      $ref_32 = $ref_16;
+    }
+
+  $depth=quantumDepth();
+  if ($depth == 32)
+    {
+      $ref_signature=$ref_32;
+    }
+  elsif ($depth == 16)
+    {
+      $ref_signature=$ref_16;
+    }
+  else
+    {
+      $ref_signature=$ref_8;
+    }
 
   $image=Image::Magick->new;
 
@@ -251,44 +314,62 @@ sub testReadSized {
     print "not ok $test\n";
   } else {
     $signature=$image->Get('signature');
-    if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
-      print "Image: $infile, signatures do not match.\n";
-      print "       Computed: $signature\n";
-      print "       Expected: $md5\n";
-      if ( $md5 ne $md5_16 ) {
-         print "      if 16-bit: $md5_16\n";
-      }
-      #$image->Display();
-      print "not ok $test\n";
-    } else {
-      print "ok $test\n";
+      if ( $signature ne $ref_signature ) {
+        print "ReadImage()\n";
+	print "Image: $infile, signatures do not match.\n";
+	print "     Computed: $signature\n";
+	print "     Expected: $ref_signature\n";
+        print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
+        print "     Depth:    $depth\n";
+        print "not ok $test\n";
+        #$image->Display();
+      } else {
+        print "ok $test\n";
     }
   }
 }
 
 #
 # Test writing a file by first reading a source image, writing to a new image,
-# reading the written image, and comparing with expected MD5.
+# reading the written image, and comparing with expected REF_8.
 #
 # Usage: testReadWrite( read filename, write filename, write options,
-#    expected md5 [, expected md5_16] );
+#    expected ref_8 [, expected ref_16] );
 #
 # .e.g
 #
 # testReadWrite( 'input.jpg', 'output.jpg', q/quality=>80, interlace=>'None'/,
 #                'dc0a144a0b9480cd1e93757a30f01ae3' );
 #
-# If the MD5 of the written image is not what is expected, the written
+# If the REF_8 of the written image is not what is expected, the written
 # image is preserved.  Otherwise, the written image is removed.
 #
 sub testReadWrite {
-  my( $infile, $outfile, $writeoptions, $md5, $md5_16 ) = @_;
+  my( $infile, $outfile, $writeoptions, $ref_8, $ref_16, $ref_32 ) = @_;
   
   my($image);
 
-  if ( !defined( $md5_16 ) )
+  if ( !defined( $ref_16 ) )
     {
-      $md5_16 = $md5;
+      $ref_16 = $ref_8;
+    }
+  if ( !defined( $ref_32 ) )
+    {
+      $ref_32 = $ref_16;
+    }
+
+  $depth=quantumDepth();
+  if ($depth == 32)
+    {
+      $ref_signature=$ref_32;
+    }
+  elsif ($depth == 16)
+    {
+      $ref_signature=$ref_16;
+    }
+  else
+    {
+      $ref_signature=$ref_8;
     }
 
   $image=Image::Magick->new;
@@ -322,14 +403,15 @@ sub testReadWrite {
       } else {
         # Check signature
         $signature=$image->Get('signature');
-        if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
+        if ( $signature ne $ref_signature ) {
+          print "ReadImage()\n";
           print "Image: $infile, signatures do not match.\n";
-          print "       Computed: $signature\n";
-          print "       Expected: $md5\n";
-          if ( $md5 ne $md5_16 ) {
-             print "      if 16-bit: $md5_16\n";
-          }
+          print "     Computed: $signature\n";
+          print "     Expected: $ref_signature\n";
+          print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
+          print "     Depth:    $depth\n";
           print "not ok $test\n";
+          #$image->Display();
         } else {
           print "ok $test\n";
           ($file = $outfile) =~ s/.*://g;
@@ -350,11 +432,6 @@ sub testReadWriteCompare {
   my($srcimage, $refimage, $normalized_mean_error,
     $normalized_maximum_error);
 
-  if ( !defined( $md5_16 ) )
-    {
-      $md5_16 = $md5;
-    }
-
   $errorinfo='';
 
   $image=Image::Magick->new;
@@ -373,12 +450,14 @@ sub testReadWriteCompare {
   #
   # Write image to output file
   #
-  eval "\$status=\$image->Set($write_options);";
-  if ("$status")
-    {
-      $errorinfo = "Set($write_options): $status";
-      goto COMPARE_RUNTIME_ERROR;
-    }
+  if ( "$write_options" ne "" ) {
+    eval "\$status=\$image->Set($write_options);";
+    if ("$status")
+      {
+        $errorinfo = "Set($write_options): $status";
+        goto COMPARE_RUNTIME_ERROR;
+      }
+  }
   $image->Set(filename=>"$outimage_name");
 
   $status=$image->WriteImage( );
@@ -394,12 +473,14 @@ sub testReadWriteCompare {
   #
   # Read image from output file
   #
-  eval "\$status=\$image->Set($read_options);";
-  if ("$status")
-    {
-      $errorinfo = "Set($read_options): $status";
-      goto COMPARE_RUNTIME_ERROR;
-    }
+  if ( "$read_options" ne "" ) {
+    eval "\$status=\$image->Set($read_options);";
+    if ("$status")
+      {
+        $errorinfo = "Set($read_options): $status";
+        goto COMPARE_RUNTIME_ERROR;
+      }
+  }
 
   $image->ReadImage("$outimage_name");
   if ("$status")
@@ -409,7 +490,7 @@ sub testReadWriteCompare {
     }
 
 # eval "\$status=\$image->Set($write_options);";
-# $status=$image->write(filename=>"$refimage_name", compression=>'None');
+#$status=$image->write(filename=>"$refimage_name", compression=>'None');
 # warn "$status" if $status;
 
   #
@@ -536,30 +617,56 @@ sub testReadWriteNoVerify {
 
 #
 # Test writing a file by first reading a source image, writing to a new image,
-# reading the written image, and comparing with expected MD5.
+# reading the written image, and comparing with expected REF_8.
 #
 # Usage: testReadWriteSized( read filename,
 #                            write filename,
 #                            read filename size,
 #                            read filename depth,
 #                            write options,
-#                            expected md5 [,expected md5_16] );
+#                            expected ref_8 [,expected ref_16] );
 #
 # .e.g
 #
 # testReadWriteSized( 'input.jpg', 'output.jpg', '70x46', 8, q/quality=>80,
 #                     'interlace'=>'None'/, 'dc0a144a0b9480cd1e93757a30f01ae3' );
 #
-# If the MD5 of the written image is not what is expected, the written
+# If the REF_8 of the written image is not what is expected, the written
 # image is preserved.  Otherwise, the written image is removed.  A depth of 0 is
 # ignored.
 #
 sub testReadWriteSized {
-  my( $infile, $outfile, $size, $readdepth, $writeoptions, $md5, $md5_16 ) = @_;
+  my( $infile, $outfile, $size, $readdepth, $writeoptions, $ref_8, $ref_16,
+      $ref_32 ) = @_;
   
-  my($image);
-  
+  my($image,$depth,$ref_signature);
+
+  if ( !defined( $ref_16 ) )
+    {
+      $ref_16 = $ref_8;
+    }
+  if ( !defined( $ref_32 ) )
+    {
+      $ref_32 = $ref_16;
+    }
+
+  $depth=quantumDepth();
+  if ($depth == 32)
+    {
+      $ref_signature=$ref_32;
+    }
+  elsif ($depth == 16)
+    {
+      $ref_signature=$ref_16;
+    }
+  else
+    {
+      $ref_signature=$ref_8;
+    }
+
   $image=Image::Magick->new;
+
+  #$image->SetAttribute(debug=>'transform');
 
   # Set size attribute
   $status=$image->SetAttribute(size=>"$size");
@@ -609,13 +716,14 @@ sub testReadWriteSized {
       } else {
         # Check signature
         $signature=$image->Get('signature');
-        if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
+
+        if ( $signature ne $ref_signature ) {
+          print "ReadImage()\n";
           print "Image: $infile, signatures do not match.\n";
-          print "       Computed: $signature\n";
-          print "       Expected: $md5\n";
-          if ( $md5 ne $md5_16 ) {
-             print "   if 16-bit: $md5_16\n";
-          }
+          print "     Computed: $signature\n";
+          print "     Expected: $ref_signature\n";
+          print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
+          print "     Depth:    $depth\n";
           print "not ok $test\n";
           #$image->Display();
         } else {
@@ -711,13 +819,36 @@ sub testGetAttribute {
 #
 # Test MontageImage method
 #
-# Usage: testMontage( input image attributes, montage options, expected MD5
-#       [, expected MD5_16] );
+# Usage: testMontage( input image attributes, montage options, expected REF_8
+#       [, expected REF_16] );
 #
 sub testMontage {
-  my( $imageOptions, $montageOptions, $md5, $md5_16 ) = @_;
+  my( $imageOptions, $montageOptions, $ref_8, $ref_16, $ref_32 ) = @_;
 
-  my($image);
+  my($image,$depth,$ref_signature);
+
+  if ( !defined( $ref_16 ) )
+    {
+      $ref_16 = $ref_8;
+    }
+  if ( !defined( $ref_32 ) )
+    {
+      $ref_32 = $ref_16;
+    }
+
+  $depth=quantumDepth();
+  if ($depth == 32)
+    {
+      $ref_signature=$ref_32;
+    }
+  elsif ($depth == 16)
+    {
+      $ref_signature=$ref_16;
+    }
+  else
+    {
+      $ref_signature=$ref_8;
+    }
 
   # Create image for image list
   $images=Image::Magick->new;
@@ -746,6 +877,9 @@ sub testMontage {
 
   # Set image options
   #print "Image Options  : $imageOptions\n";
+  if ("$imageOptions" ne "") {
+    print("\$images->Set($imageOptions)\n");
+  }
   eval "\$status = \$images->Set($imageOptions) ;";
   warn "SetImage: $status" if "$status";
 
@@ -755,6 +889,7 @@ sub testMontage {
 
   # Do montage
   #print "Montage Options: $montageOptions\n";
+  print("\$montage=\$images->Montage( $montageOptions )\n");
   eval "\$montage=\$images->Montage( $montageOptions ) ;";
   if( $@ ) {
     print "$@";
@@ -765,21 +900,20 @@ sub testMontage {
   if( ! ref($montage) ) {
     print "not ok $test\n";
   } else {
+    # Check REF_8 signature
     #$montage->Display();
-    # Check MD5 signature
     $signature=$montage->GetAttribute('signature');
     if ( defined( $signature ) ) {
-      if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
-          print "Test $test, signatures do not match.\n";
-          print "       Computed: $signature\n";
-          print "       Expected: $md5\n";
-          if ( $md5 ne $md5_16 ) {
-             print "   if 16-bit: $md5_16\n";
-          }
-        
+      if ( $signature ne $ref_signature ) {
+        print "ReadImage()\n";
+        print "Test $test, signatures do not match.\n";
+	print "     Computed: $signature\n";
+	print "     Expected: $ref_signature\n";
+	print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
+        print "     Depth:    $depth\n";
         $status = $montage->Write("test_${test}_out.miff");
         warn "Write: $status" if "$status";
-        
+          
         print "not ok $test\n";
       } else {
         # Check montage directory
@@ -815,15 +949,38 @@ sub testMontage {
 #
 # Test filter method using signature compare
 #
-# Usage: testFilterSignature( input image attributes, filter, options, expected MD5
-#      [, expected MD5_16] );
+# Usage: testFilterSignature( input image attributes, filter, options, expected REF_8
+#      [, expected REF_16] );
 #
 sub testFilterSignature {
-  my( $srcimage, $filter, $filter_options, $md5, $md5_16 ) = @_;
+  my( $srcimage, $filter, $filter_options, $ref_8, $ref_16, $ref_32 ) = @_;
 
-  my($image);
+  my($image,$depth,$ref_signature);
 
-  print( $filter, " ...\n" );
+#  print( $filter, " ...\n" );
+
+  if ( !defined( $ref_16 ) )
+    {
+      $ref_16 = $ref_8;
+    }
+  if ( !defined( $ref_32 ) )
+    {
+      $ref_32 = $ref_16;
+    }
+
+  $depth=quantumDepth();
+  if ($depth == 32)
+    {
+      $ref_signature=$ref_32;
+    }
+  elsif ($depth == 16)
+    {
+      $ref_signature=$ref_16;
+    }
+  else
+    {
+      $ref_signature=$ref_8;
+    }
 
   # Create temporary image
   $image=Image::Magick->new;
@@ -831,18 +988,17 @@ sub testFilterSignature {
   $status=$image->ReadImage("$srcimage");
   warn "Readimage: $status" if "$status";
 
+  print("$filter\($filter_options\) ...\n");
   $image->$filter($filter_options);
 #$image->write(filename=>"reference/filter/$filter.miff", compression=>'None');
 
   $signature=$image->GetAttribute('signature');
   if ( defined( $signature ) ) {
-    if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
+    if ( $signature ne $ref_signature ) {
       print "Test $test, signatures do not match.\n";
-      print "       Computed: $signature\n";
-      print "       Expected: $md5\n";
-      if ( $md5 ne $md5_16 ) {
-         print "   if 16-bit: $md5_16\n";
-      }
+      print "     Computed: $signature\n";
+      print "     Expected: $ref_signature\n";
+      print "     Depth:    $depth\n";
       #$image->Display();
       print "not ok $test\n";
     } else {
@@ -871,18 +1027,21 @@ sub testFilterCompare {
   $errorinfo='';
   $status='';
 
-  print( $filter, " ...\n" );
+  #print( $filter, " ...\n" );
 
   # Create images
   $srcimage=Image::Magick->new;
   $refimage=Image::Magick->new;
 
-  eval "\$status=\$srcimage->Set($src_read_options);";
-  if ("$status")
-    {
-      $errorinfo = "Set($src_read_options): $status";
-      goto COMPARE_RUNTIME_ERROR;
-    }
+  if ( "$src_read_options" ne "" ) {
+    print("Set($src_read_options) ...\n");
+    eval "\$status=\$srcimage->Set($src_read_options);";
+    if ("$status")
+      {
+        $errorinfo = "Set($src_read_options): $status";
+        goto COMPARE_RUNTIME_ERROR;
+      }
+  }
 
   $status=$srcimage->ReadImage($srcimage_name);
   #eval "\$status=\$srcimage->ReadImage($srcimage_name);";
@@ -892,6 +1051,7 @@ sub testFilterCompare {
       goto COMPARE_RUNTIME_ERROR;
     }
 
+  print("$filter\($filter_options\) ...\n");
   eval "\$status=\$srcimage->$filter($filter_options);";
   if ("$status")
     {
@@ -900,8 +1060,10 @@ sub testFilterCompare {
     }
 
   $srcimage->set(depth=>8);
-  #$srcimage->Display();
-#  $srcimage->write(filename=>"$refimage_name", compression=>'None');
+#  if ("$filter" eq "Shade") {
+#  $srcimage->Display();
+#    $srcimage->write(filename=>"$refimage_name", compression=>'None');
+#  }
 
   $status=$refimage->ReadImage("$refimage_name");
   if ("$status")
@@ -922,6 +1084,8 @@ sub testFilterCompare {
   if ("$status")
     {
       $errorinfo = "Compare($refimage_name): $status";
+      print("  Computed:  ", $srcimage->Get('columns'), "x", $srcimage->Get('rows'), "\n");
+      print("  Reference: ", $refimage->Get('columns'), "x", $refimage->Get('rows'), "\n");
       goto COMPARE_RUNTIME_ERROR;
     }
 
@@ -942,8 +1106,9 @@ sub testFilterCompare {
   if ( ($normalized_mean_error > $normalized_mean_error_max) ||
        ($normalized_maximum_error > $normalized_maximum_error_max) )
     {
-      print("mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
+      print("  mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
       print "not ok $test\n";
+      #$srcimage->Display();
       return 1
     }
 
@@ -951,7 +1116,7 @@ sub testFilterCompare {
   return 0;
 
  COMPARE_RUNTIME_ERROR:
-  warn("$errorinfo");
+  print("  $errorinfo\n");
   print "not ok $test\n";
   return 1
 }

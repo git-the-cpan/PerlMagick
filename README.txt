@@ -21,9 +21,13 @@ Installation
 
     Get the PerlMagick distribution and type the following: 
 
-        gunzip PerlMagick-5.52.tar.gz
-        tar xvf PerlMagick-5.52.tar
-        cd Magick
+        gunzip ImageMagick-5.5.7.tar.gz
+        tar xvf ImageMagick-5.5.7
+
+    Follow the ImageMagick installation instructions in INSTALL-unix.txt
+		then type
+
+      cd PerlMagick
 
     Next, edit Makefile.PL and change LIBS and INC to include the
     appropriate path information to the required libMagick library. You

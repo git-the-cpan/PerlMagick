@@ -1,6 +1,6 @@
 package Image::Magick;
 
-# Released Feb. 17, 1997  by Kyle Shorter (magick-users@imagemagick.org)
+# Released Feb. 17, 1997  by Kyle Shorter (magick@wizards.dupont.com)
 # Public Domain
 
 use strict;
@@ -30,7 +30,7 @@ require AutoLoader;
       ConfigureError FatalErrorException
     );
 
-$VERSION = '5.56';
+$VERSION = '5.5.7';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -85,7 +85,7 @@ __END__
 
 =head1 NAME
 
-Image::Magick - Perl extension for calling ImageMagick's libmagick routines
+Image::Magick - Perl extension for calling ImageMagick's libImageMagick routines
 
 =head1 SYNOPSIS
 
@@ -101,17 +101,16 @@ Image::Magick - Perl extension for calling ImageMagick's libmagick routines
 =head1 DESCRIPTION
 
 This Perl extension allows the reading, manipulation and writing of
-a large number of image file formats using the magick library from
-ImageMagick by John Cristy (magick-users@imagemagick.org).  It was originally
-developed to be used by CGI scripts for Web pages.
+a large number of image file formats using the ImageMagick library.
+It was originally developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.imagemagick.org/www/perl.html
+	http://www.ImageMagick.org/www/perl.html
 
 =head1 AUTHOR
 
-Kyle Shorter	magick-users@imagemagick.org
+Kyle Shorter	magick@wizards.dupont.com
 
 =head1 BUGS
 

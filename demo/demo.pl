@@ -316,7 +316,7 @@ push(@$images,$example);
 print "Shear...\n";
 $example=$model->Clone();
 $example->Label('Shear');
-$example->Shear('45x45');
+$example->Shear('-45x45');
 $example->Transparent(color=>'black');
 push(@$images,$example);
 

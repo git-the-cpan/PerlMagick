@@ -14,12 +14,9 @@ require 't/subroutines.pl';
 
 chdir 't/wmf' || die 'Cd failed';
 
-testRead( 'wizard.wmf',
-          'ad47b8a3356b5f65a09aa6012f745ec15f93880073377c4fc4315f5e433d1094',
-          '73814b42d6626921801e44fd18c75ee80207f8f4a5521cc77a4688b39afa721f' );
+testReadCompare('wizard.wmf', '../reference/wmf/wizard.miff',
+                q//, 4.5e-07, 1.6e-05);
 ++$test;
-testRead( 'clock.wmf',
-          'ad47b8a3356b5f65a09aa6012f745ec15f93880073377c4fc4315f5e433d1094',
-          '555d14b94e78a128dc9a4862b80cfc2abbe0e9abbd003a05139262d542b15f5f' );
-
+testReadCompare('clock.wmf', '../reference/wmf/clock.miff',
+                q//, 3.9e-07, 1.6e-05);
 

@@ -37,17 +37,12 @@
 %  The above copyright notice and this permission notice shall be included in %
 %  all copies or substantial portions of ImageMagick.                         %
 %                                                                             %
-%  Licensor ("ImageMagick Studio LLC") warrants that the copyright in and to  %
-%  the Software ("ImageMagick") is owned by ImageMagick Studio LLC or that    %
-%  ImageMagick is distributed by ImageMagick Studio LLC under a valid current %
-%  license.  Except as expressly stated in the immediately preceding          %
-%  sentence, ImageMagick is provided by ImageMagick Studio LLC, contributors, %
-%  and copyright owners "AS IS", without warranty of any kind, express or     %
+%  The software is provided "as is", without warranty of any kind, express or %
 %  implied, including but not limited to the warranties of merchantability,   %
-%  fitness for a particular purpose and non-infringement.  In no event shall  %
-%  ImageMagick Studio LLC, contributors or copyright owners be liable for     %
-%  any claim, damages, or other liability, whether in an action of contract,  %
-%  tort or otherwise, arising from, out of or in connection with              %
+%  fitness for a particular purpose and noninfringement.  In no event shall   %
+%  ImageMagick Studio be liable for any claim, damages or other liability,    %
+%  whether in an action of contract, tort or otherwise, arising from, out of  %
+%  or in connection with ImageMagick or the use or other dealings in          %
 %  ImageMagick.                                                               %
 %                                                                             %
 %  Except as contained in this notice, the name of the ImageMagick Studio     %
@@ -105,6 +100,7 @@ extern "C" {
 #define DoubleReference  (char **) 2
 #define EndOf(array)  (&array[NumberOf(array)])
 #define False  0
+#define FileReference  (char **) 5
 #define ImageReference  (char **) 3
 #define IntegerReference  (char **) 1
 #define MaxArguments  28
@@ -151,6 +147,9 @@ struct ArgumentList
 
   SV
     *array_reference;
+
+  FILE
+    *file_reference;
 
   size_t
     length;
@@ -204,7 +203,7 @@ static char
   *ColorspaceTypes[] =
   {
     "Undefined", "RGB", "Gray", "Transparent", "OHTA", "XYZ", "YCbCr",
-    "YCC", "YIQ", "YPbPr", "YUV", "CMYK", "sRGB", (char *) NULL
+    "YCC", "YIQ", "YPbPr", "YUV", "CMYK", "sRGB", "HSL", "HWB", (char *) NULL
   },
   *CompositeTypes[] =
   {
@@ -213,7 +212,8 @@ static char
     "CopyRed", "CopyGreen", "CopyBlue", "CopyOpacity", "Clear", "Dissolve",
     "Displace", "Modulate", "Threshold", "No", "Darken", "Lighten",
     "Hue", "Saturate", "Colorize", "Luminize", "Screen", "Overlay",
-    "ReplaceMatte", (char *) NULL
+    "ReplaceMatte", "CopyCyan", "CopyMagenta", "CopyYellow", "CopyBlack",
+    (char *) NULL
   },
   *CompressionTypes[] =
   {
@@ -351,7 +351,7 @@ static struct
     { "ReduceNoise", { {"radius", DoubleReference} } },
     { "Roll", { {"geometry", StringReference}, {"x", IntegerReference},
       {"y", IntegerReference} } },
-    { "Rotate", { {"degree", DoubleReference},
+    { "Rotate", { {"degrees", DoubleReference},
       {"color", StringReference} } },
     { "Sample", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference} } },
@@ -364,7 +364,7 @@ static struct
     { "Shear", { {"geometry", StringReference}, {"x", IntegerReference},
       {"y", DoubleReference}, {"color", StringReference} } },
     { "Spread", { {"radius", IntegerReference} } },
-    { "Swirl", { {"degree", DoubleReference} } },
+    { "Swirl", { {"degrees", DoubleReference} } },
     { "Resize", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference}, {"filter", FilterTypess},
       {"blur", DoubleReference } } },
@@ -387,11 +387,11 @@ static struct
     { "ColorFloodfill", { {"geometry", StringReference},
       {"x", IntegerReference}, {"y", IntegerReference},
       {"fill", StringReference}, {"bordercolor", StringReference},
-      {"fuzz", DoubleReference} } },
+      {"fuzz", StringReference} } },
     { "Composite", { {"image", ImageReference}, {"compose", CompositeTypes},
       {"geometry", StringReference}, {"x", IntegerReference},
       {"y", IntegerReference}, {"gravity", GravityTypes},
-      {"opacity", DoubleReference}, {"tile", BooleanTypes},
+      {"opacity", StringReference}, {"tile", BooleanTypes},
       {"rotate", DoubleReference}, {"color", StringReference},
       {"mask", ImageReference} } },
     { "Contrast", { {"sharp", BooleanTypes} } },
@@ -413,15 +413,15 @@ static struct
     { "Map", { {"image", ImageReference}, {"dither", BooleanTypes} } },
     { "MatteFloodfill", { {"geometry", StringReference},
       {"x", IntegerReference}, {"y", IntegerReference},
-      {"opacity", IntegerReference}, {"bordercolor", StringReference},
-      {"fuzz", DoubleReference} } },
+      {"opacity", StringReference}, {"bordercolor", StringReference},
+      {"fuzz", StringReference} } },
     { "Modulate", { {"factor", StringReference}, {"bright", DoubleReference},
       {"saturation", DoubleReference}, {"hue", DoubleReference} } },
     { "Negate", { {"gray", BooleanTypes} } },
     { "Normalize", },
     { "NumberColors", },
     { "Opaque", { {"color", StringReference}, {"fill", StringReference},
-      {"fuzz", DoubleReference} } },
+      {"fuzz", StringReference} } },
     { "Quantize", { {"colors", IntegerReference}, {"tree", IntegerReference},
       {"colorspace", ColorspaceTypes}, {"dither", BooleanTypes},
       {"measure", BooleanTypes}, {"global", BooleanTypes} } },
@@ -437,13 +437,13 @@ static struct
     { "Sans", { {"geometry", StringReference}, {"crop", StringReference},
       {"filter", FilterTypess} } },
     { "Transparent", { {"color", StringReference},
-      {"opacity", IntegerReference}, {"fuzz", DoubleReference} } },
+      {"opacity", StringReference}, {"fuzz", StringReference} } },
     { "Threshold", { {"threshold", StringReference} } },
     { "Charcoal", { {"geometry", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference} } },
-    { "Trim", { {"fuzz", DoubleReference} } },
-    { "Wave", { {"geometry", StringReference}, {"ampli", DoubleReference},
-      {"wave", DoubleReference} } },
+    { "Trim", { {"fuzz", StringReference} } },
+    { "Wave", { {"geometry", StringReference}, {"amplitude", DoubleReference},
+      {"wavelength", DoubleReference} } },
     { "Channel", { {"channel", ChannelTypes} } },
     { "Condense", },
     { "Stereo", { {"image", ImageReference} } },
@@ -473,6 +473,12 @@ static struct
     { "AdaptiveThreshold", { {"geometry", StringReference},
       {"width", IntegerReference}, {"height", IntegerReference},
       {"offset", IntegerReference} } },
+    { "Resample", { {"density", StringReference}, {"x", DoubleReference},
+      {"y", DoubleReference}, {"filter", FilterTypess},
+      {"blur", DoubleReference } } },
+    { "Describe", { {"file", FileReference} } },
+    { "BlackThreshold", { {"threshold", StringReference} } },
+    { "WhiteThreshold", { {"threshold", StringReference} } },
   };
 
 #ifdef START_MY_CXT
@@ -902,7 +908,7 @@ static struct PackageInfo *GetPackageInfo(pTHX_ void *reference,
     *sv;
 
   FormatString(message,"%s::Ref%lx_%s",PackageName,(long) reference,
-   XS_VERSION);
+    XS_VERSION);
   sv=perl_get_sv(message,(TRUE | 0x02));
   if (!sv)
     {
@@ -1301,7 +1307,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           if (info)
             info->image_info->colorspace=(ColorspaceType) sp;
           for ( ; image; image=image->next)
-            TransformColorspace(image,(ColorspaceType) sp);
+            (void) SetImageColorspace(image,(ColorspaceType) sp);
           return;
         }
       if (LocaleCompare(attribute,"compression") == 0)
@@ -1450,7 +1456,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"file") == 0)
         {
           if (info)
-            info->image_info->file=PerlIO_findFILE(IoIFP(sv_2io(sval)));
+            info->image_info->file=(FILE *)
+              PerlIO_findFILE(IoIFP(sv_2io(sval)));
           return;
         }
       if (LocaleCompare(attribute,"fill") == 0)
@@ -1594,22 +1601,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"magick") == 0)
         {
           if (info)
-            {
-              ExceptionInfo
-                exception;
-
-              GetExceptionInfo(&exception);
-              FormatString(info->image_info->filename,"%.1024s:",SvPV(sval,na));
-              SetImageInfo(info->image_info,True,&exception);
-              if (*info->image_info->magick == '\0')
-                MagickError(OptionError,"UnrecognizedImageFormat",
-                  info->image_info->filename);
-              else
-                for ( ; image; image=image->next)
-                  (void) strncpy(image->magick,info->image_info->magick,
-                    MaxTextExtent-1);
-              DestroyExceptionInfo(&exception);
-            }
+            FormatString(info->image_info->filename,"%.1024s:",SvPV(sval,na));
+          for ( ; image; image=image->next)
+            (void) strncpy(image->magick,SvPV(sval,na),MaxTextExtent-1);
           return;
         }
       if (LocaleCompare(attribute,"map-limit") == 0)
@@ -1696,7 +1690,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               (long) (y % image->rows),1,1);
             if (p == (PixelPacket *) NULL)
               break;
-            SetImageType(image,TrueColorType);
+            image->storage_class=DirectClass;
             if (strchr(SvPV(sval,na),',') == 0)
               QueryColorDatabase(SvPV(sval,na),p,
                 image ? &image->exception : &exception);
@@ -3387,6 +3381,13 @@ Get(ref,...)
         case 'E':
         case 'e':
         {
+          if (LocaleCompare(attribute,"elapsed-time") == 0)
+            {
+              if (image)
+                s=newSVnv(GetElapsedTime(&image->timer));
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
           if (LocaleCompare(attribute,"endian") == 0)
             {
               j=info ? info->image_info->endian : image->endian;
@@ -3947,6 +3948,13 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
+          if (LocaleCompare(attribute,"user-time") == 0)
+            {
+              if (image)
+                s=newSVnv(GetUserTime(&image->timer));
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
@@ -4331,6 +4339,14 @@ Mogrify(ref,...)
     CompareImage       = 152
     AdaptiveThreshold  = 153
     AdaptiveThresholdImage = 154
+    Resample           = 155
+    ResampleImage      = 156
+    Describe           = 157
+    DescribeImage      = 158
+    BlackThreshold     = 159
+    BlackThresholdImage= 160
+    WhiteThreshold     = 161
+    WhiteThresholdImage= 162
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -4523,22 +4539,27 @@ Mogrify(ref,...)
               if (pp->type == ArrayReference)
                 al->array_reference=SvRV(sv);
               else
-                if (!SvPOK(sv))  /* not a string; just get number */
-                  al->int_reference=SvIV(sv);
+                if (pp->type == ArrayReference)
+                  al->file_reference=(FILE *)
+                    PerlIO_findFILE(IoIFP(sv_2io(sv)));
                 else
-                  {
-                    /*
-                      Is a string; look up name.
-                    */
-                    al->int_reference=LookupStr(pp->type,SvPV(sv,na));
-                    if ((al->int_reference < 0) &&
-                        ((al->int_reference=SvIV(sv)) <= 0))
-                      {
-                        FormatString(message,"invalid %.60s value",pp->method);
-                        MagickError(OptionError,message,attribute);
-                        goto continue_outer_loop;
-                      }
-                  }
+                  if (!SvPOK(sv))  /* not a string; just get number */
+                    al->int_reference=SvIV(sv);
+                  else
+                    {
+                      /*
+                        Is a string; look up name.
+                      */
+                      al->int_reference=LookupStr(pp->type,SvPV(sv,na));
+                      if ((al->int_reference < 0) &&
+                          ((al->int_reference=SvIV(sv)) <= 0))
+                        {
+                          FormatString(message,"invalid %.60s value",
+                            pp->method);
+                          MagickError(OptionError,message,attribute);
+                          goto continue_outer_loop;
+                        }
+                    }
       attribute_flag[pp-rp->arguments]++;
       continue_outer_loop: ;
     }
@@ -5122,7 +5143,8 @@ Mogrify(ref,...)
           if (attribute_flag[4])
             target=fill_color;
           if (attribute_flag[5])
-            image->fuzz=argument_list[5].double_reference;
+            image->fuzz=
+              StringToDouble(argument_list[5].string_reference,MaxRGB);
           ColorFloodfillImage(image,draw_info,target,geometry.x,geometry.y,
             attribute_flag[4] ? FillToBorderMethod : FloodfillMethod);
           DestroyDrawInfo(draw_info);
@@ -5156,7 +5178,7 @@ Mogrify(ref,...)
             compose=(CompositeOperator) argument_list[1].int_reference;
           opacity=OpaqueOpacity;
           if (attribute_flag[6])
-            opacity=argument_list[6].double_reference;
+            opacity=StringToDouble(argument_list[6].string_reference,MaxRGB);
           if (opacity != OpaqueOpacity)
             SetImageOpacity(composite_image,(unsigned int) opacity);
           if (compose == DissolveCompositeOp)
@@ -5227,7 +5249,8 @@ Mogrify(ref,...)
           if (attribute_flag[10])
             {
               mask_image=argument_list[10].image_reference;
-              SetImageType(composite_image,TrueColorMatteType);
+              composite_image->storage_class=DirectClass;
+              composite_image->matte=True;
               if (!composite_image->matte)
                 SetImageOpacity(composite_image,OpaqueOpacity);
               (void) CompositeImage(composite_image,CopyOpacityCompositeOp,
@@ -5490,7 +5513,7 @@ Mogrify(ref,...)
               &exception);
           opacity=TransparentOpacity;
           if (attribute_flag[3])
-            opacity=argument_list[3].int_reference;
+            opacity=StringToDouble(argument_list[3].string_reference,MaxRGB);
           if (!image->matte)
             SetImageOpacity(image,OpaqueOpacity);
           target=AcquireOnePixel(image,(long) (geometry.x % image->columns),
@@ -5498,7 +5521,8 @@ Mogrify(ref,...)
           if (attribute_flag[4])
             target=fill_color;
           if (attribute_flag[5])
-            image->fuzz=argument_list[5].double_reference;
+            image->fuzz=
+              StringToDouble(argument_list[5].string_reference,MaxRGB);
           MatteFloodfillImage(image,target,opacity,geometry.x,geometry.y,
             attribute_flag[4] ? FillToBorderMethod : FloodfillMethod);
           break;
@@ -5554,7 +5578,8 @@ Mogrify(ref,...)
             (void) QueryColorDatabase(argument_list[1].string_reference,
               &fill_color,&exception);
           if (attribute_flag[2])
-            image->fuzz=argument_list[2].double_reference;
+            image->fuzz=
+              StringToDouble(argument_list[2].string_reference,MaxRGB);
           OpaqueImage(image,target,fill_color);
           break;
         }
@@ -5682,9 +5707,10 @@ Mogrify(ref,...)
               &target,&exception);
           opacity=TransparentOpacity;
           if (attribute_flag[1])
-            opacity=argument_list[1].int_reference;
+            opacity=StringToDouble(argument_list[1].string_reference,MaxRGB);
           if (attribute_flag[2])
-            image->fuzz=argument_list[2].double_reference;
+            image->fuzz=
+              StringToDouble(argument_list[2].string_reference,MaxRGB);
           TransparentImage(image,target,opacity);
           break;
         }
@@ -5715,7 +5741,8 @@ Mogrify(ref,...)
         case 59:  /* Trim */
         {
           if (attribute_flag[0])
-            image->fuzz=argument_list[0].double_reference;
+            image->fuzz=
+              StringToDouble(argument_list[0].string_reference,MaxRGB);
           SetGeometry(image,&geometry);
           geometry.width=0;
           geometry.height=0;
@@ -6044,6 +6071,62 @@ Mogrify(ref,...)
           image=AdaptiveThresholdImage(image,(unsigned long) geometry_info.rho,
             (unsigned long) geometry_info.sigma,(long) geometry_info.xi,
             &exception);
+          break;
+        }
+        case 78:  /* Resample */
+        {
+          unsigned long
+            height,
+            width;
+
+          if (attribute_flag[0])
+            {
+              flags=ParseGeometry(argument_list[0].string_reference,
+                &geometry_info);
+              if (!(flags & SigmaValue))
+                geometry_info.sigma=geometry_info.rho;
+            }
+          if (attribute_flag[1])
+            geometry_info.rho=argument_list[1].double_reference;
+          if (attribute_flag[2])
+            geometry_info.sigma=argument_list[2].double_reference;
+          if (!attribute_flag[3])
+            argument_list[3].int_reference=(long) UndefinedFilter;
+          if (!attribute_flag[4])
+            argument_list[4].double_reference=1.0;
+          width=(unsigned long) ceil(geometry_info.rho*image->columns/
+            (image->x_resolution == 0.0 ? 72.0 : image->x_resolution)-0.5);
+          height=(unsigned long) ceil(geometry_info.sigma*image->rows/
+            (image->y_resolution == 0.0 ? 72.0 : image->y_resolution)-0.5);
+          image=ResizeImage(image,width,height,(FilterTypes)
+            argument_list[3].int_reference,argument_list[4].double_reference,
+            &exception);
+          if (image != (Image *) NULL)
+            {
+              image->x_resolution=geometry_info.rho;
+              image->y_resolution=geometry_info.sigma;
+            }
+          break;
+        }
+        case 79:  /* Describe */
+        {
+          if (!attribute_flag[0])
+            argument_list[0].file_reference=stdout;
+          (void) DescribeImage(image,argument_list[0].file_reference,True);
+          break;
+        }
+        case 80:  /* BlackThreshold */
+        {
+          if (!attribute_flag[0])
+            argument_list[0].string_reference="50%";
+          BlackThresholdImage(image,argument_list[0].string_reference);
+          break;
+        }
+        case 81:  /* WhiteThreshold */
+        {
+          if (!attribute_flag[0])
+            argument_list[0].string_reference="50%";
+          WhiteThresholdImage(image,argument_list[0].string_reference);
           break;
         }
       }
@@ -6828,7 +6911,7 @@ Ping(ref,...)
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            package_info->image_info->file=
+            package_info->image_info->file=(FILE *)
               PerlIO_findFILE(IoIFP(sv_2io(ST(i+2))));
             continue;
           }
@@ -7659,7 +7742,7 @@ Read(ref,...)
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            package_info->image_info->file=
+            package_info->image_info->file=(FILE *)
               PerlIO_findFILE(IoIFP(sv_2io(ST(i+2))));
             continue;
           }

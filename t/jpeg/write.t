@@ -18,19 +18,16 @@ chdir 't/jpeg' || die 'Cd failed';
 # 1) Test with non-interlaced image
 #
 print( "Non-interlaced JPEG ...\n" );
-testReadWrite( 'input.jpg',
-  'output_tmp.jpg',
-  q/quality=>80, interlace=>'None'/,
-  '90c0ff3b78757873c25c5c788c877c08b6af1ce6f815fe48c69e50ea3b523169',
-  'b3cfec3f44079243d9cc486a359d063ed170269eaafddc016e3e7f9a0b8b3dc3' );
+testReadWriteCompare( 'input.jpg', 'output_tmp.jpg',
+                      '../reference/jpeg/write_non_interlaced.miff',
+                      q//, q//, 3.1e-7, 6.2e-5);
 
 #
 # 2) Test with plane-interlaced image
 #
 ++$test;
 print( "Plane-interlaced JPEG ...\n" );
-testReadWrite( 'input_plane.jpg', 'output_plane_tmp.jpg',
-  q/quality=>80, interlace=>'Plane'/,
-  '90c0ff3b78757873c25c5c788c877c08b6af1ce6f815fe48c69e50ea3b523169',
-  'b3cfec3f44079243d9cc486a359d063ed170269eaafddc016e3e7f9a0b8b3dc3' );
+testReadWriteCompare( 'input.jpg', 'output_plane_tmp.jpg',
+                      '../reference/jpeg/write_plane_interlaced.miff',
+                      q//, q//, 3.1e-7, 6.2e-5);
 

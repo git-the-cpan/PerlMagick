@@ -8,7 +8,7 @@ WriteMakefile(
     'VERSION_FROM' => 'Magick.pm', # finds $VERSION
     'LIBS'	=> ['-L/usr/lib -L/usr/local/lib -L/usr/X11R6/lib -L/home/cristy/ImageMagick/magick -lMagick    -ltiff -lfreetype -ljpeg  -lpng  -ldpstk -ldps -lXext -lXt  -lSM -lICE -lX11  -lbz2  -lz -lpthread  -lm'],
     'DEFINE'	=> '-DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/include/freetype2 -D_REENTRANT -D_FILE_OFFSET_BITS=64 -I/usr/local/include -I/usr/X11R6/include -I/usr/X11R6/include/X11',
+    'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/include/freetype2 -D_REENTRANT -D_FILE_OFFSET_BITS=64 -I/usr/local/include -I/X11',
     ($Config{'archname'} =~ /-object$/i ? ('CAPI' => 'TRUE') : ()),
 );
 

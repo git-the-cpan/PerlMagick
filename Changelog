@@ -1,6 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
-1.18  Thu Oct 23 1997
+1.20  Thu Oct 23 1997
+	- fixed WriteImage to conform to the adjoin option
 	- properly initialized ParseImageGeometry to match requirements of
 	  ImageMagick 3.9.1
 1.17  Thu Oct 15 1997

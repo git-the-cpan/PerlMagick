@@ -120,7 +120,7 @@ static char *p_boolean[] = {
     "False", "True", 0 };
 
 static char *p_compressions[] = {
-    "Undefined", "No", "Runlength", "Zip", 0 };
+    "Undefined", "None", "JPEG", "LZW", "Runlength", "Zip", 0 };
 
 static char *p_filters[] = {
     "Box", "Mitchell", "Triangle", 0 };
@@ -159,7 +159,7 @@ static char *p_composites[] = {
 
 static char *p_colorspaces[] = {
     "Undefined", "RGB", "Gray", "Transparent", "OHTA", "XYZ", "YCbCr", "YCC",
-    "YIQ", "YPbPr", "YUV", 0 };
+    "YIQ", "YPbPr", "YUV", "CMYK", 0 };
 
 static char *p_classes[] = {
     "Undefined", "Direct", "Pseudo", 0 };
@@ -507,16 +507,17 @@ SetAttribute(info, image, attr, sval)
     switch (*attr)
     {
     case 'A': case 'a':
-	if (strEQcase(attr, "affirm"))
-	{
-	    if (info)
-		info->info.affirm = SvIV(sval);
-	    return;
-	}
 	if (strEQcase(attr, "adjoin"))
 	{
+	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
+			     : SvIV(sval);
+	    if (sp < 0)
+	    {
+	        warning(OptionWarning, "Unknown adjoin type", SvPV(sval, na));
+	        return;
+	    }
 	    if (info)
-		info->info.adjoin = SvIV(sval);
+	        info->info.adjoin = sp;
 	    return;
 	}
 	break;
@@ -746,8 +747,16 @@ SetAttribute(info, image, attr, sval)
 	}
 	if (strEQcase(attr, "monoch"))
 	{
+	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
+			     : SvIV(sval);
+	    if (sp < 0)
+	    {
+	        warning(OptionWarning, "Unknown monochrome type",
+		    SvPV(sval, na));
+	        return;
+	    }
 	    if (info)
-		info->info.monochrome = SvIV(sval);
+	        info->info.monochrome = sp;
 	    return;
 	}
 	break;
@@ -884,8 +893,15 @@ SetAttribute(info, image, attr, sval)
     case 'V': case 'v':
 	if (strEQcase(attr, "verbose"))
 	{
+	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
+			     : SvIV(sval);
+	    if (sp < 0)
+	    {
+	        warning(OptionWarning, "Unknown verbose type", SvPV(sval, na));
+	        return;
+	    }
 	    if (info)
-		info->info.verbose = SvIV(sval);
+	        info->info.verbose = sp;
 	    return;
 	}
 	break;

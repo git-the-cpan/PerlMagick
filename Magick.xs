@@ -955,6 +955,12 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		info->info.verbose = sp;
 	    return;
 	}
+	if (strEQcase(attr, "view"))
+	{
+	    if (info)
+		newval(&info->info.view, SvPV(sval, na));
+	    return;
+	}
 	break;
     case 'W': case 'w':
 	break;

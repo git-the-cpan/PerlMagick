@@ -1,5 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
+1.33 Fri Mar 15 1998
+	- Added view as an image attribute (for FlashPix).
 1.32 Fri Jan 30 1998
 	- Added LayerImage function.
 1.31 Fri Jan 26 1998

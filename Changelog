@@ -1,6 +1,6 @@
 Revision history for Perl extension Image::Magick.
 
-1.39 Fri Jul 10 1998
+1.40 Fri Jul 10 1998
 	- Added new image scaling filters.
 1.38 Mon Jun 8 1998
 	- Added the Append method.

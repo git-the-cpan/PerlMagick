@@ -168,6 +168,10 @@ static char
   {
     "False", "True", (char *) NULL
   },
+  *ChannelTypes[] =
+  {
+    "Undefined", "Red", "Green", "Blue", "Matte", (char *) NULL
+  },
   *ClassTypes[] =
   {
     "Undefined", "DirectClass", "PseudoClass", (char *) NULL
@@ -214,10 +218,6 @@ static char
   *InterlaceTypes[] =
   {
     "Undefined", "None", "Line", "Plane", "Partition", (char *) NULL
-  },
-  *LayerTypes[] =
-  {
-    "Undefined", "Red", "Green", "Blue", "Matte", (char *) NULL
   },
   *MethodTypes[] =
   {
@@ -393,7 +393,7 @@ static struct
     { "Trim", },
     { "Wave", { {"geom", StringReference}, {"ampli", DoubleReference},
       {"wave", DoubleReference} } },
-    { "Layer", { {"layer", LayerTypes} } },
+    { "Channel", { {"channel", ChannelTypes} } },
     { "Condense", },
     { "Stereo", { {"image", ImageReference} } },
     { "Stegano", { {"image", ImageReference}, {"offset", IntegerReference} } },
@@ -3670,8 +3670,8 @@ Mogrify(ref,...)
     TrimImage          = 118
     Wave               = 119
     WaveImage          = 120
-    Layer              = 121
-    LayerImage         = 122
+    Channel            = 121
+    ChannelImage       = 122
     Stereo             = 125
     StereoImage        = 126
     Stegano            = 127
@@ -4676,18 +4676,18 @@ Mogrify(ref,...)
               PrimitiveTypes[argument_list[0].int_reference]);
           if (attribute_flag[1])
             {
-              (void) strcat(draw_info->primitive," ");
+              (void) ConcatenateString(&draw_info->primitive," ");
               if (!IsGeometry(argument_list[1].string_reference))
-                (void) strcat(draw_info->primitive,"'");
-              (void) strcat(draw_info->primitive,
+                (void) ConcatenateString(&draw_info->primitive,"'");
+              ConcatenateString(&draw_info->primitive,
                 argument_list[1].string_reference);
               if (!IsGeometry(argument_list[1].string_reference))
-                (void) strcat(draw_info->primitive,"'");
+                (void) ConcatenateString(&draw_info->primitive,"'");
             }
           if (attribute_flag[2])
             {
-              (void) strcat(draw_info->primitive," ");
-              (void) strcat(draw_info->primitive,
+              (void) ConcatenateString(&draw_info->primitive," ");
+              (void) ConcatenateString(&draw_info->primitive,
                 MethodTypes[argument_list[2].int_reference]);
             }
           if (attribute_flag[3])
@@ -5075,11 +5075,11 @@ Mogrify(ref,...)
           image=WaveImage(image,amplitude,wavelength,&exception);
           break;
         }
-        case 61:  /* Layer */
+        case 61:  /* Channel */
         {
           if (!attribute_flag[0])
-            argument_list[0].int_reference=0;
-          LayerImage(image,(LayerType) argument_list[0].int_reference);
+            argument_list[0].int_reference=1;
+          ChannelImage(image,(ChannelType) argument_list[0].int_reference);
           break;
         }
         case 63:  /* Stereo */
@@ -6112,7 +6112,7 @@ QueryFontMetrics(ref,...)
     IdentityAffine(&affine);
     x=0.0;
     y=0.0;
-    for (i=1; i < items; i+=2)
+    for (i=2; i < items; i+=2)
     {
       attribute=(char *) SvPV(ST(i-1),na);
       switch (*attribute)
@@ -6521,7 +6521,7 @@ Set(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   T r a n s f e r                                                           #
+#   T r a n s f o r m                                                         #
 #                                                                             #
 #                                                                             #
 #                                                                             #

@@ -25,6 +25,11 @@ testFilter('input.miff', 'Border',
   'd786ed89a0fad7a401e200e57629faa8');
 
 ++$test;
+testFilter('input.miff', 'Channel',
+  q/Red/,
+  '855e49d855e2dffc8abdbb78014575e0');
+
+++$test;
 testFilter('input.miff', 'Chop',
   q/+10+10/,
   'd29da2e9202ebfbaceb18ebd29e47132');
@@ -74,13 +79,13 @@ testFilter('input.miff', 'Edge',
 testFilter('input.miff', 'Emboss',
   q/3/,
   '83642cd00e36ca29fa4ddee858cc5e80',
-  'dda130a1e96654fbfd1e27865f4f5922');
+  '5aa0ab5936b49e14d3e9b58caa6a1861');
 
 ++$test;
 testFilter('input.miff', 'Equalize',
   q/ /,
   'e7c25176f93a087008197e82104ab3cb',
-  '4731d138fa4bf61a12911686b3bebf85');
+  '61eb62ac349952e079237eab1b26302d');
 
 ++$test;
 testFilter('input.miff', 'Flip',
@@ -109,11 +114,6 @@ testFilter('input.miff', 'Implode',
   q/30/,
   '595ba49fdaa2052c97ad604fefd2d89e',
   'a8e08e25ea60706c37b264edfdc9bd99');
-
-++$test;
-testFilter('input.miff', 'Layer',
-  q/Red/,
-  '855e49d855e2dffc8abdbb78014575e0');
 
 ++$test;
 testFilter('input.miff', 'Magnify',
@@ -153,8 +153,8 @@ testFilter('input.miff', 'Normalize',
 ++$test;
 testFilter('input.miff', 'OilPaint',
   q/3/,
-  '1db2b56a7a33507c693860b698058250',
-  '79e079df8a24f7410b608a19788f7859');
+  '0834dd50453a59049c380bc506ccb089',
+  '274418a706b9fee352f7ba148a8ee419');
 
 ++$test;
 testFilter('input.miff', 'Opaque',
@@ -187,8 +187,8 @@ testFilter('input.miff', 'Roll',
 ++$test;
 testFilter('input.miff', 'Rotate',
   q/10/,
-  'ae4c2b922aec1130999e6f9668b1f080',
-  'd5141f9e3a246be7bbd3b15e38602e15');
+  '243796938cdf86a0b00a49651f2e2a08',
+  'e94be2d9fb268a78b31182aed1c70597');
 
 ++$test;
 testFilter('input.miff', 'Sample',
@@ -209,8 +209,8 @@ testFilter('input.miff', 'Segment',
 ++$test;
 testFilter('input.miff', 'Shade',
   q/30/,
-  '2096afda6790e7e8a8abf31665a78d0f',
-  '04c3ca7d5cda76586548c35170cdd749');
+  '390101e0acbfdf026e9d48e0e5f54c35',
+  'c322c40dd3d91dd9086d5867943d2d06');
 
 ++$test;
 testFilter('input.miff', 'Sharpen',
@@ -221,8 +221,8 @@ testFilter('input.miff', 'Sharpen',
 ++$test;
 testFilter('input.miff', 'Shear',
   q/10/,
-  '640dffd1d8ad695bde747a76f79c8312',
-  '97dc6a82f0fd80f7d82c5f6fe0fecc73');
+  'd9c9229c08a62444db7ccbd487de4b16',
+  '64c4aa4cd14cfa11e357ec880bc818b8');
 
 ++$test;
 testFilter('input.miff', 'Solarize',

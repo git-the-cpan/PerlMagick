@@ -14,5 +14,5 @@ require 't/subroutines.pl';
 
 chdir 't/cgm' || die 'Cd failed';
 
-testRead( 'input.cgm', 'ad54b251c359ae8e782a37a095e75633' );
+testRead( 'input.cgm', 'b4680bea0efb73d2e9ed875e71e590f2' );
 

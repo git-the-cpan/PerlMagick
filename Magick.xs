@@ -151,11 +151,12 @@ static char *p_modes[] = {
     "Undefined", "Frame", "Unframe", "Concatenate", 0 };
 
 static char *p_previews[] = {
-    "Rotate", "Shear", "Roll", "Hue", "Saturation", "Brightness", "Gamma",
-    "Spiff", "Dull", "Grayscale", "Quantize", "Despeckle", "ReduceNoise",
-    "AddNoise", "Sharpen", "Blur", "Threshold", "EdgeDetect", "Spread",
-    "Solarize", "Shade", "Raise", "Segment", "Swirl", "Implode", "Wave",
-    "OilPaint", "Charcoal", 0 };
+    "Undefined", "Rotate", "Shear", "Roll", "Hue", "Saturation",
+    "Brightness", "Gamma", "Spiff", "Dull", "Grayscale", "Quantize",
+    "Despeckle", "ReduceNoise", "AddNoise", "Sharpen", "Blur",
+    "Threshold", "EdgeDetect", "Spread", "Solarize", "Shade", "Raise",
+    "Segment", "Swirl", "Implode", "Wave", "OilPaint", "Charcoal",
+    "JPEG", 0 };
 
 static char *p_primitives[] = {
     "Undefined", "Point", "Line", "Rectangle", "FillRectangle", "Circle",
@@ -163,7 +164,7 @@ static char *p_primitives[] = {
 0 };
 
 static char *p_units[] = {
-    "Undefined", "pixels / inch", "pixels / centimeter", 0 };
+    "undefined units", "pixels / inch", "pixels / centimeter", 0 };
 
 static char *p_composites[] = {
     "Undefined", "Over", "In", "Out", "Atop", "Xor", "Plus", "Minus", "Add",
@@ -3734,11 +3735,10 @@ Get(ref, ...)
 		    else if (strEQcase(arg, "sign"))
 		    {
 			if (image)
-			  {
-			    if (!image->signature)
-		    		SignatureImage(image);
-			    s = newSVpv(image->signature, 0);
-			  }
+			    {
+				SignatureImage(image);
+				s = newSVpv(image->signature, 0);
+			    }
 		    }
 		    break;
 		case 'T': case 't':

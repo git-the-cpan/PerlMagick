@@ -40,7 +40,7 @@ sub MY::test
    #
    # e.g. my @PLUGINS = qw/IM jpeg tiff/;
    #
-   my @PLUGINS = qw/IM cgm mpeg ps rad x xfig/;
+   my @PLUGINS = qw//;
 
    package MY; # so that "SUPER" works right
    my $inherited = shift->SUPER::test(@_);

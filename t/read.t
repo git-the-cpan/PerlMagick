@@ -5,7 +5,7 @@
 # Whenever a new test is added/removed, be sure to update the
 # 1..n ouput.
 #
-BEGIN { $| = 1; $test=1; print "1..40\n"; }
+BEGIN { $| = 1; $test=1; print "1..45\n"; }
 END {print "not ok $test\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -15,246 +15,278 @@ require 't/subroutines.pl';
 chdir 't' || die 'Cd failed';
 
 #
-# 1) AVS X image file
+# AVS X image file
 #
-testRead( 'input.avs', '93bd185340123477f0a0e6622392a5b4' );
+testRead( 'input.avs', 'f3e5ab88e328da3044c1fc177a7e2978' );
 
 #
-# 2) Joint Bi-level Image experts Group file interchange format
+# Microsoft Windows bitmap image file
 #
 ++$test;
-testRead( 'input.bie', '1a8d5855273e27302856c727934c9f9a' );
+testRead( 'input.bmp', '7785d161ea66bd39394bb74ef704a0aa' );
 
 #
-# 3) Microsoft Windows bitmap image file
+# Microsoft Windows 24-bit bitmap image file
 #
 ++$test;
-testRead( 'input.bmp', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.bmp24', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 4) Microsoft Windows 24-bit bitmap image file
+# ZSoft IBM PC multi-page Paintbrush file
 #
 ++$test;
-testRead( 'input.bmp24', '3a17784c61a87a98f8e25f1977b9d363' );
+testRead( 'input.dcx', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 5) ZSoft IBM PC multi-page Paintbrush file
+# Microsoft Windows bitmap image file
 #
 ++$test;
-testRead( 'input.dcx', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.dib', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 6) Flexible Image Transport System
+# Flexible Image Transport System
 #
 ++$test;
-testRead( 'input.fits', '78f4ac7dab43c94375d9cc4476d77af8' );
+testRead( 'input.fits', '402072120da1513decd3efc060473f60' );
 
 #
-# 7) CompuServe graphics interchange format
+# CompuServe graphics interchange format
 #
 ++$test;
-testRead( 'input.gif', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.gif', 'd5a97a3cec301d8848102f513ceb3f3c' );
 
 #
-# 8) CompuServe graphics interchange format (1987)
+# CompuServe graphics interchange format (1987)
 #
 ++$test;
-testRead( 'input.gif87', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.gif87', 'd5a97a3cec301d8848102f513ceb3f3c' );
 
 #
-# 9) GRADATION (gradual passing from one shade to another)
-#     This is an internal, computed, format
+# GRADATION (gradual passing from one shade to another)
+# This is an internal, computed, format
 #
 ++$test;
-testRead( 'gradation:red-blue', '2c618bf0ff60556b36128fb4ab32047b' );
+testRead( 'gradation:red-blue', '120b84fd035a74aac8769761e21a16b2' );
 
 #
-# 10) GRANITE (granite texture)
-#     This is an internal, computed, format
+# GRANITE (granite texture)
+# This is an internal, computed, format
 #
 ++$test;
-testRead( 'granite:', 'f331cdb24a6db87f7add31128d78243e' );
+testRead( 'granite:', '30086994324339ccb531dbb82e46128b' );
 
 #
-# 11) Microsoft icon
+# Microsoft icon
 #
 ++$test;
 testRead( 'input.ico', 'd6fb93a149f45c8002358d58cd2db2c7' );
 
 #
-# 12) Magick image file format
+# Magick image file format
 #
 ++$test;
-testRead( 'input.miff', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.miff', '7785d161ea66bd39394bb74ef704a0aa' );
 
 #
-# 13) MTV Raytracing image format
+# MTV Raytracing image format
 #
 ++$test;
-testRead( 'input.mtv', '3a17784c61a87a98f8e25f1977b9d363' );
+testRead( 'input.mtv', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 14) Xv's visual schnauzer format.
+# Xv's visual schnauzer format.
 #
 ++$test;
-testRead( 'input.p7', 'f49379458530fc9ed46236dfa6c66f9c' );
+testRead( 'input_p7.p7', '3d772946085f47ed244c548d08e36579' );
 
 #
-# 15) NULL (white image)
-#     This is an internal generated format
+# NULL (white image)
+# This is an internal generated format
 #
 ++$test;
-testRead( 'NULL:white', 'aacc74d1f14965f019465e2b33e295e7' );
+testRead( 'NULL:white', 'eff9598f9f61c1dc78d842f1798c2ab8' );
 
 #
-# 16) NULL (black image)
+# NULL (black image)
 #
 ++$test;
-testRead( 'NULL:black', 'b6d81b360a5672d80c27430f39153e2c' );
+testRead( 'NULL:black', '33c250bf306b7cbbd3dd71b6029b8784' );
 
 #
-# 17) NULL (DarkOrange image)
+# NULL (DarkOrange image)
 #
 ++$test;
-testRead( 'NULL:DarkOrange', '387ccff83df1906bc248c25122c28922' );
+testRead( 'NULL:DarkOrange', '43e3f8bc3a2e2c05de8a5b569aeb8a94' );
 
 #
-# 18) Portable bitmap format (black and white)
+# Portable bitmap format (black and white), ASCII format
 #
 ++$test;
-testRead( 'input.pbm', '1a8d5855273e27302856c727934c9f9a' );
+testRead( 'input_p1.pbm', '61ed9c1e08dac993e5f020de8195e009' );
+
 
 #
-# 19) ZSoft IBM PC Paintbrush file
+# Portable bitmap format (black and white), binary format
 #
 ++$test;
-testRead( 'input.pcx', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input_p4.pbm', '61ed9c1e08dac993e5f020de8195e009' );
 
 #
-# 20) Portable graymap format (gray scale)
+# ZSoft IBM PC Paintbrush file
 #
 ++$test;
-testRead( 'input.pgm', '60c799dcec989ad147468a24f76ddb5f' );
+testRead( 'input.pcx', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 21) Apple Macintosh QuickDraw/PICT file
+# Portable graymap format (gray scale), ASCII format
 #
 ++$test;
-testRead( 'input.pict', '8063e2ddf92f55b8bc3d46528865235c' );
+testRead( 'input_p2.pgm', '4d21ec5c0ed543eeb6d478515c66ff14' );
 
 #
-# 22) Alias/Wavefront RLE image format
+# Portable graymap format (gray scale), binary format
 #
 ++$test;
-testRead( 'input.miff', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input_p5.pgm', '4d21ec5c0ed543eeb6d478515c66ff14' );
 
 #
-# 23) Portable pixmap format (color)
+# Apple Macintosh QuickDraw/PICT file
 #
 ++$test;
-testRead( 'input.ppm', 'd5fdeba9d1e28db7c07f1485d0d64697' );
+testRead( 'input.pict', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 24) Adobe Photoshop bitmap file
+# Alias/Wavefront RLE image format
 #
 ++$test;
-testRead( 'input.psd', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.rle', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 25) Irix RGB image file
+# Portable pixmap format (color), ASCII format
 #
 ++$test;
-testRead( 'input.sgi', 'a05c5863b2d073046329b0b71d5e85e9' );
+testRead( 'input_p3.ppm', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 26) SUN 1-bit Rasterfile
+# Portable pixmap format (color), binary format
 #
 ++$test;
-testRead( 'input.im1', '5ee57461fb1810e09ed6ddc6ffb11c7d' );
+testRead( 'input_p6.ppm', 'e9b162b8431709942886f79b7b7c11bb' );
 
-# 27) SUN 8-bit Rasterfile
+#
+# Adobe Photoshop bitmap file
 #
 ++$test;
-testRead( 'input.im8', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.psd', 'e9b162b8431709942886f79b7b7c11bb' );
 
-# 28) SUN TrueColor Rasterfile
+#
+# Irix RGB image file
 #
 ++$test;
-testRead( 'input.im24', '5cb2c2f3d73b57302059da592506be22' );
+testRead( 'input.sgi', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 29) Truevision Targa image file
+# SUN 1-bit Rasterfile
 #
 ++$test;
-testRead( 'input.tga', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.im1', '61ed9c1e08dac993e5f020de8195e009' );
 
-#
-# 30) TILE (Tile image with a texture)
-#     This is an internal generated format
-#     We will tile using the default image and a MIFF file
+# SUN 8-bit Rasterfile
 #
 ++$test;
-testRead( 'TILE:input.miff', '900791f1c3d52b6b817ee7e77236dc43' );
+testRead( 'input.im8', '7785d161ea66bd39394bb74ef704a0aa' );
 
-#
-# 31) PSX TIM file
+# SUN TrueColor Rasterfile
 #
 ++$test;
-testRead( 'input.tim', 'cf0a2de70431838d2f88225b571337d2' );
+testRead( 'input.im24', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 32) X Windows system bitmap (black and white only)
+# Truevision Targa image file
 #
 ++$test;
-testRead( 'input.xbm', '1a8d5855273e27302856c727934c9f9a' );
+testRead( 'input.tga', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 33) XC: Constant image of X server color
+# PSX TIM file
 #
 ++$test;
-testRead( 'xc:black', 'b6d81b360a5672d80c27430f39153e2c' );
+testRead( 'input.tim', '5f53f9f45afef1060449dd4f09c3706c' );
 
 #
-# 34) X Windows system pixmap file (color)
+# Khoros Visualization image file
 #
 ++$test;
-testRead( 'input.xpm', '2f1ab12288938e48c54b0d237c3c58d1' );
+testRead( 'input.viff', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 35) X Windows system window dump file (color)
+# X Windows system bitmap (black and white only)
 #
 ++$test;
-testRead( 'input.xwd', '25c550da420eeb782f57dd88c689e819' );
+testRead( 'input.xbm', '61ed9c1e08dac993e5f020de8195e009' );
 
 #
-# 36) GRAY format
+# XC: Constant image of X server color
 #
 ++$test;
-testReadSized( 'input_70x46.gray', '70x46', '42129d46fc552e41c3e23977e7b6e09f' );
+testRead( 'xc:black', '33c250bf306b7cbbd3dd71b6029b8784' );
 
 #
-# 37) RGB format
+# X Windows system pixmap file (color)
 #
 ++$test;
-testReadSized( 'input_70x46.rgb', '70x46', '5cb2c2f3d73b57302059da592506be22' );
+testRead( 'input.xpm', '948df732ca8abbd1f7348a029f056c94' );
 
 #
-# 38) RGBA format
+# X Windows system window dump file (color)
 #
 ++$test;
-testReadSized( 'input_70x46.rgba', '70x46', '5cb2c2f3d73b57302059da592506be22' );
-
-
-#
-# 39) CMYK format
-#
-++$test;
-testReadSized( 'input_70x46.cmyk', '70x46', '5cb2c2f3d73b57302059da592506be22' );
-
+testRead( 'input.xwd', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
-# 40) UYVY format
+# TILE (Tile image with a texture)
+# This is an internal generated format
+# We will tile using the default image and a MIFF file
 #
 ++$test;
-testReadSized( 'input_70x46.uyvy', '70x46', '02177f54ec75464ef7b4ed2c5e52112d' );
+testReadSized( 'TILE:input.miff', '140x92', 'ea3df20e9ae6e1b6fc948d1ee64b571c');
+
+#
+# GRAY format
+#
+++$test;
+testReadSized( 'input_70x46.gray', '70x46', '17e5358049cdf0613e54f0f2eb42701d' );
+
+#
+# RGB format
+#
+++$test;
+testReadSized( 'input_70x46.rgb', '70x46', 'e9b162b8431709942886f79b7b7c11bb' );
+
+#
+# RGBA format
+#
+++$test;
+testReadSized( 'input_70x46.rgba', '70x46', 'f3e5ab88e328da3044c1fc177a7e2978' );
+
+
+#
+# CMYK format
+#
+++$test;
+testReadSized( 'input_70x46.cmyk', '70x46', 'e9b162b8431709942886f79b7b7c11bb' );
+
+
+#
+# UYVY format
+#
+++$test;
+testReadSized( 'input_70x46.uyvy', '70x46', 'ed295a710186b6853c6ad587f8a01b7e' );
+
+#
+# YUV CCIR 601 4:1:1 file
+#
+++$test;
+testReadSized( 'input_70x46.yuv', '70x46', 'eeaff40e9ef6c843d63e93c3c6a111d4' );
+
 

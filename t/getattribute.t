@@ -39,7 +39,7 @@ testGetAttribute('input.miff','depth','8');
 testGetAttribute('input.miff','directory',undef);
 
 ++$test;
-testGetAttribute('input.miff','filesize','3751');
+testGetAttribute('input.miff','filesize','4145');
 
 ++$test;
 testGetAttribute('input.miff','gamma','0');
@@ -79,7 +79,7 @@ testGetAttribute('input.miff','packets','2534');
 testGetAttribute('input.miff','rows','46');
 
 ++$test;
-testGetAttribute('input.miff','signature','25c550da420eeb782f57dd88c689e819');
+testGetAttribute('input.miff','signature','7785d161ea66bd39394bb74ef704a0aa');
 
 ++$test;
 testGetAttribute('input.miff','text',undef);
@@ -91,7 +91,7 @@ testGetAttribute('input.miff','total_colors','256');
 testGetAttribute('input.miff','type','palette');
 
 ++$test;
-testGetAttribute('input.miff','units','Undefined');
+testGetAttribute('input.miff','units','undefined units');
 
 ++$test;
 testGetAttribute('input.miff','view',undef);

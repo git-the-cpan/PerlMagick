@@ -11,14 +11,15 @@
 #
 sub testRead {
   my( $infile, $md5 ) =  @_;
+
+  my($image);
   
   $image=Image::Magick->new;
-  $x=$image->ReadImage("$infile");
-  if( "$x" ) {
-    print "ReadImage $infile: $x";
+  $status=$image->ReadImage("$infile");
+  if( "$status" ) {
+    print "ReadImage $infile: $status";
     print "not ok $test\n";
   } else {
-    $image->SignatureImage();
     $signature=$image->Get('signature');
     if ( $signature ne $md5 ) {
       print "Image: $infile, Computed: $signature, expected: $md5\n";
@@ -27,7 +28,6 @@ sub testRead {
       print "ok $test\n";
     }
   }
-  undef $image;
 }
 
 #
@@ -39,6 +39,8 @@ sub testRead {
 sub testReadSized {
   my( $infile, $size, $md5 ) =  @_;
   
+  my($image);
+
   $image=Image::Magick->new;
 
   # Set size attribute
@@ -50,7 +52,6 @@ sub testReadSized {
     print "ReadImage $infile: $status";
     print "not ok $test\n";
   } else {
-    $image->SignatureImage();
     $signature=$image->Get('signature');
     if ( $signature ne $md5 ) {
       print "Image: $infile, Computed: $signature, expected: $md5\n";
@@ -59,7 +60,6 @@ sub testReadSized {
       print "ok $test\n";
     }
   }
-  undef $image;
 }
 
 #
@@ -79,34 +79,38 @@ sub testReadSized {
 sub testReadWrite {
   my( $infile, $outfile, $writeoptions, $md5 ) = @_;
   
+  my($image);
+
   $image=Image::Magick->new;
-  $x=$image->ReadImage("$infile");
-  if( "$x" ) {
-    print "ReadImage $infile: $x\n";
+  $status=$image->ReadImage("$infile");
+	$signature=$image->Get('signature');
+  if( "$status" ) {
+    print "ReadImage $infile: $status\n";
     print "not ok $test\n";
   } else {
     # Write image to file
     my $options = 'filename=>"$outfile", ' . "$writeoptions";
     #print "Using options: $options\n";
-    eval "\$x=\$image->WriteImage( $options ) ;";
+    eval "\$status=\$image->WriteImage( $options ) ;";
     if( $@ ) {
       print "$@\n";
       print "not ok $test\n";
       exit 1;
     }
-    if( "$x" ) {
-      print "WriteImage $outfile: $x\n";
+    if( "$status" ) {
+      print "WriteImage $outfile: $status\n";
       print "not ok $test\n";
     } else {
-      undef @$image;
+      my($image);
+
       # Read image just written
-      $x=$image->ReadImage("$outfile");
-      if( "$x" ) {
-	print "ReadImage $outfile: $x\n";
+      $image=Image::Magick->new;
+      $status=$image->ReadImage("$outfile");
+      if( "$status" ) {
+	print "ReadImage $outfile: $status\n";
 	print "not ok $test\n";
       } else {
 	# Check signature
-	$image->SignatureImage();
 	$signature=$image->Get('signature');
 	if ( $signature ne $md5 ) {
 	  print " Image: $outfile, Got: $signature, expected: $md5\n";
@@ -119,7 +123,6 @@ sub testReadWrite {
       }
     }
   }
-  undef $image;
 }
 
 #
@@ -140,30 +143,34 @@ sub testReadWrite {
 sub testReadWriteNoVerify {
   my( $infile, $outfile, $writeoptions) = @_;
   
+  my($image, $images);
+  
   $image=Image::Magick->new;
-  $x=$image->ReadImage("$infile");
-  if( "$x" ) {
-    print "$x\n";
+  $status=$image->ReadImage("$infile");
+  if( "$status" ) {
+    print "$status\n";
     print "ReadImage $infile: not ok $test\n";
   } else {
     # Write image to file
     my $options = 'filename=>"$outfile", ' . $writeoptions;
     #print "Using options: $options\n";
-    eval "\$x=\$image->WriteImage( $options ) ;";
+    eval "\$status=\$image->WriteImage( $options ) ;";
     if( $@ ) {
       print "$@";
       print "not ok $test\n";
       exit 1;
     }
-    if( "$x" ) {
-      print "WriteImage $outfile: $x\n";
+    if( "$status" ) {
+      print "WriteImage $outfile: $status\n";
       print "not ok $test\n";
     } else {
-      undef @$image;
+      my($image);
+
       # Read image just written
-      $x=$image->ReadImage("$outfile");
-      if( "$x" ) {
-	print "ReadImage $outfile: $x\n";
+      $image=Image::Magick->new;
+      $status=$image->ReadImage("$outfile");
+      if( "$status" ) {
+	print "ReadImage $outfile: $status\n";
 	print "not ok $test\n";
       } else {
 	print "ok $test\n";
@@ -171,8 +178,6 @@ sub testReadWriteNoVerify {
       }
     }
   }
-  undef $image;
-  undef $images;
 }
 
 #
@@ -193,44 +198,48 @@ sub testReadWriteNoVerify {
 sub testReadWriteSized {
   my( $infile, $outfile, $size, $writeoptions, $md5 ) = @_;
   
+  my($image);
+  
   $image=Image::Magick->new;
 
   # Set size attribute
   $status=$image->SetAttribute(size=>"$size");
   warn "$status" if "$status";
 
-  $x=$image->ReadImage("$infile");
-  if( "$x" ) {
-    print "ReadImage $infile: $x\n";
+  $status=$image->ReadImage("$infile");
+
+  if( "$status" ) {
+    print "ReadImage $infile: $status\n";
     print "not ok $test\n";
   } else {
     # Write image to file
     my $options = 'filename=>"$outfile", ' . "$writeoptions";
     #print "Using options: $options\n";
-    eval "\$x=\$image->WriteImage( $options ) ;";
+    eval "\$status=\$image->WriteImage( $options ) ;";
     if( $@ ) {
       print "$@\n";
       print "not ok $test\n";
       exit 1;
     }
-    if( "$x" ) {
-      print "WriteImage $outfile: $x\n";
+    if( "$status" ) {
+      print "WriteImage $outfile: $status\n";
       print "not ok $test\n";
     } else {
-      undef @$image;
+       my($image);
+
+      $image=Image::Magick->new;
 
       # Set image size attribute
       $status=$image->SetAttribute(size=>"$size");
       warn "$status" if "$status";
 
       # Read image just written
-      $x=$image->ReadImage("$outfile");
-      if( "$x" ) {
-	print "ReadImage $outfile: $x\n";
+      $status=$image->ReadImage("$outfile");
+      if( "$status" ) {
+	print "ReadImage $outfile: $status\n";
 	print "not ok $test\n";
       } else {
 	# Check signature
-	$image->SignatureImage();
 	$signature=$image->Get('signature');
 	if ( $signature ne $md5 ) {
 	  print " Image: $outfile, Got: $signature, expected: $md5\n";
@@ -243,7 +252,6 @@ sub testReadWriteSized {
       }
     }
   }
-  undef $image;
 }
 
 #
@@ -254,6 +262,8 @@ sub testReadWriteSized {
 sub testSetAttribute {
   my( $srcimage, $name, $attribute ) = @_;
 
+  my($image);
+  
   # Create temporary image
   $image=Image::Magick->new;
 
@@ -303,8 +313,6 @@ sub testSetAttribute {
     print "GetAttribute returned undefined value!\n";
     print "not ok $test\n";
   }
-
-  undef $image;
 }
 
 #
@@ -314,6 +322,8 @@ sub testSetAttribute {
 #
 sub testGetAttribute {
   my( $srcimage, $name, $expected ) = @_;
+
+  my($image);
 
   # Create temporary image
   $image=Image::Magick->new;
@@ -337,8 +347,6 @@ sub testGetAttribute {
       print "not ok $test\n";
     }
   }
-
-  undef $image;
 }
 
 #
@@ -348,6 +356,8 @@ sub testGetAttribute {
 #
 sub testMontage {
   my( $imageOptions, $montageOptions, $md5 ) = @_;
+
+  my($image);
 
   # Create image for image list
   $images=Image::Magick->new;
@@ -393,12 +403,14 @@ sub testMontage {
     print "not ok $test\n";
   } else {
     #$montage->Display();
-    $status = $montage->SignatureImage();
-    warn "$status" if "$status";
     $signature=$montage->GetAttribute('signature');
     if ( defined( $signature ) ) {
       if ( $signature ne $md5 ) {
 	print "Test $test Computed: $signature, expected: $md5\n";
+
+        $status = $montage->Write("test_${test}_out.miff");
+        warn "Write: $status" if "$status";
+
 	print "not ok $test\n";
       } else {
 	print "ok $test\n";
@@ -418,6 +430,8 @@ sub testMontage {
 sub testFilter {
   my( $srcimage, $filter, $options, $md5 ) = @_;
 
+  my($image);
+
   # Create temporary image
   $image=Image::Magick->new;
 
@@ -426,8 +440,6 @@ sub testFilter {
 
   $image->$filter($options);
 
-  $status = $image->SignatureImage();
-  warn "$status" if "$status";
   $signature=$image->GetAttribute('signature');
   if ( defined( $signature ) ) {
     if ( $signature ne $md5 ) {
@@ -440,8 +452,6 @@ sub testFilter {
     warn "GetAttribute returned undefined value!";
     print "not ok $test\n";
   }
-
-  undef $image;
 }
 
 1;

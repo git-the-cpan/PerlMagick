@@ -69,6 +69,9 @@ static char *p_noises[] = {
     "Uniform", "Gaussian", "Multiplicative", "Impulse", "Laplacian", "Poisson",
 0 };
 
+static char *p_alignments[] = {
+    "Undefined", "Left", "Center", "Right", 0 };
+
 static char *p_boolean[] = {
     "False", "True", 0 };
 
@@ -98,8 +101,8 @@ static char *p_previews[] = {
     "Raise", "Segment", "Swirl", "Implode", "OilPaint", "Charcoal", 0 };
 
 static char *p_primitives[] = {
-    "Undefined", "Point", "Line", "Rectangle", "FillRectangle", "Ellipse",
-    "FillEllipse", "Polygon", "FillPolygon", "Color", "Matte", "Text", "Image",
+    "Undefined", "Point", "Line", "Rectangle", "FillRectangle", "Circle",
+    "FillCircle", "Polygon", "FillPolygon", "Color", "Matte", "Text", "Image",
 0 };
 
 static char *p_units[] = {
@@ -182,7 +185,7 @@ static struct routines {
     {	"Annotate", { {"server", P_STR}, {"font", P_STR}, {"point", P_INT},
 		    {"box", P_STR}, {"pen", P_STR}, {"geom", P_STR},
 		    {"text", P_STR}, {"prim", P_STR}, {"center", p_boolean},
-		    {"x", P_INT}, {"y", P_INT} } },
+		    {"x", P_INT}, {"y", P_INT}, {"align", p_alignments} } },
     {	"ColorFloodfill", },
     {	"Composite", { {"compos", p_composites}, {"image", P_IMG},
 		    {"x", P_INT}, {"y", P_INT} } },
@@ -2059,7 +2062,7 @@ Mogrify(ref, ...)
 			if (aflag[7])
 			    annotate.primitive = alist[7].t_str;
 			if (aflag[8])
-			    annotate.center = alist[8].t_int;
+			    annotate.alignment = alist[8].t_int+1;
 			if (aflag[9] || aflag[10])
 			{
 			    if (!aflag[9])
@@ -2070,6 +2073,8 @@ Mogrify(ref, ...)
 					alist[9].t_int, alist[10].t_int);
 			    annotate.geometry = b;
 			}
+			if (aflag[11])
+			    annotate.alignment = alist[11].t_int;
 		    }
 		    AnnotateImage(image, &annotate);
 		    break;

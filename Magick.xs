@@ -174,8 +174,8 @@ static char
   },
   *CompressionTypes[] =
   {
-    "Undefined", "None", "BZip", "Fax", "JPEG", "LZW", "Runlength", "Zip",
-    (char *) NULL
+    "Undefined", "None", "BZip", "Fax", "Group4", "JPEG", "LZW", "Runlength",
+    "Zip", (char *) NULL
   },
   *FilterTypes[] =
   {
@@ -937,7 +937,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"background"))
         {
           if (info)
-            (void) CloneString(&info->image_info->background_color,SvPV(sval,na));
+            (void) CloneString(&info->image_info->background_color,
+              SvPV(sval,na));
           (void) XQueryColorDatabase(SvPV(sval,na),&target_color);
           for ( ; image; image=image->next)
           {
@@ -1029,8 +1030,9 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
                   if ((ColorspaceType) sp == CMYKColorspace)
                     TransformRGBImage(image,RGBColorspace);
             }
-          return;
         }
+      if (strEQcase(attribute,"colors"))
+        return;
       if (strEQcase(attribute,"compres"))
         {
           sp=SvPOK(sval) ? LookupStr(CompressionTypes,SvPV(sval,na)) :
@@ -1361,7 +1363,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"points"))
         {
           if (info && (info->image_info->pointsize=SvIV(sval)) <= 0)
-            info->image_info->pointsize=atoi(DefaultPointSize);
+            info->image_info->pointsize=12;
           return;
         }
       if (strEQcase(attribute,"preview"))
@@ -1384,7 +1386,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"qualit"))
         {
           if (info && (info->image_info->quality=SvIV(sval)) <= 0)
-            info->image_info->quality=atoi(DefaultImageQuality);
+            info->image_info->quality=75;
           return;
         }
       break;
@@ -2156,7 +2158,7 @@ Blob(ref,...)
           continue;
         }
       DestroyImage(clone);
-      image->file=fopen(filename,ReadBinaryType);
+      image->file=fopen(filename,"rb");
       if (image->file == (FILE *) NULL)
         {
           PUSHs(&sv_undef);
@@ -2450,9 +2452,9 @@ Display(ref,...)
           resource.delay=atoi(package_info->image_info->delay);
         for (next=image; next; next=next->next)
         {
-          state=DefaultState;
+          state=0x0000;
           (void) XDisplayImage(display,&resource,&client_name,1,&next,&state);
-          if (state & ExitState)
+          if (state & 0x0002)
             break;
         }
         XCloseDisplay(display);
@@ -2723,7 +2725,7 @@ Get(ref,...)
             {
               if (image)
                 s=newSViv(image->depth);
-              return;
+              break;
             }
           if (strEQcase(attribute,"dither"))
             {
@@ -4877,7 +4879,7 @@ Montage(ref,...)
                 }
                 case FrameMode:
                 {
-                  (void) CloneString(&montage_info.frame,DefaultTileFrame);
+                  (void) CloneString(&montage_info.frame,"15x15+3+3");
                   montage_info.shadow=True;
                   break;
                 }

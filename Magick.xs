@@ -2096,6 +2096,9 @@ Mogrify(ref, ...)
 	    {
 		image = next;
 
+		br.width = image->columns;
+		br.height = image->rows;
+		br.x = br.y = 0;
 		switch (ix)
 		{
 		default:
@@ -2159,9 +2162,6 @@ Mogrify(ref, ...)
 		    image = BlurImage(image, alist[0].t_dbl);
 		    break;
 		case  7:	/* Chop */
-		    br.height = image->columns;
-		    br.width = image->rows;
-		    br.x = br.y = 0;
 		    if (aflag[0])
 		    {
 			int f = XParseGeometry(alist[0].t_str, &br.x, &br.y,
@@ -2184,9 +2184,6 @@ Mogrify(ref, ...)
 		    ++aflag[0];
 		    alist[0].t_str = "0x0";
 		case  8:	/* Crop */
-		    br.height = image->columns;
-		    br.width = image->rows;
-		    br.x = br.y = 0;
 		    if (aflag[0])
 		    {
 			int f = XParseGeometry(alist[0].t_str, &br.x, &br.y,
@@ -2288,8 +2285,6 @@ Mogrify(ref, ...)
 		    image = ReduceNoiseImage(image);
 		    break;
 		case 22:	/* Roll */
-		    br.x = 0;
-		    br.y = 0;
 		    if (aflag[1])
 		        br.x = alist[1].t_int;
 		    if (aflag[2])
@@ -2312,8 +2307,6 @@ Mogrify(ref, ...)
 					alist[1].t_int, alist[2].t_int);
 		    break;
 		case 24:	/* Sample */
-		    br.width = image->columns;
-		    br.height = image->rows;
 		    if (aflag[1])
 		        br.width = alist[1].t_int;
 		    if (aflag[2])
@@ -2324,8 +2317,6 @@ Mogrify(ref, ...)
 		    image = SampleImage(image, br.width, br.height);
 		    break;
 		case 25:	/* Scale */
-		    br.width = image->columns;
-		    br.height = image->rows;
 		    if (aflag[1])
 		        br.width = alist[1].t_int;
 		    if (aflag[2])
@@ -2387,8 +2378,6 @@ Mogrify(ref, ...)
 		    image = SwirlImage(image, alist[0].t_dbl);
 		    break;
 		case 31:	/* Zoom */
-		    br.width = image->columns;
-		    br.height = image->rows;
 		    if (aflag[1])
 		        br.width = alist[1].t_int;
 		    if (aflag[2])
@@ -2583,7 +2572,6 @@ Mogrify(ref, ...)
 		    if (first)
 		    {
 			br.height = br.width = 6;
-			br.x = br.y = 0;
 
 			if (aflag[0])
 			{

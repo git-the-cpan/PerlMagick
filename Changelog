@@ -1,5 +1,8 @@
 Revision history for Perl extension Image::Magick.
 
+1.18  Thu Oct 23 1997
+	- properly initialized ParseImageGeometry to match requirements of
+	  ImageMagick 3.9.1
 1.17  Thu Oct 15 1997
 	- Added addition parameters to PingImage.
 1.16  Thu Sep 9 1997
@@ -43,4 +46,4 @@ Revision history for Perl extension Image::Magick.
 0.90  Mon Feb. 17 1997
 	- released Alpha version
 0.10  Fri Jan 31 1997
-	- original version; created by h2xs 1.17
+	- original version; created by h2xs 1.18

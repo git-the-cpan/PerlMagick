@@ -231,9 +231,9 @@ static struct routines {
 		  {"filter", p_filters} } },
     {	"IsGrayImage", },
     {	"Annotate", { {"server", P_STR}, {"font", P_STR}, {"point", P_INT},
-		    {"box", P_STR}, {"pen", P_STR}, {"geom", P_STR},
-		    {"text", P_STR}, {"x", P_INT}, {"y", P_INT},
-		    {"align", p_alignments} } },
+		    {"density", P_STR}, {"box", P_STR}, {"pen", P_STR},
+		    {"geom", P_STR}, {"text", P_STR}, {"x", P_INT},
+		    {"y", P_INT}, {"align", p_alignments} } },
     {	"ColorFloodfill", },
     {	"Composite", { {"compos", p_composites}, {"image", P_IMG},
 		    {"geom", P_STR}, {"x", P_INT}, {"y", P_INT},
@@ -867,10 +867,14 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		    index = cp->index;
 		    (void) sscanf(SvPV(sval, na), "%d,%d,%d,%d",
 						&red, &green, &blue, &index);
-		    cp->red = red;
-		    cp->green = green;
-		    cp->blue = blue;
-		    cp->index = index;
+		    cp->red=(Quantum)
+			 ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red);
+		    cp->green=(Quantum)
+			((green < 0) ? 0 : (green > MaxRGB) ? MaxRGB : green);
+		    cp->blue=(Quantum)
+			 ((blue < 0) ? 0 : (blue > MaxRGB) ? MaxRGB : blue);
+		    cp->index=(unsigned short) ((index < Transparent) ?
+			 Transparent : (index > Opaque) ? Opaque : index);
 		}
 	    }
 	    return;
@@ -2114,6 +2118,8 @@ Mogrify(ref, ...)
 
 	    rg.width = 0;
 	    rg.height = 0;
+	    rg.x = 0;
+	    rg.y = 0;
 
 	    if (ix && (ix != 666))	/* called as Routinename(...) */
 	    {
@@ -2554,25 +2560,27 @@ Mogrify(ref, ...)
 			if (aflag[2])
 			    temp->info.pointsize = alist[2].t_int;
 			if (aflag[3])
-			    newval(&temp->info.box, alist[3].t_str);
+			    newval(&temp->info.density, alist[3].t_str);
 			if (aflag[4])
-			    newval(&temp->info.pen, alist[4].t_str);
+			    newval(&temp->info.box, alist[4].t_str);
 			if (aflag[5])
-			    annotate.geometry = alist[5].t_str;
+			    newval(&temp->info.pen, alist[5].t_str);
 			if (aflag[6])
-			    annotate.text = alist[6].t_str;
-			if (aflag[7] || aflag[8])
+			    annotate.geometry = alist[6].t_str;
+			if (aflag[7])
+			    annotate.text = alist[7].t_str;
+			if (aflag[8] || aflag[9])
 			{
-			    if (!aflag[7])
-				alist[7].t_int = 0;
 			    if (!aflag[8])
 				alist[8].t_int = 0;
+			    if (!aflag[9])
+				alist[9].t_int = 0;
 			    sprintf(b, "%+d%+d",
-					alist[7].t_int, alist[8].t_int);
+					alist[8].t_int, alist[9].t_int);
 			    annotate.geometry = b;
 			}
-			if (aflag[9])
-			    annotate.alignment = (AlignmentType) alist[9].t_int;
+			if (aflag[10])
+			    annotate.alignment = (AlignmentType) alist[10].t_int;
 		    }
 		    AnnotateImage(image, &annotate);
 		    break;
@@ -2779,7 +2787,7 @@ Mogrify(ref, ...)
 		    if (!aflag[0])
 			alist[0].t_str = "black";
 		    if (!aflag[1])
-			alist[1].t_str = "black";
+			alist[1].t_str = "white";
 
 		    OpaqueImage(image, alist[0].t_str, alist[1].t_str);
 		    break;
@@ -2796,6 +2804,7 @@ Mogrify(ref, ...)
 			quan.dither = aflag[3] ? alist[3].t_int :
 				(info? info->quant.dither : False);
 			QuantizeImages(&quan, image);
+		    	SyncImage(image);
 			goto return_it;
 		    }
 		case 49:	/* Raise */
@@ -2836,10 +2845,11 @@ Mogrify(ref, ...)
 			if (!aflag[2])
 			    alist[2].t_dbl = 1.0;
 			if (!aflag[3])
-			    alist[3].t_dbl = .5;
+			    alist[3].t_dbl = 1.5;
 		    }
 		    SegmentImage(image, alist[0].t_int, alist[1].t_int,
 					alist[2].t_dbl, alist[3].t_dbl);
+		    SyncImage(image);
 		    break;
 		case 51:	/* Signature */
 		    SignatureImage(image);
@@ -2850,6 +2860,7 @@ Mogrify(ref, ...)
 		    SolarizeImage(image, alist[0].t_dbl);
 		    break;
 		case 53:	/* Sync */
+		    SyncImage(image);
 		    break;
 		case 54:	/* Texture */
 		    if (!aflag[0])
@@ -2922,7 +2933,8 @@ Mogrify(ref, ...)
 		      Composite region.
 		    */
 		    CompositeImage(region_image, ReplaceCompositeOp, image,
-			rg.x, rg.x);
+			rg.x, rg.y);
+		    image->orphan = 1;
 		    DestroyImage(image);
 		    image = region_image;
 		}

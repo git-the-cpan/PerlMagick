@@ -1,5 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
+1.36 Fri May 8 1998
+	- Quantize and Segment methods needed to call SyncImage.
 1.35 Fri Apr 16 1998
 	- version change to match ImageMagick version change
 1.34 Fri Mar 25 1998

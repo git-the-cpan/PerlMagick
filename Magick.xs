@@ -1,4 +1,5 @@
 /* Released Feb. 17, 1997  by Kyle Shorter (magick@sympatico.org)	*/
+/* Maintained by John Cristy (cristy@sympatico.org)                     */
 /* Public Domain							*/
 
 #ifdef __cplusplus
@@ -6,8 +7,8 @@ extern "C" {
 #endif
 #include "EXTERN.h"
 #include "XSUB.h"
-#include "magick.h"
 #include "perl.h"
+#include "magick.h"
 #include <setjmp.h>
 #ifdef __cplusplus
 }
@@ -26,9 +27,7 @@ static char *complain = "Reference is not my type";
 #define warning(e, s1, s2) { SetErrorStatus(e); warninghandler(s1, s2); }
 
 static double
-constant(name, arg)
-    char *name;
-    int arg;
+constant(char *name, int arg)
 {
     errno = 0;
     switch (*name)
@@ -175,7 +174,7 @@ static char *p_classes[] = {
 
 #define ARGMAX	12
 
-/*  The list of ImageMagick routines and their paramters currently supported
+/*  The list of ImageMagick routines and their parameters currently supported
  *  by this interface (except for Read, Write and new).  I did it this way
  *  to avoid a lot of duplicated code, and to use the neato ALIASes that
  *  XS provides.  Parameter names are matched up to the name's length so
@@ -234,7 +233,8 @@ static struct routines {
 		    {"align", p_alignments} } },
     {	"ColorFloodfill", },
     {	"Composite", { {"compos", p_composites}, {"image", P_IMG},
-		    {"geom", P_STR}, {"x", P_INT}, {"y", P_INT} } },
+		    {"geom", P_STR}, {"x", P_INT}, {"y", P_INT},
+		    {"grav", p_gravities} } },
     {	"Contrast", { {"sharp", p_boolean} } },
     {	"CycleColormap", { {"amount", P_INT} } },
     {	"Draw", { {"prim", p_primitives}, {"points", P_STR},
@@ -251,8 +251,8 @@ static struct routines {
     {	"Normalize", },
     {	"NumberColors", },
     {	"Opaque", { {"color", P_STR}, {"pen", P_STR} } },
-    {	"Quantize", { {"colorsp", p_colorspaces}, {"tree", P_INT},
-		    {"dither", p_boolean}, {"colors", P_INT} } },
+    {	"Quantize", { {"colors", P_INT}, {"tree", P_INT},
+    		    {"colorsp", p_colorspaces}, {"dither", p_boolean} } },
     {	"Raise", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT},
 		    {"x", P_INT}, {"y", P_INT}, {"raise", p_boolean} } },
     {	"Segment", { {"colorsp", p_colorspaces}, {"verbose", p_boolean},
@@ -276,84 +276,112 @@ static jmp_buf *im_er_jmp;	/* long jump return for FATAL errors */
  * the strings are equal if the second string runs out first.
  */
 static int
-strEQcase(a, b)
-    const char *a, *b;
+strEQcase(const char *a, const char *b)
 {
     char c;
-    for ( ; (c = *b); a++, b++)
+    int i;
+
+    for (i=0 ; (c = *b); a++, b++, i++)
 	if ((isUPPER(c) ? toLOWER(c) : c) != (isUPPER(*a) ? toLOWER(*a) : *a))
 	    return 0;
-    return 1;
+    return i;
 }
 
 /* look through a list of strings matching it to str and return */
 /* its index in the list, or -1 for not found */
 static int
-LookupStr(list, str)
-    const char **list, *str;
+LookupStr(char **list, const char *str)
 {
-    const char **p;
-
+    char **p;
+    int offset = (-1);
+    int longest = 0;
+ 
     for (p = list; *p; p++)
-	if (strEQcase(str, *p))
-    	    return p - list;
+	if (strEQcase(str, *p) > longest)
+    	{
+    	    offset = p - list;
+    	    longest=strEQcase(str, *p);
+    	}
 
-    return -1;
+    return offset;
 }
+
+/*  Makes a duplicate of the given string */
+
+static char *
+copy_string(char *src)
+{
+    char *dest;
+
+    if (!src)
+	return((char *) NULL);
+    dest = (char *) safemalloc(Extent(src) + 1);
+    strcpy(dest, src);
+    return(dest);
+}
+
 
 /*  Makes a duplicate of the given info, or if info is NULL, a new one. */
 static struct info *
-copy_info(info)
-    struct info *info;
+copy_info(struct info *info)
 {
-    struct info *new = (struct info *) safemalloc(sizeof (struct info));
+    struct info *newinfo = (struct info *) safemalloc(sizeof (struct info));
 
     if (!info)
     {
-        (void) SetClientName(client_name);
-	GetImageInfo(&new->info);
-	GetQuantizeInfo(&new->quant);
-	return new;
+	(void) SetClientName(client_name);
+	GetImageInfo(&newinfo->info);
+	GetQuantizeInfo(&newinfo->quant);
+	return newinfo;
     }
 
-    *new = *info;
-    new->info.filename = strcpy(safemalloc(MaxTextExtent), info->info.filename);
+    *newinfo = *info;
+    newinfo->info.filename =
+      strcpy((char *) safemalloc(MaxTextExtent), info->info.filename);
     if (info->info.server_name)
-	new->info.server_name = strdup(info->info.server_name);
+	newinfo->info.server_name = copy_string(info->info.server_name);
     if (info->info.font)
-	new->info.font = strdup(info->info.font);
+	newinfo->info.font = copy_string(info->info.font);
+    if (info->info.pen)
+	newinfo->info.pen = copy_string(info->info.pen);
+    if (info->info.box)
+	newinfo->info.box = copy_string(info->info.box);
     if (info->info.size)
-	new->info.size = strdup(info->info.size);
+	newinfo->info.size = copy_string(info->info.size);
     if (info->info.tile)
-	new->info.tile = strdup(info->info.tile);
+	newinfo->info.tile = copy_string(info->info.tile);
     if (info->info.density)
-	new->info.density = strdup(info->info.density);
+	newinfo->info.density = copy_string(info->info.density);
     if (info->info.page)
-	new->info.page = strdup(info->info.page);
+	newinfo->info.page = copy_string(info->info.page);
     if (info->info.dispose)
-	new->info.dispose = strdup(info->info.dispose);
+	newinfo->info.dispose = copy_string(info->info.dispose);
     if (info->info.delay)
-	new->info.delay = strdup(info->info.delay);
+	newinfo->info.delay = copy_string(info->info.delay);
     if (info->info.iterations)
-	new->info.iterations = strdup(info->info.iterations);
+	newinfo->info.iterations = copy_string(info->info.iterations);
     if (info->info.texture)
-	new->info.texture = strdup(info->info.texture);
+	newinfo->info.texture = copy_string(info->info.texture);
     if (info->info.undercolor)
-	new->info.undercolor = strdup(info->info.undercolor);
+	newinfo->info.undercolor = copy_string(info->info.undercolor);
 
-    return new;
+    return newinfo;
 }
 
 /*  Get rid of a previously created info structure. */
 static void
-destroy_info(info)
-    struct info *info;
+destroy_info(volatile struct info *info)
 {
-    safefree(info->info.filename);
+    if (info->info.filename)
+      safefree(info->info.filename);
     if (info->info.server_name)
 	safefree(info->info.server_name);
     if (info->info.font)
 	safefree(info->info.font);
+    if (info->info.pen)
+	safefree(info->info.pen);
+    if (info->info.box)
+	safefree(info->info.box);
     if (info->info.size)
 	safefree(info->info.size);
     if (info->info.tile)
@@ -382,8 +410,7 @@ destroy_info(info)
  */
 
 static void
-warninghandler(message, qual)
-    const char *message, *qual;
+warninghandler(const char *message, const char *qual)
 {
     char b[400];
     int magick_status;
@@ -419,8 +446,7 @@ warninghandler(message, qual)
  *  Image::Magick handle may be left in a bad state.
  */
 static void
-errorhandler(message, qual)
-    const char *message, *qual;
+errorhandler(const char *message, const char *qual)
 {
     char b[400];
     int magick_status;
@@ -454,17 +480,11 @@ errorhandler(message, qual)
  *  that are malloc'd strings.
  */
 static void
-newval(dest, src)
-    char **dest, *src;
+newval(char * volatile *dest, char *src)
 {
-    char *m = malloc(strlen(src) + 1);
-    if (!m)
-    {
-	warning(ResourceLimitWarning, "Malloc failed", NULV);
-	return;
-    }
+    char *m = (char *) safemalloc(Extent(src) + 1);
     if (*dest)
-	free(*dest);
+	safefree(*dest);
     *dest = m;
     strcpy(*dest, src);
 }
@@ -474,9 +494,7 @@ newval(dest, src)
  *  oldinfo is used to initialize it.
  */
 static struct info *
-getinfo(rref, oldinfo)
-    void *rref;		/* AV* or SV* (actually only AV* should use getinfo) */
-    struct info *oldinfo;
+getinfo(void *rref, struct info *oldinfo)
 {
     SV *sv;
     char b[80];
@@ -489,6 +507,8 @@ getinfo(rref, oldinfo)
 	warning(ResourceLimitWarning, "Can't create info variable", b);
 	return oldinfo;
     }
+    if (SvREFCNT(sv) == 0)
+	SvREFCNT_inc(sv);
     if (SvIOKp(sv) && (info = (struct info *)SvIV(sv)))
 	return info;
 
@@ -501,11 +521,7 @@ getinfo(rref, oldinfo)
  *  either or both of image or info.
  */
 static void
-SetAttribute(info, image, attr, sval)
-    struct info *info;
-    Image *image;
-    char *attr;
-    SV *sval;
+SetAttribute(volatile struct info *info, Image *image, char *attr, SV *sval)
 {
     /* switch on first letter of attribute.  'break' will go */
     /* to "unknown" error; use 'return' for known options */
@@ -515,14 +531,14 @@ SetAttribute(info, image, attr, sval)
 	if (strEQcase(attr, "adjoin"))
 	{
 	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
-			     : SvIV(sval);
+				 : SvIV(sval);
 	    if (sp < 0)
 	    {
-	        warning(OptionWarning, "Unknown adjoin type", SvPV(sval, na));
-	        return;
+		warning(OptionWarning, "Unknown adjoin type", SvPV(sval, na));
+		return;
 	    }
 	    if (info)
-	        info->info.adjoin = sp;
+		info->info.adjoin = sp;
 	    return;
 	}
 	break;
@@ -551,6 +567,12 @@ SetAttribute(info, image, attr, sval)
 	    }
 	    return;
 	}
+	if (strEQcase(attr, "box"))
+	{
+	    if (info)
+		newval(&info->info.box, SvPV(sval, na));
+	    return;
+	}
 	break;
     case 'C': case 'c':
 	if (strEQcase(attr, "colormap"))
@@ -560,18 +582,17 @@ SetAttribute(info, image, attr, sval)
 
 	    for ( ; image; image = image->next)
 	    {
-	        if (image->class == DirectClass)
+		if (image->class == DirectClass)
 		    continue;
 		i = 0;
-	        (void) sscanf(attr, "%*[^[][%d", &i);
+		(void) sscanf(attr, "%*[^[][%d", &i);
 		if (i > image->colors)
 		    i %= image->colors;
 		cp = image->colormap+i;
 		red = cp->red;
 		blue = cp->green;
 		green = cp->blue;
-		(void) sscanf(SvPV(sval, na), "%d,%d,%d", &red, &green,
-					&blue);
+		(void) sscanf(SvPV(sval, na), "%d,%d,%d", &red, &green, &blue);
 		cp->red = red;
 		cp->blue = green;
 		cp->green = blue;
@@ -590,7 +611,7 @@ SetAttribute(info, image, attr, sval)
 					   SvPV(sval, na));
 		    return;
 		}
-		info->quant.colorspace = sp;
+		info->quant.colorspace = (ColorspaceType) sp;
 	    }
 	    return;
 	}
@@ -607,13 +628,14 @@ SetAttribute(info, image, attr, sval)
 				  : SvIV(sval);
 	    if (com < 0)
 	    {
-		warning(OptionWarning, "Unknown compression type", SvPV(sval, na));
+		warning(OptionWarning, "Unknown compression type",
+					SvPV(sval, na));
 		return;
 	    }
 	    if (info)
-		info->info.compression = com;
+		info->info.compression = (CompressionType) com;
 	    for ( ; image; image = image->next)
-		image->compression = com;
+		image->compression = (CompressionType) com;
 	    return;
 	}
 	break;
@@ -654,7 +676,8 @@ SetAttribute(info, image, attr, sval)
 				     : SvIV(sval);
 		if (sp < 0)
 		{
-		    warning(OptionWarning, "Unknown dither type", SvPV(sval, na));
+		    warning(OptionWarning, "Unknown dither type",
+					    SvPV(sval, na));
 		    return;
 		}
 		info->info.dither = sp;
@@ -694,7 +717,7 @@ SetAttribute(info, image, attr, sval)
 	    if (info)
 	    {
 		sprintf(info->info.filename, "%.70s:", SvPV(sval, na));
-		SetImageInfo(&info->info, 0);
+		SetImageInfo((ImageInfo *) &info->info, 1);
 		if (*info->info.magick == '\0')
 		    warning(OptionWarning, "Unrecognized image format",
 					    info->info.filename);
@@ -709,7 +732,7 @@ SetAttribute(info, image, attr, sval)
     case 'I': case 'i':
 	if (strEQcase(attr, "iterat"))	/* same as loop */
 	{
-    iterations:
+	iterations:
 	    if (info)
 		newval(&info->info.iterations, SvPV(sval, na));
 	    for ( ; image; image = image->next)
@@ -723,7 +746,7 @@ SetAttribute(info, image, attr, sval)
 	    if (in < 0)
 		warning(OptionWarning, "Unknown interlace value", SvPV(sval,na))
 	    else if (info)
-		info->info.interlace = in;
+		info->info.interlace = (InterlaceType) in;
 	    return;
 	}
 	break;
@@ -753,15 +776,15 @@ SetAttribute(info, image, attr, sval)
 	if (strEQcase(attr, "monoch"))
 	{
 	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
-			     : SvIV(sval);
+				 : SvIV(sval);
 	    if (sp < 0)
 	    {
-	        warning(OptionWarning, "Unknown monochrome type",
-		    SvPV(sval, na));
-	        return;
+		warning(OptionWarning, "Unknown monochrome type",
+					SvPV(sval, na));
+		return;
 	    }
 	    if (info)
-	        info->info.monochrome = sp;
+		info->info.monochrome = sp;
 	    return;
 	}
 	break;
@@ -784,6 +807,12 @@ SetAttribute(info, image, attr, sval)
 	    free(p);
 	    return;
 	}
+	if (strEQcase(attr, "pen"))
+	{
+	    if (info)
+		newval(&info->info.pen, SvPV(sval, na));
+	    return;
+	}
 	if (strEQcase(attr, "pixel"))
 	{
 	    RunlengthPacket *cp;
@@ -791,11 +820,11 @@ SetAttribute(info, image, attr, sval)
 
 	    for ( ; image; image = image->next)
 	    {
-	        if (!UncompressImage(image))
+		if (!UncompressImage(image))
 		    continue;
 		x = 0;
 		y = 0;
-	        (void) sscanf(attr, "%*[^[][%d,%d", &x, &y);
+		(void) sscanf(attr, "%*[^[][%d,%d", &x, &y);
 		if (y > image->rows)
 		    y %= image->rows;
 		if (x > image->columns)
@@ -805,8 +834,8 @@ SetAttribute(info, image, attr, sval)
 		blue = cp->green;
 		green = cp->blue;
 		index = cp->index;
-		(void) sscanf(SvPV(sval, na), "%d,%d,%d,%d", &red, &green,
-					&blue, &index);
+		(void) sscanf(SvPV(sval, na), "%d,%d,%d,%d",
+					       &red, &green, &blue, &index);
 		cp->red = red;
 		cp->blue = green;
 		cp->green = blue;
@@ -823,14 +852,14 @@ SetAttribute(info, image, attr, sval)
 	if (strEQcase(attr, "preview"))
 	{
 	    int sp = SvPOK(sval) ? LookupStr(p_previews, SvPV(sval, na))
-			: SvIV(sval);
+				 : SvIV(sval);
 	    if (sp < 0)
 	    {
 		warning(OptionWarning, "Unknown preview type", SvPV(sval, na));
 		return;
 	    }
 	    if (info)
-		info->info.preview_type = sp;
+		info->info.preview_type = (PreviewType) sp;
 	    return;
 	}
 	break;
@@ -912,14 +941,14 @@ SetAttribute(info, image, attr, sval)
 	if (strEQcase(attr, "verbose"))
 	{
 	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
-			     : SvIV(sval);
+				 : SvIV(sval);
 	    if (sp < 0)
 	    {
-	        warning(OptionWarning, "Unknown verbose type", SvPV(sval, na));
-	        return;
+		warning(OptionWarning, "Unknown verbose type", SvPV(sval, na));
+		return;
 	    }
 	    if (info)
-	        info->info.verbose = sp;
+		info->info.verbose = sp;
 	    return;
 	}
 	break;
@@ -943,10 +972,7 @@ SetAttribute(info, image, attr, sval)
  *  entry in *svarr.
  */
 static Image *
-get_list(rref, svarr, cur, last)
-    SV *rref;
-    SV ***svarr;
-    int *cur, *last;
+get_list(SV *rref, SV ***svarr, int *cur, int *last)
 {
     if (!rref)
 	return NULL;
@@ -976,7 +1002,7 @@ get_list(rref, svarr, cur, last)
 	    return head;
 	}
 
-    case SVt_PVMG:		/* blessed scalar, one image */
+    case SVt_PVMG:	/* blessed scalar, one image */
 	{
 	    Image *image = (Image *)SvIV(rref);
 	    if (!image)
@@ -1010,10 +1036,7 @@ get_list(rref, svarr, cur, last)
  *  is used when the images are going to be replaced with new Image* 's.
  */
 static Image *
-setup_list(rref, info, svarr)
-    SV *rref;
-    struct info **info;
-    SV ***svarr;
+setup_list(SV *rref, struct info **info, SV ***svarr)
 {
     int cur = 0, last = 0;
     Image *image;
@@ -1026,7 +1049,7 @@ setup_list(rref, info, svarr)
     image = get_list(rref, svarr, &cur, &last);
 
     if (info && SvTYPE(rref) == SVt_PVAV)
-	*info = getinfo(rref, NULV);
+	*info = getinfo((void *) rref, (struct info *) NULV);
 
     return image;
 }
@@ -1042,7 +1065,7 @@ BOOT:
 	SetErrorHandler(errorhandler);
 
 double
-constant(name, arg)
+constant(name,arg)
 	char *		name
 	int		arg
 
@@ -1065,16 +1088,16 @@ DESTROY(ref)
 		    char b[80];
 		    struct info *info;
 
-		    sprintf(b, "#_%lx_", (long)rref);
+		    sprintf(b, "%s::A_%lx_Z", IM_packname, (long)rref);
 		    if ((sv = perl_get_sv(b, FALSE)))
 		    {
 			if (SvREFCNT(sv) == 1 && SvIOK(sv)
-				      && (info = (struct info *)SvIV(sv)))
+					&& (info = (struct info *)SvIV(sv)))
 			{
 			    destroy_info(info);
 			    sv_setiv(sv, 0);
 			}
-			SvREFCNT_dec(sv);
+			/*SvREFCNT_dec(sv);*/
 		    }
 		    break;
 		}
@@ -1090,7 +1113,7 @@ DESTROY(ref)
 		    break;
 		}
 	    default:
-	      break;
+		break;
 	    }
 	}
 
@@ -1128,7 +1151,7 @@ Animate(ref, ...)
 	    if ((retval = setjmp(error_jmp)))
 		goto badreturn;
 
-	    if (!(image = setup_list(rref, &info, NULV)))
+	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
 	    {
 		warning(OptionWarning, "No images to Display", NULV);
 		goto badreturn;
@@ -1149,8 +1172,9 @@ Animate(ref, ...)
 		XSetErrorHandler(XError);
 		resource_database = XGetResourceDatabase(display, client_name);
 		XGetResourceInfo(resource_database, client_name, &resource);
+		resource.image_info = info->info;
+		resource.quantize_info = info->quant;
 		resource.immutable = True;
-		resource.delay = 60;
 
 		(void) XAnimateImages(display, &resource, (char **) NULL, 0,
 		    image);
@@ -1172,9 +1196,9 @@ void
 Average(ref)
 	Image::Magick	ref = NO_INIT
 	ALIAS:
-            AverageImage   = 1
-            average        = 2
-            averageimage   = 3
+	    AverageImage   = 1
+	    average        = 2
+	    averageimage   = 3
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1201,7 +1225,7 @@ Average(ref)
 	    if (retval = setjmp(error_jmp))
 		goto badreturn;
 
-	    if (!(image = setup_list(rref, &info, NULV)))
+	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
 	    {
 		warning(OptionWarning, "No images to Average", NULV);
 		goto badreturn;
@@ -1222,7 +1246,7 @@ Average(ref)
 	    SvREFCNT_dec(sv);
 	    /*SvREFCNT_dec(rv);*/
 
-	    info = getinfo(av, info);
+	    info = getinfo((void *) av, info);
 	    sprintf(info->info.filename, "average-%.*s", MaxTextExtent - 9,
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
 	    strcpy(image->filename, info->info.filename);
@@ -1244,12 +1268,13 @@ void
 Copy(ref)
 	Image::Magick	ref = NO_INIT
 	ALIAS:
-            CopyImage   = 1
-            copy        = 2
-            copyimage   = 3
-            CloneImage  = 4
-            clone       = 5
-            Cloneimage  = 6
+	    CopyImage   = 1
+	    copy        = 2
+	    copyimage   = 3
+	    CloneImage  = 4
+	    clone       = 5
+	    cloneimage  = 6
+	    Clone	= 7
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1274,9 +1299,9 @@ Copy(ref)
 
 	    im_er_jmp = &error_jmp;
 	    if (retval = setjmp(error_jmp))
-	        goto badreturn;
+		goto badreturn;
 
-	    if (!(image = setup_list(rref, &info, NULV)))
+	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
 	    {
 		warning(OptionWarning, "No images to Copy", NULV);
 		goto badreturn;
@@ -1287,7 +1312,7 @@ Copy(ref)
 	    ST(0) = sv_2mortal(sv_bless(newRV((SV *)av), hv));
 	    SvREFCNT_dec(av);
 
-	    for (im = image ; im; im = im->next)
+	    for (im = image; im; im = im->next)
 	    {
 		image = CloneImage(im, im->columns, im->rows, True);
 		if (!image)
@@ -1298,7 +1323,7 @@ Copy(ref)
 		SvREFCNT_dec(sv);
 	    }
 
-	    info = getinfo(av, info);
+	    info = getinfo((void *) av, info);
 	    SvREFCNT_dec(im_er_mes);
 	    im_er_jmp = NULL;
 	    XSRETURN(1);
@@ -1345,7 +1370,7 @@ Display(ref, ...)
 	    if ((retval = setjmp(error_jmp)))
 		goto badreturn;
 
-	    if (!(image = setup_list(rref, &info, NULV)))
+	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
 	    {
 		warning(OptionWarning, "No images to Display", NULV);
 		goto badreturn;
@@ -1366,14 +1391,20 @@ Display(ref, ...)
 		XSetErrorHandler(XError);
 		resource_database = XGetResourceDatabase(display, client_name);
 		XGetResourceInfo(resource_database, client_name, &resource);
+		resource.image_info = temp->info;
+		resource.quantize_info = temp->quant;
 		resource.immutable = True;
 
-	        for (im = image ; im; im = im->next)
-	        {
+		for (im = image; im; im = im->next)
+		{
+		    if (temp->info.delay)
+			resource.delay = atoi(temp->info.delay);
 		    state=DefaultState;
 		    (void) XDisplayImage(display, &resource, (char **) NULL, 0,
-			&im, &state);
-	        }
+								   &im, &state);
+		    if (state & ExitState)
+			break;
+		}
 
 		XCloseDisplay(display);
 	    }
@@ -1438,7 +1469,7 @@ Montage(ref, ...)
 		warning(OptionWarning, "No images to Montage", NULV);
 		goto badreturn;
 	    }
-	    info = getinfo(av, info);
+	    info = getinfo((void *) av, info);
 
 	    /*
 	      Get user defaults from X resource database.
@@ -1452,16 +1483,18 @@ Montage(ref, ...)
 		XSetErrorHandler(XError);
 	    resource_database = XGetResourceDatabase(display, client_name);
 	    XGetResourceInfo(resource_database, client_name, &resource);
+	    resource.image_info = info->info;
+	    resource.quantize_info = info->quant;
 	    resource.background_color = XGetResourceInstance(resource_database,
-	      client_name, "background", DefaultTileBackground);
+		client_name, "background", DefaultTileBackground);
 	    resource.foreground_color = XGetResourceInstance(resource_database,
-	      client_name, "foreground", DefaultTileForeground);
+		client_name, "foreground", DefaultTileForeground);
 	    resource.image_geometry = XGetResourceInstance(resource_database,
-	      client_name, "imageGeometry", DefaultTileGeometry);
+		client_name, "imageGeometry", DefaultTileGeometry);
 	    resource.matte_color = XGetResourceInstance(resource_database,
-	      client_name, "mattecolor", DefaultTileMatte);
+		client_name, "mattecolor", DefaultTileMatte);
 	    resource_value = XGetResourceClass(resource_database, client_name,
-	      "pointsize", DefaultPointSize);
+		"pointsize", DefaultPointSize);
 	    montage.pointsize = atoi(resource_value);
 	    resource_value = XGetResourceClass(resource_database, client_name,
 		"shadow", "False");
@@ -1497,19 +1530,19 @@ Montage(ref, ...)
 			continue;
 		    }
 		case 'C': case 'c':
-                    if (strEQcase(arg, "compos"))
-                    {
-                        int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
-                                 LookupStr(p_composites, SvPV(ST(n), na));
-                        if (sp < 0)
-                        {
+		    if (strEQcase(arg, "compos"))
+		    {
+			int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
+				  LookupStr(p_composites, SvPV(ST(n), na));
+			if (sp < 0)
+			{
 			    warning(OptionWarning, "Unknown composite type",
 						    SvPV(ST(n), na));
-                            continue;
-                        }
-                        montage.compose = sp;
-                        continue;
-                    }
+			    continue;
+			}
+			montage.compose = (CompositeOperator) sp;
+			continue;
+		    }
 		    break;
 		case 'F': case 'f':
 		    if (strEQcase(arg, "frame"))
@@ -1531,19 +1564,19 @@ Montage(ref, ...)
 						  sizeof montage.filename);
 			continue;
 		    }
-                    if (strEQcase(arg, "filter"))
-                    {
-                        int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
-                                 LookupStr(p_filters, SvPV(ST(n), na));
-                        if (sp < 0)
-                        {
+		    if (strEQcase(arg, "filter"))
+		    {
+			int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
+				  LookupStr(p_filters, SvPV(ST(n), na));
+			if (sp < 0)
+			{
 			    warning(OptionWarning, "Unknown filter type",
 						    SvPV(ST(n), na));
-                            continue;
-                        }
-                        montage.filter = sp;
-                        continue;
-                    }
+			    continue;
+			}
+			montage.filter = (FilterType) sp;
+			continue;
+		    }
 		    if (strEQcase(arg, "font"))
 		    {
 			resource.font = SvPV(ST(n), na);
@@ -1586,8 +1619,8 @@ Montage(ref, ...)
 		case 'L': case 'l':
 		    if (strEQcase(arg, "label"))
 		    {
-	      		for (im = image ; im; im = im->next)
-	        	  LabelImage(im, SvPV(ST(n), na));
+			for (im = image; im; im = im->next)
+			    LabelImage(im, SvPV(ST(n), na));
 			continue;
 		    }
 		    break;
@@ -1626,19 +1659,26 @@ Montage(ref, ...)
 			continue;
 		    }
 		    break;
+		case 'P': case 'p':
+		    if (strEQcase(arg, "point"))
+		    {
+			montage.pointsize = SvIV(ST(n));
+			continue;
+		    }
+		    break;
 		case 'S': case 's':
 		    if (strEQcase(arg, "shadow"))
 		    {
-                        int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
-                                 LookupStr(p_boolean, SvPV(ST(n), na));
-                        if (sp < 0)
-                        {
+			int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
+				  LookupStr(p_boolean, SvPV(ST(n), na));
+			if (sp < 0)
+			{
 			    warning(OptionWarning, "Unknown shadow type",
 						    SvPV(ST(n), na));
-                            continue;
-                        }
-                        montage.shadow = sp;
-		        continue;
+			    continue;
+			}
+			montage.shadow = sp;
+			continue;
 		    }
 		    break;
 		case 'T': case 't':
@@ -1658,6 +1698,11 @@ Montage(ref, ...)
 			montage.tile = p;
 			if (*p == '\0')
 			  montage.tile = (char *) NULL;
+			continue;
+		    }
+		    if (strEQcase(arg, "title"))
+		    {
+			resource.title = SvPV(ST(n), na);
 			continue;
 		    }
 		    if (strEQcase(arg, "trans"))
@@ -1682,11 +1727,13 @@ Montage(ref, ...)
 	    strcpy(info->info.filename, montage.filename);
 	    SetImageInfo(&info->info, False);
 
-	    sv = newSViv((IV)image);
-	    rv = newRV(sv);
-	    av_push(av, sv_bless(rv, hv));
-	    SvREFCNT_dec(sv);
-	    /*SvREFCNT_dec(rv);*/
+	    for (im = image; im; im = im->next)
+	    {
+		sv = newSViv((IV)im);
+		rv = newRV(sv);
+		av_push(av, sv_bless(rv, hv));
+		SvREFCNT_dec(sv);
+	    }
 
 	    ST(0) = avref;
 	    im_er_jmp = NULL;
@@ -1742,7 +1789,7 @@ Read(ref, ...)
 	    }
 
 	    av = (AV *)rref;
-	    info = getinfo(av, NULV);
+	    info = getinfo((void *) av, (struct info *) NULV);
 
 	    if (items <= 1)
 		*list = *info->info.filename ? info->info.filename : "XC:black";
@@ -1769,7 +1816,6 @@ Read(ref, ...)
 		    SV *rv = newRV(sv);
 		    av_push(av, sv_bless(rv, hv));
 		    SvREFCNT_dec(sv);
-		    /*SvREFCNT_dec(rv);*/
 		    ++nimg;
 		}
 	    }
@@ -1804,11 +1850,10 @@ Write(ref, ...)
 	    Image *image, *im;
 	    struct info *info;
 	    volatile struct info *temp = NULL;
-	    int n, display = ix >= 4;
+	    int n;
 	    jmp_buf error_jmp;
 	    volatile int nimg = 0;
-	    char fn[MaxTextExtent], magick[MaxTextExtent];
-	    char format[MaxTextExtent];
+	    char filename[MaxTextExtent];
 
 	    im_er_mes = newSVpv("", 0);
 	    if (!sv_isobject(ST(0)))
@@ -1822,7 +1867,7 @@ Write(ref, ...)
 	    if (setjmp(error_jmp))
 		goto badreturn;
 
-	    if (!(image = setup_list(rref, &info, NULV)))
+	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
 	    {
 		warning(OptionWarning, "No images to Write", NULV);
 		goto badreturn;
@@ -1832,25 +1877,22 @@ Write(ref, ...)
 	    *temp->info.filename = '\0';
 
 	    if (items == 2)
-		SetAttribute(temp, NULL, (display? "server" : "file"), ST(1));
+		SetAttribute(temp, NULL, "file", ST(1));
 	    else if (items > 2)
 		for (n = 2; n < items; n += 2)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
-	    sprintf(format, "%s%s", display? "X:" : "",
-			    *temp->info.filename ? temp->info.filename : "%s");
-	    sprintf(temp->info.filename, format, image->filename);
+	    strcpy(filename, temp->info.filename);
 	    SetImageInfo((void *)&temp->info, True);	/* sets adjoin */
 
 	    for (n = 0, im = image; im; im = im->next, n++)
+	    {
+		strcpy(im->filename, filename);
 		im->scene = n;
+	    }
 
 	    for (im = image; im; im = im->next)
 	    {
-		strcpy(magick, im->magick);
-		strcpy(fn, im->filename);
-		sprintf(im->filename, format, fn);
-
 		if (WriteImage((ImageInfo *) &temp->info, im))
 		    ++nimg;
 
@@ -1995,6 +2037,7 @@ Mogrify(ref, ...)
 		TrimImage		= 118
 		Wave			= 119
 		WaveImage		= 120
+		MogrifyRegion		= 666
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -2005,12 +2048,12 @@ Mogrify(ref, ...)
 	    jmp_buf error_jmp;
 	    volatile int nimg = 0;
 	    int first;
-	    RectangleInfo br;
+	    RectangleInfo br, rg;
 	    AnnotateInfo annotate;
 	    FrameInfo fr;
 	    XColor xc;
 	    char *arg;
-	    Image *image, *next;
+	    Image *image, *next, *region_image = NULL;
 	    struct info *info, *local_info = NULL;
 	    char b[80];
 	    SV **svarr = NULL, **pv;
@@ -2024,7 +2067,10 @@ Mogrify(ref, ...)
 	    }
 	    rref = SvRV(ST(0));
 
-	    if (ix)	/* called as Routinename(...) */
+	    rg.width = 0;
+	    rg.height = 0;
+
+	    if (ix && (ix != 666))	/* called as Routinename(...) */
 	    {
 		ix = (ix+1)/2;
 		rp = &routines[ix-1];
@@ -2033,6 +2079,15 @@ Mogrify(ref, ...)
 	    else	/* called as Mogrify("Routinename", ...) */
 	    {
 		arg = (char *)SvPV(ST(1), na);
+		if (ix)
+		{
+		    int f = XParseGeometry(arg, &rg.x, &rg.y,
+						&rg.width, &rg.height);
+		    if (!(f & HeightValue))
+			rg.height = rg.width;
+		    arg = (char *)SvPV(ST(2), na);
+		    base++;
+		}
 		for (rp = routines; ; rp++)
 		{
 		    if (rp >= ENDOF(routines))
@@ -2045,7 +2100,7 @@ Mogrify(ref, ...)
 		}
 
 		ix = rp - routines + 1;
-		base = 3;
+		base++;
 	    }
 
 	    if (!(image = setup_list(rref, &info, &svarr)))
@@ -2070,18 +2125,27 @@ Mogrify(ref, ...)
 	    for (n = base; n < items || n == items && base == items; n += 2)
 	    {
 		struct args *pp = rp->args;
+		struct args *qq = rp->args;
 		union alist *al;
+		int longest = 0;
 		SV *sv;
 
 		if (n == items)		/* single argument */
 		    sv = ST(n-1);
 		else
-		    for (sv = ST(n), arg = (char *)SvPV(ST(n-1), na); ; pp++)
+		    for (sv = ST(n), arg = (char *)SvPV(ST(n-1), na); ; qq++)
 		    {
-			if (pp >= ENDOF(rp->args) || pp->varname == NULL)
+			if (qq >= ENDOF(rp->args) || qq->varname == NULL)
+			{
+			    if (longest > 0)
+				break;
 			    goto continue_outer_loop;
-			if (strEQcase(arg, pp->varname))
-			    break;
+			}
+			if (strEQcase(arg, qq->varname) > longest)
+			{
+			    pp = qq;
+			    longest = strEQcase(arg, qq->varname);
+			}
 		    }
 		al = &alist[pp - rp->args];
 
@@ -2094,15 +2158,16 @@ Mogrify(ref, ...)
 		else if (pp->type == P_IMG)
 		{
 		    if (!sv_isobject(sv) ||
-			!(al->t_img = setup_list(SvRV(sv), NULV, NULV)))
+			!(al->t_img = setup_list(SvRV(sv),
+				(struct info **) NULV, (SV ***) NULV)))
 		    {
 			warning(OptionWarning, complain, IM_packname);
 			goto return_it;
 		    }
 		}
-		else if (!SvPOK(sv))   /* not a string; just get number */
+		else if (!SvPOK(sv))	/* not a string; just get number */
 		    al->t_int = SvIV(sv);
-		else			    /* is a string; look up name */
+		else			/* is a string; look up name */
 		{
 		    al->t_int = LookupStr(pp->type, SvPV(sv, na));
 		    if (al->t_int < 0 && (al->t_int = SvIV(sv)) <= 0)
@@ -2127,9 +2192,18 @@ Mogrify(ref, ...)
 	    {
 		image = next;
 
+		if ((rg.width*rg.height) != 0)
+		{
+		    region_image = image;
+		    image = CropImage(image, &rg);
+		    if (!image)
+			continue;
+		}
+
 		br.width = image->columns;
 		br.height = image->rows;
 		br.x = br.y = 0;
+
 		switch (ix)
 		{
 		default:
@@ -2149,7 +2223,7 @@ Mogrify(ref, ...)
 		case  3:	/* AddNoise */
 		    if (!aflag[0])
 			alist[0].t_int = UniformNoise;
-		    image = AddNoiseImage(image, alist[0].t_int);
+		    image = AddNoiseImage(image, (NoiseType) alist[0].t_int);
 		    break;
 		case  4:	/* Colorize */
 		    if (!aflag[0])
@@ -2165,8 +2239,8 @@ Mogrify(ref, ...)
 
 			if (aflag[0])
 			{
-			    int f = XParseGeometry(alist[0].t_str, &br.x, &br.y,
-							&br.width, &br.height);
+			    int f = XParseGeometry(alist[0].t_str, &br.x,
+					&br.y, &br.width, &br.height);
 			    if (!(f & HeightValue))
 				br.height = br.width;
 			}
@@ -2317,12 +2391,12 @@ Mogrify(ref, ...)
 		    break;
 		case 22:	/* Roll */
 		    if (aflag[1])
-		        br.x = alist[1].t_int;
+			br.x = alist[1].t_int;
 		    if (aflag[2])
-		        br.y = alist[2].t_int;
+			br.y = alist[2].t_int;
 		    if (aflag[0])
-		      (void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
-		        &br.width, &br.height);
+			(void) XParseGeometry(alist[0].t_str, &br.x, &br.y,
+							 &br.width, &br.height);
 
 		    image = RollImage(image, br.x, br.y);
 		    break;
@@ -2339,22 +2413,22 @@ Mogrify(ref, ...)
 		    break;
 		case 24:	/* Sample */
 		    if (aflag[1])
-		        br.width = alist[1].t_int;
+			br.width = alist[1].t_int;
 		    if (aflag[2])
-		        br.height = alist[2].t_int;
+			br.height = alist[2].t_int;
 		    if (aflag[0])
-		      (void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
-		        &br.width, &br.height);
+			(void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
+							 &br.width, &br.height);
 		    image = SampleImage(image, br.width, br.height);
 		    break;
 		case 25:	/* Scale */
 		    if (aflag[1])
-		        br.width = alist[1].t_int;
+			br.width = alist[1].t_int;
 		    if (aflag[2])
-		        br.height = alist[2].t_int;
+			br.height = alist[2].t_int;
 		    if (aflag[0])
-		      (void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
-		        &br.width, &br.height);
+			(void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
+							 &br.width, &br.height);
 		    image = ScaleImage(image, br.width, br.height);
 		    break;
 		case 26:	/* Shade */
@@ -2364,12 +2438,12 @@ Mogrify(ref, ...)
 		    azimuth = 30.0;
 		    elevation = 30.0;
 		    if (aflag[1])
-		        azimuth = alist[1].t_dbl;
+			azimuth = alist[1].t_dbl;
 		    if (aflag[2])
-		        elevation = alist[2].t_dbl;
+			elevation = alist[2].t_dbl;
 		    if (aflag[0])
-		      (void) sscanf(alist[0].t_str, "%fx%f", &azimuth,
-							     &elevation);
+			(void) sscanf(alist[0].t_str, "%fx%f", &azimuth,
+							       &elevation);
 
 		    image = ShadeImage(image, alist[3].t_int, azimuth,
 							      elevation);
@@ -2387,15 +2461,14 @@ Mogrify(ref, ...)
 		    x_shear = 45.0;
 		    y_shear = 45.0;
 		    if (aflag[1])
-		        x_shear = alist[1].t_dbl;
+			x_shear = alist[1].t_dbl;
 		    if (aflag[2])
-		        y_shear = alist[2].t_dbl;
+			y_shear = alist[2].t_dbl;
 		    if (aflag[0])
-		      (void) sscanf(alist[0].t_str, "%fx%f", &x_shear,
-							     &y_shear);
+			(void) sscanf(alist[0].t_str, "%fx%f", &x_shear,
+							       &y_shear);
 
-		    image = ShearImage(image, x_shear, y_shear,
-						       alist[3].t_int);
+		    image = ShearImage(image, x_shear, y_shear, alist[3].t_int);
 		    break;
 		}
 		case 29:	/* Spread */
@@ -2410,16 +2483,16 @@ Mogrify(ref, ...)
 		    break;
 		case 31:	/* Zoom */
 		    if (aflag[1])
-		        br.width = alist[1].t_int;
+			br.width = alist[1].t_int;
 		    if (aflag[2])
-		        br.height = alist[2].t_int;
+			br.height = alist[2].t_int;
 		    if (aflag[0])
-		      (void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
-		        &br.width, &br.height);
+			(void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
+							 &br.width, &br.height);
 		    if (!aflag[3])
 			alist[3].t_int = 1;
 		    image = ZoomImage(image, br.width, br.height,
-							     alist[3].t_int);
+						  (FilterType) alist[3].t_int);
 		    break;
 		case 32:	/* IsGrayImage */
 		    break;
@@ -2427,16 +2500,18 @@ Mogrify(ref, ...)
 		    if (first)
 		    {
 			GetAnnotateInfo(&annotate);
+			local_info = copy_info(info);
+			annotate.image_info = &local_info->info;
 			if (aflag[0])
-			    annotate.server_name = alist[0].t_str;
+			    annotate.image_info->server_name = alist[0].t_str;
 			if (aflag[1])
-			    annotate.font = alist[1].t_str;
+			    annotate.image_info->font = alist[1].t_str;
 			if (aflag[2])
-			    annotate.pointsize = alist[2].t_int;
+			    annotate.image_info->pointsize = alist[2].t_int;
 			if (aflag[3])
-			    annotate.box = alist[3].t_str;
+			    annotate.image_info->box = alist[3].t_str;
 			if (aflag[4])
-			    annotate.pen = alist[4].t_str;
+			    annotate.image_info->pen = alist[4].t_str;
 			if (aflag[5])
 			    annotate.geometry = alist[5].t_str;
 			if (aflag[6])
@@ -2444,7 +2519,7 @@ Mogrify(ref, ...)
 			if (aflag[7] || aflag[8])
 			{
 			    if (!aflag[7])
-			        alist[7].t_int = 0;
+				alist[7].t_int = 0;
 			    if (!aflag[8])
 				alist[8].t_int = 0;
 			    sprintf(b, "%+d%+d",
@@ -2452,7 +2527,7 @@ Mogrify(ref, ...)
 			    annotate.geometry = b;
 			}
 			if (aflag[9])
-			    annotate.alignment = alist[9].t_int;
+			    annotate.alignment = (AlignmentType) alist[9].t_int;
 		    }
 		    AnnotateImage(image, &annotate);
 		    break;
@@ -2470,18 +2545,85 @@ Mogrify(ref, ...)
 		    br.y = alist[4].t_int;
 		    if (aflag[2])
 		    {
-		        int f = XParseGeometry(alist[2].t_str, &br.x, &br.y,
-							&br.width, &br.height);
-		        if (!(f & HeightValue))
+			int f = ParseImageGeometry(alist[2].t_str, &br.x, &br.y,
+							 &br.width, &br.height);
+			if (!(f & HeightValue))
 			   br.height = br.width;
 		    }
 		    if (!aflag[1])
 		    {
-			warning(OptionWarning, "Missing image in Composite", NULV);
+			warning(OptionWarning, "Missing image in Composite",
+			    NULV);
 			goto return_it;
 		    }
-		    CompositeImage(image, alist[0].t_int, alist[1].t_img,
-					  br.x, br.y);
+		    if (aflag[5])
+		    {
+			/*
+			  Gravitate image as specified by the gravity.
+			*/
+			switch (alist[5].t_int)
+			{
+			  case NorthWestGravity:
+			  {
+			    br.x=0;
+			    br.y=0;
+			    break;
+			  }
+			  case NorthGravity:
+			  {
+			    br.x=(image->columns-alist[1].t_img->columns) >> 1;
+			    br.y=0;
+			    break;
+			  }
+			  case NorthEastGravity:
+			  {
+			    br.x=image->columns-alist[1].t_img->columns;
+			    br.y=0;
+			    break;
+			  }
+			  case WestGravity:
+			  {
+			    br.x=0;
+			    br.y=(image->rows-alist[1].t_img->rows) >> 1;
+			    break;
+			  }
+			  case ForgetGravity:
+			  case StaticGravity:
+			  case CenterGravity:
+			  default:
+			  {
+			    br.x=(image->columns-alist[1].t_img->columns) >> 1;
+			    br.y=(image->rows-alist[1].t_img->rows) >> 1;
+			    break;
+			  }
+			  case EastGravity:
+			  {
+			    br.x=image->columns-alist[1].t_img->columns;
+			    br.y=(image->rows-alist[1].t_img->rows) >> 1;
+			    break;
+			  }
+			  case SouthWestGravity:
+			  {
+			    br.x=0;
+			    br.y=image->rows-alist[1].t_img->rows;
+			    break;
+			  }
+			  case SouthGravity:
+			  {
+			    br.x=(image->columns-alist[1].t_img->columns) >> 1;
+			    br.y=image->rows-alist[1].t_img->rows;
+			    break;
+			  }
+			  case SouthEastGravity:
+			  {
+			    br.x=image->columns-alist[1].t_img->columns;
+			    br.y=image->rows-alist[1].t_img->rows;
+			    break;
+			  }
+			}
+		    }
+		    CompositeImage(image, (CompositeOperator) alist[0].t_int,
+					alist[1].t_img, br.x, br.y);
 		    break;
 		case 36:	/* Contrast */
 		    if (aflag[0])
@@ -2497,31 +2639,33 @@ Mogrify(ref, ...)
 		    if (first)
 		    {
 			GetAnnotateInfo(&annotate);
+			local_info = copy_info(info);
+			annotate.image_info = &local_info->info;
 			if (aflag[3])
-			    annotate.pen = alist[3].t_str;
+			    annotate.image_info->pen = alist[3].t_str;
 			if (aflag[4])
 			    annotate.linewidth = alist[4].t_int;
 			if (aflag[5])
-			    annotate.server_name = alist[5].t_str;
+			    annotate.image_info->server_name = alist[5].t_str;
 		    }
 		    n = MaxTextExtent;
 		    if (aflag[1])
-		        n += strlen(alist[1].t_str);
+			n += Extent(alist[1].t_str);
     		    if (alist[0].t_int > 0)
-    		        annotate.primitive =
-		          strcpy(safemalloc(n), p_primitives[alist[0].t_int]);
+			annotate.primitive =
+			    strcpy(safemalloc(n), p_primitives[alist[0].t_int]);
 		    else
-    		        annotate.primitive =
-		          strcpy(safemalloc(n), alist[0].t_str);
+			annotate.primitive =
+			    strcpy(safemalloc(n), alist[0].t_str);
 		    if (aflag[1])
 		    {
-		        strcat(annotate.primitive, " ");
-		        strcat(annotate.primitive, alist[1].t_str);
+			strcat(annotate.primitive, " ");
+			strcat(annotate.primitive, alist[1].t_str);
 		    }
 		    if (aflag[2])
 		    {
-		        strcat(annotate.primitive, " ");
-		        strcat(annotate.primitive, p_methods[alist[2].t_int]);
+			strcat(annotate.primitive, " ");
+			strcat(annotate.primitive, p_methods[alist[2].t_int]);
 		    }
 		    DrawImage(image, &annotate);
 		    safefree(annotate.primitive);
@@ -2597,14 +2741,15 @@ Mogrify(ref, ...)
 		case 48:	/* Quantize */
 		    {
 			QuantizeInfo quan;
-			quan.colorspace = aflag[0] ? alist[0].t_int :
-				(info? info->quant.colorspace : RGBColorspace);
+			quan.number_colors = aflag[0] ? alist[0].t_int :
+				(info? info->quant.number_colors : MaxRGB + 1);
 			quan.tree_depth = aflag[1] ? alist[1].t_int :
 				(info? info->quant.tree_depth : 8);
-			quan.dither = aflag[2] ? alist[2].t_int :
+			quan.colorspace = (ColorspaceType)
+				(aflag[2] ? alist[2].t_int :
+				(info? info->quant.colorspace : RGBColorspace));
+			quan.dither = aflag[3] ? alist[3].t_int :
 				(info? info->quant.dither : False);
-			quan.number_colors = aflag[3] ? alist[3].t_int :
-				(info? info->quant.number_colors : MaxRGB + 1);
 			QuantizeImages(&quan, image);
 			goto return_it;
 		    }
@@ -2615,8 +2760,8 @@ Mogrify(ref, ...)
 
 			if (aflag[0])
 			{
-			    int f = XParseGeometry(alist[0].t_str, &br.x, &br.y,
-							&br.width, &br.height);
+			    int f = XParseGeometry(alist[0].t_str, &br.x,
+					&br.y, &br.width, &br.height);
 			    if (!(f & HeightValue))
 				br.height = br.width;
 			}
@@ -2722,6 +2867,17 @@ Mogrify(ref, ...)
 		    }
 		}
 
+		if (region_image != (Image *) NULL)
+		{
+		    /*
+		      Composite region.
+		    */
+		    CompositeImage(region_image, ReplaceCompositeOp, image,
+			rg.x, rg.x);
+		    DestroyImage(image);
+		    image = region_image;
+		}
+
 		if (image)
 		{
 		    ++nimg;
@@ -2775,7 +2931,7 @@ Set(ref, ...)
 	    }
 	    rref = SvRV(ST(0));
 
-	    image = setup_list(rref, &info, NULV);
+	    image = setup_list(rref, &info, (SV ***) NULV);
 
 	    for (n = 2; n < items; n += 2)
 		SetAttribute(info, image, SvPV(ST(n-1), na), ST(n));
@@ -2820,7 +2976,7 @@ Get(ref, ...)
 	    }
 	    rref = SvRV(ST(0));
 
-	    image = setup_list(rref, &info, NULV);
+	    image = setup_list(rref, &info, (SV ***) NULV);
 	    if (!image && !info)
 	    {
 		warning(OptionWarning, "Nothing to GetAttributes from", NULV);
@@ -2938,26 +3094,26 @@ Get(ref, ...)
 			    SvIOK_on(s);
 			}
 		    }
+		    else if (strEQcase(arg, "colors"))	/* same as number */
+		    {
+			if (info && info->quant.number_colors)
+			    s = newSViv(info->quant.number_colors);
+			else if (image)
+			    s = newSViv(image->colors);
+		    }
 		    else if (strEQcase(arg, "colormap"))
 		    {
 			ColorPacket *cp;
 
 			if (!image || !image->colormap)
 			    break;
-		        i = 0;
-		        (void) sscanf(arg, "%*[^[][%d,%d", &i );
-		        if (i > image->colors)
-		            i %= image->colors;
+			i = 0;
+			(void) sscanf(arg, "%*[^[][%d,%d", &i );
+			if (i > image->colors)
+			    i %= image->colors;
 			cp = image->colormap+i;
 			sprintf(b, "%u,%u,%u\n", cp->red, cp->green, cp->blue);
 			s = newSVpv(b, 0);
-		    }
-		    else if (strEQcase(arg, "color"))	/* same as number */
-		    {
-			if (info && info->quant.number_colors)
-			    s = newSViv(info->quant.number_colors);
-			else if (image)
-			    s = newSViv(image->colors);
 		    }
 		    else if (strEQcase(arg, "column"))
 		    {
@@ -2987,15 +3143,8 @@ Get(ref, ...)
 		    }
 		    else if (strEQcase(arg, "dither"))
 		    {
-			if (!info)
-			    break;
-			s = newSViv(info->info.dither);
-			if (info->info.dither >= 0 &&
-			    info->info.dither < NUMBEROF(p_boolean) - 1)
-			{
-			    sv_setpv(s, p_boolean[info->info.dither]);
-			    SvIOK_on(s);
-			}
+			if (info)
+			    s = newSViv(info->info.dither);
 		    }
 		    else if (strEQcase(arg, "display"))	/* same as server */
 		    {
@@ -3196,13 +3345,13 @@ Get(ref, ...)
 			    break;
 			if (!UncompressImage(image))
 			    break;
-		        x = 0;
-		        y = 0;
-		        (void) sscanf(arg, "%*[^[][%d,%d", &x, &y);
-		        if (y > image->rows)
-		            y %= image->rows;
-		        if (x > image->columns)
-		            x %= image->columns;
+			x = 0;
+			y = 0;
+			(void) sscanf(arg, "%*[^[][%d,%d", &x, &y);
+			if (y > image->rows)
+			    y %= image->rows;
+			if (x > image->columns)
+			    x %= image->columns;
 			cp = image->pixels+(y*image->columns+x);
 			sprintf(b, "%u,%u,%u,%u\n", cp->red, cp->green,
 						    cp->blue, cp->index);
@@ -3217,7 +3366,7 @@ Get(ref, ...)
 		    {
 			s = newSViv(info->info.preview_type);
 			if (info->info.preview_type >= 0 &&
-			     info->info.preview_type < NUMBEROF(p_previews) - 1)
+			    info->info.preview_type < NUMBEROF(p_previews) - 1)
 			{
 			    sv_setpv(s, p_previews[info->info.preview_type]);
 			    SvIOK_on(s);
@@ -3304,7 +3453,26 @@ Get(ref, ...)
 		    else if (strEQcase(arg, "total"))
 		    {
 			if (image)
-			    s = newSViv(image->total_colors);
+			    {
+				NumberColors(image,(FILE *) NULL);
+				s = newSViv(image->total_colors);
+			    }
+		    }
+		    else if (strEQcase(arg, "type"))
+		    {
+			if (image)
+			    if (info && info->info.colorspace == CMYKColorspace)
+				s = newSVpv("color separation", 0);
+			    else if (IsMonochromeImage(image))
+				s = newSVpv("bilevel", 0);
+			    else if (IsGrayImage(image))
+				s = newSVpv("grayscale", 0);
+			    else if (IsPseudoClass(image))
+				s = newSVpv("palette", 0);
+			    else if (!image->matte)
+				s = newSVpv("true color", 0);
+			    else
+				s = newSVpv("true color with transparency", 0);
 		    }
 		    break;
 		case 'U': case 'u':
@@ -3387,7 +3555,7 @@ Ping(ref, ...)
 
 	    rref = SvRV(ST(0));
 	    av = (AV *)rref;
-	    info = getinfo(av, NULV);
+	    info = getinfo((void *) av, (struct info *) NULV);
 	    for (n = 1; n < items; n++)
 	    {
 		strcpy(info->info.filename, (char *)SvPV(ST(n), na));

@@ -1,5 +1,15 @@
 Revision history for Perl extension Image::Magick.
 
+1.28 Fri Dec 15 1997
+	- AnnotateInfo structure has changed again to fix a memory leak.
+1.27 Fri Dec 05 1997
+	- AnnotateInfo structure has changed.
+1.26 Mon Dec 01 1997
+	- Added support for pen and box for the Set method.
+1.25 Thu Nov 27 1997
+	- Added MogrifyRegion method.
+1.24 Thu Nov 18 1997
+	- Montage method only returned the first image of a sequence
 1.23  Thu Nov 6 1997
 	- Added geometry to method Composite.
 1.22  Thu Oct 30 1997

@@ -72,10 +72,10 @@ extern "C" {
 #endif
 
 #include "EXTERN.h"
-#include "XSUB.h"
 #include "perl.h"
-#include "magick.h"
-#include "defines.h"
+#include "XSUB.h"
+#include <magick/magick.h>
+#include <magick/defines.h>
 #include <setjmp.h>
 
 #ifdef __cplusplus
@@ -2452,9 +2452,9 @@ Display(ref,...)
           resource.delay=atoi(package_info->image_info->delay);
         for (next=image; next; next=next->next)
         {
-          state=0x0000;
+          state=DefaultState;
           (void) XDisplayImage(display,&resource,&client_name,1,&next,&state);
-          if (state & 0x0002)
+          if (state & ExitState)
             break;
         }
         XCloseDisplay(display);
@@ -4458,9 +4458,9 @@ Mogrify(ref,...)
               if (!attribute_flag[3])
                 argument_list[3].double_reference=1.5;
             }
-          (void) SegmentImage(image,argument_list[0].int_reference,
-            argument_list[1].int_reference,argument_list[2].double_reference,
-            argument_list[3].double_reference);
+          (void) SegmentImage(image,(ColorspaceType)
+            argument_list[0].int_reference,argument_list[1].int_reference,
+            argument_list[2].double_reference,argument_list[3].double_reference);
           SyncImage(image);
           break;
         }
@@ -4550,7 +4550,7 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].int_reference=0;
-          LayerImage(image,argument_list[0].int_reference);
+          LayerImage(image,(LayerType) argument_list[0].int_reference);
           break;
         }
         case 62:  /* Condense */

@@ -1,5 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
+1.15  Thu Aug 28 1997
+	- Add PingImage routine
 1.14  Tue Aug 12 1997
 	- Added numeric error handling
 	- Add QueryColors routine

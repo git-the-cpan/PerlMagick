@@ -2902,7 +2902,7 @@ Get(ref, ...)
 		    }
 		    else if (strEQcase(arg, "colorspace"))
 		    {
-			i = info ? info->quant.colorspace : image->colorspace;
+			i = info ? info->quant.colorspace : RGBColorspace;
 			s = newSViv(i);
 			if (i >= 0 && i < NUMBEROF(p_colorspaces) - 1)
 			{
@@ -3079,8 +3079,8 @@ Get(ref, ...)
 		    }
 		    else if (strEQcase(arg, "monoch"))
 		    {
-			i = info? info->info.monochrome : image->colors <= 2 &&
-					    image->colorspace == GRAYColorspace;
+			i = info?
+			    info->info.monochrome : IsMonochromeImage(image);
 			s = newSViv(i);
 		    }
 		    else if (strEQcase(arg, "mattecolor") ||
@@ -3324,6 +3324,47 @@ Get(ref, ...)
 	    }
 	}
 
+# Ping image
+
+void
+Ping(ref, ...)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    PingImage	= 1
+	    ping	= 2
+	    pingimage	= 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    int n;
+	    char b[80];
+	    struct info *info;
+	    unsigned int columns, rows;
+	    AV *av;
+	    SV *s;
+
+	    EXTEND(sp, items - 1);
+	    im_er_mes = newSVpv("", 0);
+
+	    rref = SvRV(ST(0));
+	    av = (AV *)rref;
+	    info = getinfo(av, NULV);
+	    for (n = 1; n < items; n++)
+	    {
+		strcpy(info->info.filename, (char *)SvPV(ST(n), na));
+		if (!PingImage(&info->info, &columns, &rows))
+		    s = &sv_undef;
+		else {
+		    sprintf(b, "%u,%u", columns, rows);
+		    s = sv_2mortal(newSVpv(b, 0));
+		}
+		PUSHs(s);
+	    }
+
+	    SvREFCNT_dec(im_er_mes);    /* throw away all errors */
+	    im_er_mes = NULL;
+	}
+
 # lookup a color by its name
 
 void
@@ -3337,19 +3378,26 @@ QueryColor(ref, ...)
 	    char *arg;	/* the color name */
 	    XColor target_color;
 	    char b[80];
+	    SV *s;
 
 	    EXTEND(sp, items - 1);
+	    im_er_mes = newSVpv("", 0);
 
 	    for (n = 1; n < items; n++)
 	    {
 		arg = (char *)SvPV(ST(n), na);
 
 		if (!XQueryColorDatabase(arg, &target_color))
-		    sprintf(b, "0,0,0");
-		else
+		    s = &sv_undef;
+		else {
 		    sprintf(b, "%u,%u,%u", XDownScale(target_color.red),
 					   XDownScale(target_color.green),
 					   XDownScale(target_color.blue));
-		PUSHs(sv_2mortal(newSVpv(b, 0)));
+		    s = sv_2mortal(newSVpv(b, 0));
+		}
+		PUSHs(s);
 	    }
+
+	    SvREFCNT_dec(im_er_mes);    /* throw away all errors */
+	    im_er_mes = NULL;
 	}

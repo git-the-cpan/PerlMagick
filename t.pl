@@ -18,7 +18,7 @@ $images->SetAttributes(colorspace=>"ycbcr");
 warn "$colorspace : $magick : $adjoin\n";
 
 print "Read an image sequence...\n";
-$status = $images->Read("girl.gif", "logo.gif", "rose.gif");
+$status = $images->Read("model.gif", "smile.gif", "rose.gif");
 warn "$status" if $status;
 print "Images = ", 0+$status, "\ndisplay\n";
 die "Quitting, fatal error" if $status <= 0;
@@ -29,8 +29,8 @@ print "Get image attributes...\n";
 warn "$colorspace : $magick : $c\n";
 
 print "Create an image montage...\n";
-$montage = $images->Montage(frame=>'15x15+3+3', shadow=>'true', label=>'%f',
-  texture=>'granite:');
+$montage = $images->Montage(geometry=>'160x160+10+10>', shadow=>'true',
+  label=>'%f', texture=>'granite:');
 warn "$montage" unless ref($montage);
 
 print "Write the image montage to disk...\n";

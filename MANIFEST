@@ -1,8 +1,13 @@
 Changelog
-README.txt
 MANIFEST
 Magick.pm
 Magick.xs
 Makefile.PL
-test.pl
+Makefile.PL.in
+Makefile.nt
+README.txt
+model.gif
+smile.gif
+rose.gif
 t.pl
+test.pl

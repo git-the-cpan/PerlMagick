@@ -161,7 +161,7 @@ static char *p_composites[] = {
 
 static char *p_colorspaces[] = {
     "Undefined", "RGB", "Gray", "Transparent", "OHTA", "XYZ", "YCbCr", "YCC",
-    "YIQ", "YPbPr", "YUV", "CMYK", 0 };
+    "YIQ", "YPbPr", "YUV", "CMYK", "sRGB", 0 };
 
 static char *p_classes[] = {
     "Undefined", "DirectClass", "PseudoClass", 0 };
@@ -1229,6 +1229,78 @@ Animate(ref, ...)
 		destroy_info(temp);
 	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
 	    SvPOK_on(im_er_mes);
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
+	    XSRETURN(1);
+	}
+
+void
+Append(ref)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    AppendImage   = 1
+	    append        = 2
+	    appendimage   = 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    Image *image;
+	    jmp_buf error_jmp;
+	    char *p;
+	    struct info *info;
+	    SV *sv, *rv;
+	    AV *av;
+	    HV *hv;
+	    volatile int retval = 0;
+
+	    im_er_mes = newSVpv("", 0);
+
+	    if (!sv_isobject(ST(0)))
+	    {
+		warning(OptionWarning, complain, IM_packname);
+		goto badreturn;
+	    }
+	    rref = SvRV(ST(0));
+	    hv = SvSTASH(rref);
+
+	    im_er_jmp = &error_jmp;
+	    if (retval = setjmp(error_jmp))
+		goto badreturn;
+
+	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
+	    {
+		warning(OptionWarning, "No images to Append", NULV);
+		goto badreturn;
+	    }
+
+	    image = AppendImages(image);
+	    if (!image)
+		goto badreturn;
+
+	    /* create blessed Perl array for the returned image */
+	    av = newAV();
+	    ST(0) = sv_2mortal(sv_bless(newRV((SV *)av), hv));
+	    SvREFCNT_dec(av);
+
+	    sv = newSViv((IV)image);
+	    rv = newRV(sv);
+	    av_push(av, sv_bless(rv, hv));
+	    SvREFCNT_dec(sv);
+	    /*SvREFCNT_dec(rv);*/
+
+	    info = getinfo((void *) av, info);
+	    sprintf(info->info.filename, "append-%.*s", MaxTextExtent - 9,
+		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
+	    strcpy(image->filename, info->info.filename);
+	    SetImageInfo(&info->info, False);
+
+	    SvREFCNT_dec(im_er_mes);
+	    im_er_jmp = NULL;
+	    XSRETURN(1);
+
+	badreturn:
+	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
+	    SvPOK_on(im_er_mes);	/* return messages in string context */
 	    ST(0) = sv_2mortal(im_er_mes);
 	    im_er_mes = NULL, im_er_jmp = NULL;
 	    XSRETURN(1);

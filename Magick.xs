@@ -175,7 +175,7 @@ static struct routines {
     {	"Sample", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT} } },
     {	"Scale", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT} } },
     {	"Shade", { {"geom", P_STR}, {"azimuth", P_DBL},
-		   {"elevat", P_DBL},{"color", p_boolean} } },
+		   {"elevat", P_DBL}, {"color", p_boolean} } },
     {	"Sharpen", { {"factor", P_DBL} } },
     {	"Shear", { {"geom", P_STR}, {"x", P_DBL}, {"y", P_DBL},
 		   {"crop", p_boolean} } },
@@ -497,7 +497,7 @@ SetAttribute(info, image, attr, sval)
 	{
 	    XColor target_color;
 
-	    (void) XQueryColorDatabase(SvPV(sval, na),&target_color);
+	    (void) XQueryColorDatabase(SvPV(sval, na), &target_color);
 	    for ( ; image; image = image->next) {
 		image->background_color.red = XDownScale(target_color.red);
 		image->background_color.green = XDownScale(target_color.green);
@@ -509,7 +509,7 @@ SetAttribute(info, image, attr, sval)
 	{
 	    XColor target_color;
 
-	    (void) XQueryColorDatabase(SvPV(sval, na),&target_color);
+	    (void) XQueryColorDatabase(SvPV(sval, na), &target_color);
 	    for ( ; image; image = image->next) {
 		image->border_color.red = XDownScale(target_color.red);
 		image->border_color.green = XDownScale(target_color.green);
@@ -707,7 +707,7 @@ SetAttribute(info, image, attr, sval)
 	{
 	    XColor target_color;
 
-	    (void) XQueryColorDatabase(SvPV(sval, na),&target_color);
+	    (void) XQueryColorDatabase(SvPV(sval, na), &target_color);
 	    for ( ; image; image = image->next) {
 		image->matte_color.red = XDownScale(target_color.red);
 		image->matte_color.green = XDownScale(target_color.green);
@@ -980,7 +980,7 @@ BOOT:
 	client_name="PerlMagick";
 
 double
-constant(name,arg)
+constant(name, arg)
 	char *		name
 	int		arg
 
@@ -1032,6 +1032,78 @@ DESTROY(ref)
 	    }
 	}
 
+void
+Animate(ref, ...)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    AnimateImage	= 1
+	    animate		= 2
+	    animateimage	= 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    Image *image;
+	    struct info *info;
+	    volatile struct info *temp = NULL;
+	    XResourceInfo resource;
+	    XrmDatabase resource_database;
+	    Display *display;
+	    char *resource_value;
+	    int n;
+	    jmp_buf error_jmp;
+	    volatile int retval = 0;
+
+	    im_er_mes = newSVpv("", 0);
+	    if (!sv_isobject(ST(0)))
+	    {
+		warninghandler(complain, IM_packname);
+		goto badreturn;
+	    }
+	    rref = SvRV(ST(0));
+
+	    im_er_jmp = &error_jmp;
+	    if (setjmp(error_jmp))
+		goto badreturn;
+
+	    if (!(image = setup_list(rref, &info, NULV)))
+	    {
+		warninghandler("No images to Display", NULV);
+		goto badreturn;
+	    }
+
+	    temp = copy_info(info);
+	    *temp->info.filename = '\0';
+
+	    if (items == 2)
+		SetAttribute(temp, NULL, "server", ST(1));
+	    else if (items > 2)
+		for (n = 2; n < items; n += 2)
+		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
+
+	    display = XOpenDisplay(info->info.server_name);
+	    if (display != (Display *) NULL) {
+		XSetErrorHandler(XError);
+		resource_database = XGetResourceDatabase(display, client_name);
+		XGetResourceInfo(resource_database, client_name, &resource);
+		resource.immutable = True;
+		resource.delay = 60;
+
+		(void) XAnimateImages(display, &resource, (char **) NULL, 0,
+		    image);
+
+		SetMonitorHandler((MonitorHandler) NULL);
+		XCloseDisplay(display);
+	    }
+
+	badreturn:
+	    if (temp)
+		destroy_info(temp);
+	    sv_setiv(im_er_mes, (IV)retval);
+	    SvPOK_on(im_er_mes);
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
+	    XSRETURN(1);
+	}
 
 void
 Average(ref)
@@ -1150,7 +1222,7 @@ Copy(ref)
 	    ST(0) = sv_2mortal(sv_bless(newRV((SV *)av), hv));
 	    SvREFCNT_dec(av);
 
-	    for (im=image ; im; im = im->next)
+	    for (im = image ; im; im = im->next)
 	    {
 		image = CloneImage(im, im->columns, im->rows, True);
 		if (!image)
@@ -1169,6 +1241,10 @@ Copy(ref)
 void
 Montage(ref, ...)
 	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    MontageImage	= 1
+	    montage		= 2
+	    montageimage	= 3
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1223,27 +1299,27 @@ Montage(ref, ...)
 	    XGetMontageInfo(&montage);
 	    sprintf(montage.filename, "montage-%.*s", MaxTextExtent - 9,
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
-	    display=XOpenDisplay(info->info.server_name);
+	    display = XOpenDisplay(info->info.server_name);
 	    if (display != (Display *) NULL)
 	      XSetErrorHandler(XError);
-	    resource_database=XGetResourceDatabase(display,client_name);
-	    XGetResourceInfo(resource_database,client_name,&resource);
-	    resource.background_color=XGetResourceInstance(resource_database,
-	      client_name,"background",DefaultTileBackground);
-	    resource.foreground_color=XGetResourceInstance(resource_database,
-	      client_name,"foreground",DefaultTileForeground);
-	    resource.image_geometry=XGetResourceInstance(resource_database,
-	      client_name,"imageGeometry",DefaultTileGeometry);
-	    resource.matte_color=XGetResourceInstance(resource_database,
-	      client_name,"mattecolor",DefaultTileMatte);
-	    resource_value=XGetResourceClass(resource_database,client_name,
-	      "pointsize",DefaultPointSize);
-	    montage.pointsize=atoi(resource_value);
-	    resource_value=
-	      XGetResourceClass(resource_database,client_name,"shadow","False");
-	    montage.shadow=IsTrue(resource_value);
-	    montage.tile=XGetResourceClass(resource_database,client_name,"tile",
-	      montage.tile);
+	    resource_database=XGetResourceDatabase(display, client_name);
+	    XGetResourceInfo(resource_database, client_name, &resource);
+	    resource.background_color = XGetResourceInstance(resource_database,
+	      client_name, "background", DefaultTileBackground);
+	    resource.foreground_color = XGetResourceInstance(resource_database,
+	      client_name, "foreground", DefaultTileForeground);
+	    resource.image_geometry = XGetResourceInstance(resource_database,
+	      client_name, "imageGeometry", DefaultTileGeometry);
+	    resource.matte_color = XGetResourceInstance(resource_database,
+	      client_name, "mattecolor", DefaultTileMatte);
+	    resource_value = XGetResourceClass(resource_database, client_name,
+	      "pointsize", DefaultPointSize);
+	    montage.pointsize = atoi(resource_value);
+	    resource_value = XGetResourceClass(resource_database, client_name,
+		"shadow", "False");
+	    montage.shadow = IsTrue(resource_value);
+	    montage.tile = XGetResourceClass(resource_database, client_name,
+		"tile", montage.tile);
 	    if (display != (Display *) NULL)
 	      XCloseDisplay(display);
 
@@ -1362,7 +1438,7 @@ Montage(ref, ...)
 		case 'L': case 'l':
 		    if (strEQcase(arg, "label"))
 		    {
-	      		for (im=image ; im; im = im->next)
+	      		for (im = image ; im; im = im->next)
 	        	  LabelImage(im, SvPV(ST(n), na));
 			continue;
 		    }
@@ -1384,20 +1460,20 @@ Montage(ref, ...)
 							SvPV(ST(n), na));
 			    break;
 			case FrameMode:
-			    montage.frame=DefaultTileFrame;
-			    montage.shadow=True;
+			    montage.frame = DefaultTileFrame;
+			    montage.shadow = True;
 			    break;
 			case UnframeMode:
-			    montage.frame=(char *) NULL;
-			    montage.shadow=False;
-			    resource.border_width=0;
+			    montage.frame = (char *) NULL;
+			    montage.shadow = False;
+			    resource.border_width = 0;
 			    break;
 			case ConcatenateMode:
-			    montage.frame=(char *) NULL;
-			    montage.shadow=False;
-			    resource.image_geometry="+0+0";
-			    resource.border_width=0;
-	    		    concatenate=1;
+			    montage.frame = (char *) NULL;
+			    montage.shadow = False;
+			    resource.image_geometry = "+0+0";
+			    resource.border_width = 0;
+	    		    concatenate = 1;
 			}
 			continue;
 		    }
@@ -1455,8 +1531,8 @@ Montage(ref, ...)
 		goto badreturn;
 	    }
 	    if (transparent_color)
-	      for (im=image ; im; im = im->next)
-	        TransparentImage(im,transparent_color);
+	      for (im = image ; im; im = im->next)
+	        TransparentImage(im, transparent_color);
 	    strcpy(info->info.filename, montage.filename);
 	    SetImageInfo(&info->info, False);
 
@@ -1803,7 +1879,7 @@ Mogrify(ref, ...)
 
 	    if (ix)	/* called as Routinename(...) */
 	    {
-		ix=(ix+1)/2;
+		ix = (ix+1)/2;
 		rp = &routines[ix-1];
 		arg = rp->name;
 	    }
@@ -2289,9 +2365,9 @@ Mogrify(ref, ...)
 			if (aflag[5])
 			    annotate.server_name = alist[5].t_str;
 		    }
-		    n=MaxTextExtent;
+		    n = MaxTextExtent;
 		    if (aflag[1])
-		        n+=strlen(alist[1].t_str);
+		        n += strlen(alist[1].t_str);
     		    if (alist[0].t_int > 0)
     		        annotate.primitive =
 		          strcpy(safemalloc(n), p_primitives[alist[0].t_int]);

@@ -47,10 +47,10 @@ print("CompuServe graphics interchange format (1987) ...\n");
 ++$test;
 testRead( 'input.gif87', '45e5c63ac641eda9bedd4f42a7f6b4cd');
 
-print("GRADATION (gradual passing from one shade to another) ...\n");
+print("Gradient (gradual passing from one shade to another) ...\n");
 #
 ++$test;
-testRead( 'gradation:red-blue', 'ce3e346956f17cc6131dfe7213d5e11a',
+testRead( 'gradient:red-blue', 'ce3e346956f17cc6131dfe7213d5e11a',
                                 '826cc95b15955517fcd9bc8c6bbe6490' );
 
 print("GRANITE (granite texture) ...\n");
@@ -60,7 +60,7 @@ testRead( 'granite:', 'c80c00aa59794ef7731a9117d9222d80');
 
 print("Microsoft icon ...\n");
 ++$test;
-testRead( 'input.ico', '34bb7fe60a48c49caf559ffe317f52dd',
+testRead( 'input.ico', '9214d6f1fe694fb2642e332830167475',
                        'c28b9e379c673ac3c4959f1dd17d16a2' );
 
 print("Magick image file format ...\n");
@@ -156,7 +156,7 @@ testRead( 'input.tim', 'b8ebf628b12284b891fcb9992c1539ee');
 
 print("Khoros Visualization image file ...\n");
 ++$test;
-testRead( 'input.viff', 'eb4d6e084afe2835a1ad28ad7fc12ced');
+testRead( 'input.viff', '1135eda0cb17e0d7553452624242da47');
 
 print("X Windows system bitmap (black and white only) ...\n");
 ++$test;
@@ -212,8 +212,8 @@ print("RGBA format ...\n");
 testReadSized( 'input_70x46.rgba',
 	       '70x46',
 	       8,
-	       'eb4d6e084afe2835a1ad28ad7fc12ced',
-	       '97558e5d40363309da60696286664df1' );
+	       '33faa53b5e96ee9ffc00e5e115545d75',
+	       '0cb37a232fc38af9c00b730d057c68f7' );
 
 
 print("UYVY format ...\n");

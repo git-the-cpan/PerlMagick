@@ -18,7 +18,7 @@ chdir 't' || die 'Cd failed';
 #
 testMontage( q//,
 	     q/background=>'#696e7e', label=>''/,
-             '315efbf3f4dcbd165c20f65ec42d7656');
+             '519392084cb0b1bc9e930a0d4e5054d0');
 
 #
 # 2) Test Center gravity
@@ -111,7 +111,7 @@ testMontage( q//,
 testMontage( q/bordercolor=>'blue', mattecolor=>'red'/, 
 	     q/background=>'#696e7e', label=>'', tile=>'4x4', geometry=>'90x80+3+3>', frame=>'8x10',
                borderwidth=>'0', gravity=>'Center', background=>'gray'/,
-	     'b7ee500a49e6da32ab68d0fcce6dd634',
+	     '81b8c49b2800c7ec5a472c82589a8854',
              '22b9f14c5f34f64640156cda9f425b12');
 
 #
@@ -121,7 +121,7 @@ testMontage( q/bordercolor=>'blue', mattecolor=>'red'/,
 testMontage( q/bordercolor=>'blue', mattecolor=>'red'/, 
 	     q/background=>'#696e7e', label=>'', tile=>'4x4', geometry=>'90x80+6+6>', frame=>'8x10',
                borderwidth=>'0', gravity=>'Center', shadow=>'True',background=>'gray'/,
-	     '029336aea21abccde27978ecebeb9a10',
+	     'a618a7d9fe5cd476edb7308c198b2113',
              'e1933b39fb865cfb7c9d16d277874254');
 
 #
@@ -131,7 +131,7 @@ testMontage( q/bordercolor=>'blue', mattecolor=>'red'/,
 testMontage( q/bordercolor=>'blue', mattecolor=>'red'/, 
 	     q/background=>'#696e7e', label=>'', tile=>'4x4', geometry=>'90x80+6+6>', frame=>'8x10',
                borderwidth=>'0', gravity=>'Center', shadow=>'True', texture=>'granite:'/,
-	     '3056501397bfdcc083d72f87e9098f49',
+	     'f205a6806f42331663c5655fba7ad621',
              'b26c68cab49bd2aad619b1ac1f2366af');
 
 #

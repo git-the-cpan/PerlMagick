@@ -211,7 +211,7 @@ print("Khoros Visualization image file ...\n");
 testReadWrite( 'VIFF:input.viff',
                'VIFF:output.viff',
                q//,
-               'eb4d6e084afe2835a1ad28ad7fc12ced');
+               '1135eda0cb17e0d7553452624242da47');
 
 print("X Windows system bitmap (black and white only) ...\n");
 ++$test;
@@ -275,7 +275,7 @@ testReadWriteSized( 'RGBA:input_70x46.rgba',
 		    '70x46',
 		    8,
 		    q//,
-		    'eb4d6e084afe2835a1ad28ad7fc12ced',
-                    '97558e5d40363309da60696286664df1' );
+		    '33faa53b5e96ee9ffc00e5e115545d75',
+                    'b1dcc83f5d70ba6ca5d517028455b7e1' );
 
 1;

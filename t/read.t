@@ -22,7 +22,7 @@ testRead( 'input.avs',
 print("Microsoft Windows bitmap image file ...\n");
 ++$test;
 testRead( 'input.bmp',
-  'a5d122b2b7a0944d835243afd4a81815bbea5bc1ae6c3a6ba79301662b4474a1');
+  '5e59fb16de716403d5793be5d79da2e44c5e7cae6541677735297054486afbd4');
 
 print("Microsoft Windows 24-bit bitmap image file ...\n");
 ++$test;
@@ -55,14 +55,12 @@ testRead( 'input.gif87',
   'a666c9982869ea440170dcb7fbf6cff56acaced9550341694e1e10c739c92b20');
 
 print("Gradient (gradual passing from one shade to another) ...\n");
-#
 ++$test;
 testRead( 'gradient:red-blue',
-  'b59b8d1863f6d7c5f70a870d13b4c93f0f0ce78ef64634d774ef3fea28becda3',
-  '1b36b81f78e0355e6aef8d4573959abad03938b86f4ed51dfcf6733ba64745b7' );
+  'c9df3314f8d3e970361dd2ccc0e61859222a41a3ed8b4a87cc719fe22078aad7',
+  '4bc1c8bd802be60bbf9633b2e058efb3a2815fcf4195f1b07e319df29f2efafc' );
 
 print("GRANITE (granite texture) ...\n");
-#
 ++$test;
 testRead( 'granite:',
   'b2dce9b61086d997b10c7f8c3762608b47219d084ce8ae3cfeb443faca05d376');

@@ -35,7 +35,7 @@ $image->Draw(primitive=>'line',points=>"10,200 20,190",stroke=>red);
 #
 $image->Draw(primitive=>'circle',stroke=>'none',fill=>'yellow',,
   points=>"170,70 200,70");
-$image->Draw(primitve=>'Path',stroke=>'none',fill=>'blue',strokewidth=>4,
+$image->Draw(primitive=>'Path',stroke=>'none',fill=>'blue',strokewidth=>4,
   points=>'M170,70 v-30 a30,30 0 0,0 -30,30 z');
 $image->Draw(primitive=>'circle',stroke=>'black',fill=>'none',strokewidth=>4,
   points=>"170,70 200,70");
@@ -48,13 +48,13 @@ $image->Draw(primitive=>'polygon',
 #
 # Draw rectangle.
 #
-$image->Draw(primitve=>'line',points=>'200,260 200,200',stroke=>yellow,
+$image->Draw(primitive=>'line',points=>'200,260 200,200',stroke=>yellow,
   strokewidth=>5);
-$image->Draw(primitve=>'line',points=>'200,200 260,200',stroke=>yellow,
+$image->Draw(primitive=>'line',points=>'200,200 260,200',stroke=>yellow,
   strokewidth=>5);
-$image->Draw(primitve=>'line',points=>'260,200 260,260',stroke=>red,
+$image->Draw(primitive=>'line',points=>'260,200 260,260',stroke=>red,
   strokewidth=>5);
-$image->Draw(primitve=>'line',points=>'200,260 260,260',stroke=>green,
+$image->Draw(primitive=>'line',points=>'200,260 260,260',stroke=>green,
   strokewidth=>5);
 #
 # Draw text.
@@ -62,4 +62,5 @@ $image->Draw(primitve=>'line',points=>'200,260 260,260',stroke=>green,
 $image->Annotate(text=>'This is a test!',geometry=>'+30+140',
   font=>'Generic.ttf',fill=>'green',pointsize=>24,rotate=>45.0);
 $image->Write('piddle.gif');
+$image->Write('piddle.mvg');
 $image->Write('win:');

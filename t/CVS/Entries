@@ -1,0 +1,69 @@
+/.cvsignore/1.4/Sat Nov 27 16:03:59 1999//
+/MasterImage_70x46.ppm/1.3/Tue Jun 27 22:35:04 2000/-kb/
+/blob.t/1.1/Mon Oct  1 20:26:20 2001//
+/filter.t/1.219/Thu Jun 20 01:42:39 2002//
+/getattribute.t/1.19/Mon Sep 10 23:34:55 2001//
+/input.avs/1.4/Tue Jun 27 22:35:04 2000/-kb/
+/input.bie/1.5/Tue Jun 27 22:35:04 2000/-kb/
+/input.bmp/1.7/Sun Mar 10 22:49:42 2002/-kb/
+/input.bmp24/1.5/Tue Jun 27 22:35:04 2000/-kb/
+/input.dcx/1.4/Tue Jun 27 22:35:05 2000/-kb/
+/input.dib/1.9/Tue Jan  8 19:48:03 2002/-kb/
+/input.fits/1.9/Tue Jun 27 22:35:05 2000/-kb/
+/input.gif/1.5/Tue Jun 27 22:35:05 2000/-kb/
+/input.gif87/1.5/Tue Jun 27 22:35:05 2000/-kb/
+/input.ico/1.3/Tue Jun 27 22:35:05 2000/-kb/
+/input.im1/1.4/Tue Jun 27 22:35:05 2000/-kb/
+/input.im24/1.3/Tue Jun 27 22:35:05 2000/-kb/
+/input.im8/1.4/Tue Jun 27 22:35:05 2000/-kb/
+/input.miff/1.8/Fri Apr 19 02:46:05 2002/-kb/
+/input.mtv/1.4/Tue Jun 27 22:35:05 2000/-kb/
+/input.p7/1.4/Tue Jun 27 22:35:06 2000/-kb/
+/input.pcx/1.4/Tue Jun 27 22:35:06 2000/-kb/
+/input.pict/1.7/Tue Jun 27 22:35:06 2000/-kb/
+/input.psd/1.9/Thu Oct 18 14:57:34 2001/-kb/
+/input.rle/1.3/Tue Jun 27 22:35:06 2000/-kb/
+/input.sgi/1.4/Tue Jun 27 22:35:06 2000/-kb/
+/input.tga/1.5/Tue Jun 27 22:35:06 2000/-kb/
+/input.tim/1.3/Tue Jun 27 22:35:06 2000/-kb/
+/input.viff/1.7/Thu Jul 20 21:41:16 2000/-kb/
+/input.wbmp/1.1/Sat Jul 28 01:00:32 2001/-kb/
+/input.xbm/1.3/Thu Dec 30 21:13:27 1999/-kb/
+/input.xpm/1.4/Thu Dec 30 21:13:27 1999/-kb/
+/input.xwd/1.4/Tue Jun 27 22:35:06 2000/-kb/
+/input_16.miff/1.4/Thu Apr 12 19:48:32 2001/-kb/
+/input_70x46.cmyk/1.4/Tue Jun 27 22:35:07 2000/-kb/
+/input_70x46.gray/1.4/Tue Jun 27 22:35:07 2000/-kb/
+/input_70x46.rgb/1.3/Tue Jun 27 22:35:07 2000/-kb/
+/input_70x46.rgba/1.4/Tue Jun 27 22:35:07 2000/-kb/
+/input_70x46.uyvy/1.4/Tue Jun 27 22:35:07 2000/-kb/
+/input_70x46.yuv/1.4/Tue Jun 27 22:35:07 2000/-kb/
+/input_p1.pbm/1.4/Tue Jun 27 22:35:07 2000/-kb/
+/input_p2.pgm/1.5/Mon Jan 21 14:20:56 2002/-kb/
+/input_p3.ppm/1.5/Mon Jan 21 14:20:56 2002/-kb/
+/input_p4.pbm/1.4/Tue Jun 27 22:35:08 2000/-kb/
+/input_p5.pgm/1.4/Tue Jun 27 22:35:08 2000/-kb/
+/input_p6.ppm/1.4/Tue Jun 27 22:35:08 2000/-kb/
+/input_p7.p7/1.4/Tue Jun 27 22:35:08 2000/-kb/
+/montage.t/1.38/Tue May 21 18:08:12 2002//
+/read.t/1.79/Tue May 21 18:08:12 2002//
+/setattribute.t/1.18/Mon Nov 19 01:02:51 2001//
+/subroutines.pl/1.16/Tue Jun 27 22:35:08 2000//
+/write.t/1.81/Thu Apr 11 13:21:50 2002//
+D/bzlib////
+D/cgm////
+D/fpx////
+D/hdf////
+D/hpgl////
+D/jbig////
+D/jpeg////
+D/mpeg////
+D/png////
+D/ps////
+D/rad////
+D/tiff////
+D/ttf////
+D/wmf////
+D/x////
+D/xfig////
+D/zlib////

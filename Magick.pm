@@ -18,15 +18,18 @@ require AutoLoader;
 # Do not simply export all your public functions/methods/constants.
 @EXPORT =
   qw(
-      ResourceLimitWarning XServerWarning OptionWarning DelegateWarning
+      Success Transparent Opaque MaxRGB WarningException
+      ResourceLimitWarning TypeWarning OptionWarning DelegateWarning
       MissingDelegateWarning CorruptImageWarning FileOpenWarning
-      BlobWarning CacheWarning StreamWarning FatalException
-      ResourceLimitError XServerError OptionError DelegateError
+      BlobWarning StreamWarning CacheWarning XServerWarning
+      RegistryWarning ConfigurationWarning ErrorException
+      ResourceLimitError TypeError OptionError DelegateError
       MissingDelegateError CorruptImageError FileOpenError BlobError
-      CacheError StreamError Success Transparent Opaque MaxRGB
+      StreamError CacheError XServerError RegistryError ConfigurationError
+      FatalErrorException
     );
 
-$VERSION = '5.43';
+$VERSION = '5.47';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()

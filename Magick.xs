@@ -54,7 +54,7 @@
 % PerlMagick,version 1.52,is an objected-oriented Perl interface to
 % ImageMagick.  Use the module to read,manipulate,or write an image or
 % image sequence from within a Perl script.  This makes it very suitable
-% for Web CGI scripts.  You must have ImageMagick 4.1.4 or above and Perl
+% for Web CGI scripts.  You must have ImageMagick 4.1.5 or above and Perl
 % version 5.002 or greater installed on your system for either of these
 % utilities to work.
 %
@@ -92,6 +92,16 @@ extern "C" {
 #define NumberOf(array)  (sizeof(array)/sizeof(*array))
 #define PackageName   "Image::Magick"
 #define StringReference  (char **) 0
+
+/*
+  Perl 5.006 no longer defines na and sv_undef.
+*/
+#ifndef na
+#define na  PL_na
+#endif
+#ifndef sv_undef
+#define sv_undef  PL_sv_undef
+#endif
 
 /*
   Typedef and structure declarations.
@@ -722,7 +732,7 @@ static void errorhandler(const char *message,const char *qualifier)
   error_number=errno;
   errno=0;
   magick_status=SetErrorStatus(0);
-  FormatString(error,"Error %d: %.128s%s%.128s%s%s%.64s%s",
+  FormatString(error,"Error %d: %.1024s%s%.1024s%s%s%.64s%s",
     magick_status,(message ? message : "ERROR"),
     qualifier ? " (" : "",qualifier ? qualifier : "",qualifier ? ")" : "",
     error_number ? " [" : "",error_number ? strerror(error_number) : "",
@@ -1155,6 +1165,14 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
     case 'D':
     case 'd':
     {
+      if (strEQcase(attribute,"delay"))
+        {
+          if (info)
+            CopyString(&info->image_info.delay,SvPV(sval,na));
+          for ( ; image; image=image->next)
+            image->delay=SvIV(sval);
+          return;
+        }
       if (strEQcase(attribute,"density"))
         {
           if (!IsGeometry(SvPV(sval,na)))
@@ -1167,20 +1185,20 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
             CopyString(&info->image_info.density,SvPV(sval,na));
           return;
         }
+      if (strEQcase(attribute,"depth"))
+        {
+          if (info)
+            info->image_info.depth=SvIV(sval);
+          for ( ; image; image=image->next)
+            image->depth=SvIV(sval);
+          return;
+        }
       if (strEQcase(attribute,"dispose"))
         {
           if (info)
             CopyString(&info->image_info.dispose,SvPV(sval,na));
           for (; image; image=image->next)
             image->dispose=SvIV(sval);
-          return;
-        }
-      if (strEQcase(attribute,"delay"))
-        {
-          if (info)
-            CopyString(&info->image_info.delay,SvPV(sval,na));
-          for ( ; image; image=image->next)
-            image->delay=SvIV(sval);
           return;
         }
       if (strEQcase(attribute,"dither"))
@@ -1329,7 +1347,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
         {
           if (info)
             {
-              FormatString(info->image_info.filename,"%.128s:",SvPV(sval,na));
+              FormatString(info->image_info.filename,"%.1024s:",SvPV(sval,na));
               SetImageInfo((ImageInfo *) &info->image_info,1);
               if (*info->image_info.magick == '\0')
                 MagickWarning(OptionWarning,"Unrecognized image format",
@@ -1794,7 +1812,7 @@ static void warninghandler(const char *message,const char *qualifier)
   if (!message)
     return;
   magick_status=SetErrorStatus(0);
-  FormatString(warning,"Warning %d: %.128s%s%.128s%s%s%.64s%s",magick_status,
+  FormatString(warning,"Warning %d: %.1024s%s%.1024s%s%s%.64s%s",magick_status,
     message,qualifier ? " (" : "",qualifier ? qualifier : "",
     qualifier? ")" : "",error_number ? " [" : "",
     error_number ? strerror(error_number) : "",error_number ? "]" : "");
@@ -4683,11 +4701,7 @@ Montage(ref,...)
     char
       *attribute,
       *p,
-      *resource_value,
       *transparent_color;
-
-    Display
-      *display;
 
     HV
       *hv;
@@ -4702,6 +4716,9 @@ Montage(ref,...)
 
     jmp_buf
       error_jmp;
+
+    MontageInfo
+      montage_info;
 
     register int
       i;
@@ -4719,15 +4736,6 @@ Montage(ref,...)
     volatile int
       status;
 
-    XMontageInfo
-      montage;
-
-    XResourceInfo
-      resource;
-
-    XrmDatabase
-      resource_database;
-
     reference_vector=NULL;
     status=0;
     attribute=NULL;
@@ -4743,8 +4751,6 @@ Montage(ref,...)
     av_reference=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
     transparent_color=NULL;
-    montage.tile=NULL;
-    montage.texture=NULL;
     error_jump=(&error_jmp);
     status=setjmp(error_jmp);
     if (status)
@@ -4757,36 +4763,11 @@ Montage(ref,...)
       }
     info=GetPackageInfo((void *) av,info);
     /*
-      Get user defaults from X resource database.
+      Get options.
     */
-    XGetMontageInfo(&montage);
-    FormatString(montage.filename,"montage-%.*s",MaxTextExtent-9,
+    GetMontageInfo(&montage_info);
+    FormatString(montage_info.filename,"montage-%.*s",MaxTextExtent-9,
       ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
-    display=XOpenDisplay(info->image_info.server_name);
-    if (display)
-      XSetErrorHandler(XError);
-    resource_database=XGetResourceDatabase(display,client_name);
-    XGetResourceInfo(resource_database,client_name,&resource);
-    resource.image_info=info->image_info;
-    resource.quantize_info=info->quantize_info;
-    resource.background_color=XGetResourceInstance(resource_database,
-      client_name,"background",DefaultTileBackground);
-    resource.foreground_color=XGetResourceInstance(resource_database,
-      client_name,"foreground",DefaultTileForeground);
-    resource.matte_color=XGetResourceInstance(resource_database,client_name,
-      "mattecolor",DefaultTileMatte);
-    resource.image_geometry=XGetResourceInstance(resource_database,client_name,
-      "imageGeometry",DefaultTileGeometry);
-    resource_value=XGetResourceClass(resource_database,client_name,"pointsize",
-      DefaultPointSize);
-    montage.pointsize=atoi(resource_value);
-    resource_value=XGetResourceClass(resource_database,client_name,"shadow",
-      "False");
-    montage.shadow=IsTrue(resource_value);
-    montage.tile=XGetResourceClass(resource_database,client_name,"tile",
-      montage.tile);
-    if (display)
-      XCloseDisplay(display);
     concatenate=0;
     for (i=2; i < items; i+=2)
     {
@@ -4798,17 +4779,17 @@ Montage(ref,...)
         {
           if (strEQcase(attribute,"background"))
             {
-              resource.background_color=SvPV(ST(i),na);
+              montage_info.background_color=SvPV(ST(i),na);
               continue;
             }
           if (strEQcase(attribute,"bordercolor"))
             {
-              resource.border_color=SvPV(ST(i),na);
+              montage_info.border_color=SvPV(ST(i),na);
               continue;
             }
           if (strEQcase(attribute,"borderwidth"))
             {
-              resource.border_width=SvIV(ST(i));
+              montage_info.border_width=SvIV(ST(i));
               continue;
             }
         }
@@ -4825,7 +4806,7 @@ Montage(ref,...)
                     SvPV(ST(i),na));
                   continue;
                 }
-              montage.compose=(CompositeOperator) sp;
+              montage_info.compose=(CompositeOperator) sp;
               continue;
              }
           break;
@@ -4844,27 +4825,22 @@ Montage(ref,...)
                   MagickWarning(OptionWarning,"Invalid geometry on frame",p);
                   continue;
                 }
-              montage.frame=p;
+              montage_info.frame=p;
               if (*p == '\0')
-                montage.frame=(char *) NULL;
+                montage_info.frame=(char *) NULL;
               continue;
             }
           if (strEQcase(attribute,"filen"))
             {
-              (void) strncpy(montage.filename,SvPV(ST(i),na),
-                sizeof(montage.filename));
+              (void) strncpy(montage_info.filename,SvPV(ST(i),na),
+                MaxTextExtent);
               continue;
             }
           if (strEQcase(attribute,"font"))
             {
-              resource.font=SvPV(ST(i),na);
+              montage_info.font=SvPV(ST(i),na);
               continue;
              }
-          if (strEQcase(attribute,"foreground"))
-            {
-              resource.foreground_color=SvPV(ST(i),na);
-              continue;
-            }
           break;
         }
         case 'G':
@@ -4881,9 +4857,9 @@ Montage(ref,...)
                   MagickWarning(OptionWarning,"Invalid geometry on geometry",p);
                   continue;
                 }
-             resource.image_geometry=p;
+             montage_info.geometry=p;
              if (*p == '\0')
-               resource.image_geometry=(char *) NULL;
+               montage_info.geometry=(char *) NULL;
              continue;
            }
          if (strEQcase(attribute,"gravity"))
@@ -4899,7 +4875,7 @@ Montage(ref,...)
                    SvPV(ST(i),na));
                  return;
                }
-             resource.gravity=in;
+             montage_info.gravity=in;
              continue;
            }
          break;
@@ -4920,7 +4896,7 @@ Montage(ref,...)
         {
           if (strEQcase(attribute,"mattec"))
             {
-              resource.matte_color=SvPV(ST(i),na);
+              montage_info.matte_color=SvPV(ST(i),na);
               continue;
             }
           if (strEQcase(attribute,"mode"))
@@ -4940,23 +4916,23 @@ Montage(ref,...)
                 }
                 case FrameMode:
                 {
-                  montage.frame=DefaultTileFrame;
-                  montage.shadow=True;
+                  montage_info.frame=DefaultTileFrame;
+                  montage_info.shadow=True;
                   break;
                 }
                 case UnframeMode:
                 {
-                  montage.frame=(char *) NULL;
-                  montage.shadow=False;
-                  resource.border_width=0;
+                  montage_info.frame=(char *) NULL;
+                  montage_info.shadow=False;
+                  montage_info.border_width=0;
                   break;
                 }
                 case ConcatenateMode:
                 {
-                  montage.frame=(char *) NULL;
-                  montage.shadow=False;
-                  resource.image_geometry="+0+0";
-                  resource.border_width=0;
+                  montage_info.frame=(char *) NULL;
+                  montage_info.shadow=False;
+                  montage_info.geometry="+0+0";
+                  montage_info.border_width=0;
                   concatenate=1;
                 }
               }
@@ -4975,7 +4951,7 @@ Montage(ref,...)
              }
           if (strEQcase(attribute,"point"))
             {
-              montage.pointsize=SvIV(ST(i));
+              montage_info.pointsize=SvIV(ST(i));
               continue;
             }
           break;
@@ -4993,7 +4969,7 @@ Montage(ref,...)
                     SvPV(ST(i),na));
                   continue;
                 }
-             montage.shadow=sp;
+             montage_info.shadow=sp;
              continue;
             }
           break;
@@ -5003,7 +4979,7 @@ Montage(ref,...)
         {
           if (strEQcase(attribute,"texture"))
             {
-              montage.texture=SvPV(ST(i),na);
+              montage_info.texture=SvPV(ST(i),na);
               continue;
             }
           if (strEQcase(attribute,"tile"))
@@ -5014,14 +4990,14 @@ Montage(ref,...)
                   MagickWarning(OptionWarning,"Invalid geometry on tile",p);
                   continue;
                 }
-              montage.tile=p;
+              montage_info.tile=p;
               if (*p == '\0')
-                montage.tile=(char *) NULL;
+                montage_info.tile=(char *) NULL;
               continue;
             }
           if (strEQcase(attribute,"title"))
             {
-              resource.title=SvPV(ST(i),na);
+              montage_info.title=SvPV(ST(i),na);
               continue;
             }
           if (strEQcase(attribute,"trans"))
@@ -5034,14 +5010,13 @@ Montage(ref,...)
       }
       MagickWarning(OptionWarning,"Invalid attribute",attribute);
     }
-    resource.image_info=info->image_info;
-    image=XMontageImages(&resource,&montage,image);
+    image=MontageImages(image,&montage_info);
     if (!image)
       goto MethodError;
     if (transparent_color)
       for (next=image; next; next=next->next)
         TransparentImage(next,transparent_color);
-    (void) strcpy(info->image_info.filename,montage.filename);
+    (void) strcpy(info->image_info.filename,montage_info.filename);
     (void) SetImageInfo(&info->image_info,False);
     for (next=image; next; next=next->next)
     {

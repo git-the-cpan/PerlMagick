@@ -1,5 +1,11 @@
 Revision history for Perl extension Image::Magick.
 
+1.45 Dat Sep 12 1998
+	- Revised the suite of tests (thanks to Bob Friesenhahn).  For
+	  consistency across all methods, you can now say
+	  Read(filename=>'image.gif').  Added chromaticity attributes.
+	  You can now read/write from a Perl filehandle.
+	  Fixed a number of minor bugs and nits.
 1.44 Fri Sep 4 1998
 	- Added a suite of tests (thanks to bfriesen@simple.dallas.tx.us).
 1.43 Thr Aug 27 1998

@@ -2,6 +2,10 @@
 /* Maintained by John Cristy (cristy@sympatico.org)                     */
 /* Public Domain							*/
 
+#if !defined(WIN32)
+#define Export
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -120,16 +124,19 @@ static char *p_boolean[] = {
     "False", "True", 0 };
 
 static char *p_compressions[] = {
-    "Undefined", "None", "JPEG", "LZW", "Runlength", "Zip", 0 };
+    "Undefined", "None", "BZip", "JPEG", "LZW", "Runlength", "Zip", 0 };
 
 static char *p_filters[] = {
     "Undefined", "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
-    "Blackman", "Guassian", "Quadratic", "Cubic", "Catrom", "Mitchell",
+    "Blackman", "Gaussian", "Quadratic", "Cubic", "Catrom", "Mitchell",
     "Lanczos", "Bessel", "Sinc", 0 };
 
 static char *p_gravities[] = {
     "Forget", "NorthWest", "North", "NorthEast", "West",
     "Center", "East", "SouthWest", "South", "SouthEast", "Static", 0 };
+
+static char *p_intents[] = {
+    "Undefined", "Saturation", "Perceptual", "Absolute", "Relative", 0 };
 
 static char *p_interlaces[] = {
     "Undefined", "None", "Line", "Plane", "Partition", 0 };
@@ -141,13 +148,14 @@ static char *p_methods[] = {
     "Point", "Replace", "Floodfill", "Reset", 0 };
 
 static char *p_modes[] = {
-    "Frame", "Unframe", "Concatenate", 0 };
+    "Undefined", "Frame", "Unframe", "Concatenate", 0 };
 
 static char *p_previews[] = {
     "Rotate", "Shear", "Roll", "Hue", "Saturation", "Brightness", "Gamma",
     "Spiff", "Dull", "Grayscale", "Quantize", "Despeckle", "ReduceNoise",
-    "AddNoise", "Sharpen", "Blur", "EdgeDetect", "Spread", "Solarize", "Shade",
-    "Raise", "Segment", "Swirl", "Implode", "OilPaint", "Charcoal", 0 };
+    "AddNoise", "Sharpen", "Blur", "Threshold", "EdgeDetect", "Spread",
+    "Solarize", "Shade", "Raise", "Segment", "Swirl", "Implode", "Wave",
+    "OilPaint", "Charcoal", 0 };
 
 static char *p_primitives[] = {
     "Undefined", "Point", "Line", "Rectangle", "FillRectangle", "Circle",
@@ -267,7 +275,7 @@ static struct routines {
     {	"Signature", },
     {	"Solarize", { {"factor", P_DBL} } },
     {	"Sync", },
-    {	"Texture", { {"file", P_STR} } },
+    {	"Texture", { {"filen", P_STR} } },
     {	"Transform", { {"crop", P_STR}, {"geom", P_STR} } },
     {	"Transparent", { {"color", P_STR} } },
     {   "Threshold", { {"threshold", P_DBL} } },
@@ -275,6 +283,7 @@ static struct routines {
     {	"Trim", },
     {	"Wave", { {"geom", P_STR}, {"ampli", P_DBL}, {"wave", P_DBL} } },
     {	"Layer", { {"layer", p_layers} } },
+    {	"Condense", },
 };
 
 static SV *im_er_mes;		/* Perl variable for storing messages */
@@ -563,6 +572,16 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	    }
 	    return;
 	}
+	if (strEQcase(attr, "blue-p"))
+	{
+	    for ( ; image; image = image->next)
+	    {
+		(void) sscanf(SvPV(sval, na), "%f,%f",
+		    &image->chromaticity.blue_primary.x,
+		    &image->chromaticity.blue_primary.y);
+	    }
+	    return;
+	}
 	if (strEQcase(attr, "bordercolor"))
 	{
 	    XColor target_color;
@@ -586,7 +605,7 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	if (strEQcase(attr, "colormap"))
 	{
 	    ColorPacket *cp;
-	    int i, red, green, blue;
+	    int i;
 
 	    for ( ; image; image = image->next)
 	    {
@@ -597,13 +616,31 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		if (i > image->colors)
 		    i %= image->colors;
 		cp = image->colormap+i;
-		red = cp->red;
-		blue = cp->green;
-		green = cp->blue;
-		(void) sscanf(SvPV(sval, na), "%d,%d,%d", &red, &green, &blue);
-		cp->red = red;
-		cp->blue = green;
-		cp->green = blue;
+		if (strchr(SvPV(sval, na), ',') == 0)
+		{
+		    XColor xc;
+
+		    XQueryColorDatabase(SvPV(sval, na), &xc);
+		    cp->red = XDownScale(xc.red);
+		    cp->green = XDownScale(xc.green);
+		    cp->blue = XDownScale(xc.blue);
+		}
+		else
+		{
+		    int red, green, blue;
+
+		    red = cp->red;
+		    green = cp->green;
+		    blue = cp->blue;
+		    (void) sscanf(SvPV(sval, na), "%d,%d,%d",
+						&red, &green, &blue );
+		    cp->red=(Quantum)
+			 ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red);
+		    cp->green=(Quantum)
+			((green < 0) ? 0 : (green > MaxRGB) ? MaxRGB : green);
+		    cp->blue=(Quantum)
+			 ((blue < 0) ? 0 : (blue > MaxRGB) ? MaxRGB : blue);
+		}
 	    }
 	    return;
 	}
@@ -704,13 +741,19 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
     case 'E': case 'e':
 	break;
     case 'F': case 'f':
-	if (strEQcase(attr, "file"))
+	if (strEQcase(attr, "filen"))
 	{
 	    char *p = SvPV(sval, na);
 	    if (info)
 		strncpy(info->info.filename, p, MaxTextExtent - 1);
 	    for ( ; image; image = image->next)
 		strncpy(image->filename, p, MaxTextExtent - 1);
+	    return;
+	}
+	if (strEQcase(attr, "file"))
+	{
+	    if (info)
+		info->info.file = IoIFP(sv_2io(sval));
 	    return;
 	}
 	if (strEQcase(attr, "filter"))
@@ -751,6 +794,16 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	}
 	break;
     case 'G': case 'g':
+	if (strEQcase(attr, "green-p"))
+	{
+	    for ( ; image; image = image->next)
+	    {
+		(void) sscanf(SvPV(sval, na), "%f,%f",
+		    &image->chromaticity.green_primary.x,
+		    &image->chromaticity.green_primary.y);
+	    }
+	    return;
+	}
 	break;
     case 'H': case 'h':
 	break;
@@ -786,7 +839,7 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
     case 'M': case 'm':
 	if (strEQcase(attr, "magick"))	/* same as format */
 	    goto format;
-	if (strEQcase(attr, "mattecolor"))
+	if (strEQcase(attr, "mattecolor") || strEQcase(attr, "matte_color"))
 	{
 	    XColor target_color;
 
@@ -839,10 +892,10 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	    if (!p)
 		return;
 	    for ( ; image; image = image->next)
-		newval(&image->page, p);
+		image->page=PostscriptGeometry(SvPV(sval, na));
 	    if (info)
 		newval(&info->info.page, p);
-	    free(p);
+	    DestroyPostscriptGeometry(p);
 	    return;
 	}
 	if (strEQcase(attr, "pen"))
@@ -929,6 +982,26 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	}
 	break;
     case 'R': case 'r':
+	if (strEQcase(attr, "red-p"))
+	{
+	    for ( ; image; image = image->next)
+	    {
+		(void) sscanf(SvPV(sval, na), "%f,%f",
+		    &image->chromaticity.red_primary.x,
+		    &image->chromaticity.red_primary.y);
+	    }
+	    return;
+	}
+	if (strEQcase(attr, "render"))
+	{
+	    int in = SvPOK(sval) ? LookupStr(p_intents, SvPV(sval, na))
+				 : SvIV(sval);
+	    if (in < 0)
+		warning(OptionWarning, "Unknown rendering intent", SvPV(sval,na))
+	    else for ( ; image; image = image->next)
+		image->rendering_intent = (RenderingIntent) in;
+	    return;
+	}
 	break;
     case 'S': case 's':
 	if (strEQcase(attr, "scene"))
@@ -1016,6 +1089,16 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	}
 	break;
     case 'W': case 'w':
+	if (strEQcase(attr, "white-p"))
+	{
+	    for ( ; image; image = image->next)
+	    {
+		(void) sscanf(SvPV(sval, na), "%f,%f",
+		    &image->chromaticity.white_point.x,
+		    &image->chromaticity.white_point.y);
+	    }
+	    return;
+	}
 	break;
     case 'X': case 'x':
 	break;
@@ -1227,7 +1310,6 @@ Animate(ref, ...)
 	    }
 
 	    temp = copy_info(info);
-	    *temp->info.filename = '\0';
 
 	    if (items == 2)
 		SetAttribute(temp, NULL, "server", ST(1));
@@ -1517,7 +1599,6 @@ Display(ref, ...)
 	    }
 
 	    temp = copy_info(info);
-	    *temp->info.filename = '\0';
 
 	    if (items == 2)
 		SetAttribute(temp, NULL, "server", ST(1));
@@ -1701,7 +1782,7 @@ Montage(ref, ...)
 			  montage.frame = (char *) NULL;
 			continue;
 		    }
-		    if (strEQcase(arg, "file"))
+		    if (strEQcase(arg, "filen"))
 		    {
 			strncpy(montage.filename, SvPV(ST(n), na),
 						  sizeof montage.filename);
@@ -1898,7 +1979,7 @@ Read(ref, ...)
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
 	    jmp_buf error_jmp;
-	    int n, ac;
+	    int i, n, ac;
 	    volatile int nimg = 0;
 	    char **list, **keep, **kp;
 	    struct info *info;
@@ -1928,24 +2009,35 @@ Read(ref, ...)
 	    av = (AV *)rref;
 	    info = getinfo((void *) av, (struct info *) NULV);
 
+	    n = 1;
 	    if (items <= 1)
 		*list = *info->info.filename ? info->info.filename : "XC:black";
 	    else
-		for (n = 0; n < ac; n++)
-		    list[n] = (char *)SvPV(ST(n+1), na);
+		for (n = 0, i = 0; i < ac; i++)
+		{
+		    list[n] = (char *)SvPV(ST(i+1), na);
+                    if ((items >= 3) && strEQcase(list[n], "filen"))
+			continue;
+                    if ((items >= 3) && strEQcase(list[n], "file"))
+			{
+			    info->info.file = IoIFP(sv_2io(ST(i+1)));
+			    continue;
+			}
+		    n++;
+		}
 
-	    list[ac] = NULL;
+	    list[n] = NULL;
 	    keep = list;
 
 	    im_er_jmp = &error_jmp;
 	    if (setjmp(error_jmp))
 		goto return_it;
 
-	    ExpandFilenames(&ac, &list);
+	    ExpandFilenames(&n, &list);
 
-	    for (n = nimg = 0; n < ac; n++)
+	    for (i = nimg = 0; i < n; i++)
 	    {
-		strncpy(info->info.filename, list[n], MaxTextExtent - 1);
+		strncpy(info->info.filename, list[i], MaxTextExtent - 1);
 
 		for (image = ReadImage(&info->info); image; image = image->next)
 		{
@@ -1957,12 +2049,12 @@ Read(ref, ...)
 		}
 	    }
 
-	    for (n = 0; n < ac; n++)	/* free memory from ExpandFilenames */
-		if (list[n])
-		    for (kp = keep; list[n] != *kp++; )
+	    for (i = 0; i < n; i++)	/* free memory from ExpandFilenames */
+		if (list[i])
+		    for (kp = keep; list[i] != *kp++; )
 			if (*kp == NULL)
 			{
-			    free(list[n]);
+			    free(list[i]);
 			    break;
 			}
 	return_it:
@@ -2011,10 +2103,9 @@ Write(ref, ...)
 	    }
 
 	    temp = copy_info(info);
-	    *temp->info.filename = '\0';
 
 	    if (items == 2)
-		SetAttribute(temp, NULL, "file", ST(1));
+		SetAttribute(temp, NULL, "filen", ST(1));
 	    else if (items > 2)
 		for (n = 2; n < items; n += 2)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
@@ -2175,6 +2266,8 @@ Mogrify(ref, ...)
 		WaveImage		= 120
 		Layer			= 121
 		LayerImage		= 122
+		Condense		= 123
+		CondenseImage		= 124
 		MogrifyRegion		= 666
 	PPCODE:
 	{
@@ -2194,6 +2287,7 @@ Mogrify(ref, ...)
 	    Image *image, *next, *region_image = NULL;
 	    struct info *info, *temp = NULL;
 	    char b[80];
+	    unsigned int compress;
 	    SV **svarr = NULL, **pv;
 	    char *commands[10];
 
@@ -2332,6 +2426,8 @@ Mogrify(ref, ...)
 	    {
 		image = next;
 
+		compress = image->packets <
+		    ((image->columns*image->rows*3) >> 2);
 		if ((rg.width*rg.height) != 0)
 		{
 		    region_image = image;
@@ -2842,7 +2938,7 @@ Mogrify(ref, ...)
 			warning(OptionWarning, "Missing image in Map", NULV);
 			goto return_it;
 		    }
-		    MapImage(image, alist[0].t_img, alist[1].t_int);
+		    (void) MapImages(image, alist[0].t_img, alist[1].t_int);
 		    break;
 		case 42:	/* MatteFloodfill */
 		    break;
@@ -2892,9 +2988,9 @@ Mogrify(ref, ...)
 				(info? info->quant.colorspace : RGBColorspace));
 			quan.dither = aflag[3] ? alist[3].t_int :
 				(info? info->quant.dither : False);
-			QuantizeImages(&quan, image);
+			(void) QuantizeImages(&quan, image);
 			if (aflag[4] && alist[4].t_int)
-			    QuantizationError(image);
+			    (void) QuantizationError(image);
 		    	SyncImage(image);
 			goto return_it;
 		    }
@@ -2938,7 +3034,7 @@ Mogrify(ref, ...)
 			if (!aflag[3])
 			    alist[3].t_dbl = 1.5;
 		    }
-		    SegmentImage(image, alist[0].t_int, alist[1].t_int,
+		    (void) SegmentImage(image, alist[0].t_int, alist[1].t_int,
 					alist[2].t_dbl, alist[3].t_dbl);
 		    SyncImage(image);
 		    break;
@@ -3022,6 +3118,9 @@ Mogrify(ref, ...)
 			alist[0].t_int = 0;
 		    LayerImage(image, alist[0].t_int);
 		    break;
+		case 62:	/* Condense */
+		    CondenseImage(image);
+		    break;
 		}
 
 		if (region_image != (Image *) NULL)
@@ -3038,6 +3137,8 @@ Mogrify(ref, ...)
 
 		if (image)
 		{
+		    if (compress)
+			CondenseImage(image);
 		    ++nimg;
 		    if (next && next != image)
 		    {
@@ -3187,6 +3288,14 @@ Get(ref, ...)
 			if (image)
 			    s = newSViv(image->magick_columns);
 		    }
+		    else if (strEQcase(arg, "blue-p"))
+		    {
+			if (!image)
+			    break;
+			sprintf(b, "%g,%g", image->chromaticity.blue_primary.x,
+			    image->chromaticity.blue_primary.y);
+			s = newSVpv(b, 0);
+		    }
 		    else if (strEQcase(arg, "border"))
 		    {
 			if (!image)
@@ -3268,11 +3377,11 @@ Get(ref, ...)
 			if (!image || !image->colormap)
 			    break;
 			i = 0;
-			(void) sscanf(arg, "%*[^[][%d,%d", &i );
+			(void) sscanf(arg, "%*[^[][%d", &i );
 			if (i > image->colors)
 			    i %= image->colors;
 			cp = image->colormap+i;
-			sprintf(b, "%u,%u,%u\n", cp->red, cp->green, cp->blue);
+			sprintf(b, "%u,%u,%u", cp->red, cp->green, cp->blue);
 			s = newSVpv(b, 0);
 		    }
 		    else if (strEQcase(arg, "column"))
@@ -3330,7 +3439,7 @@ Get(ref, ...)
 			if (image)
 			    s = newSViv(image->filesize);
 		    }
-		    else if (strEQcase(arg, "file"))
+		    else if (strEQcase(arg, "filen"))
 		    {
 			if (image)
 			    s = newSVpv(image->filename, 0);
@@ -3371,6 +3480,14 @@ Get(ref, ...)
 		    {
 			if (image && image->geometry)
 			    s = newSVpv(image->geometry, 0);
+		    }
+		    else if (strEQcase(arg, "green-p"))
+		    {
+			if (!image)
+			    break;
+			sprintf(b, "%g,%g", image->chromaticity.green_primary.x,
+			    image->chromaticity.green_primary.y);
+			s = newSVpv(b, 0);
 		    }
 		    break;
 		case 'H': case 'h':
@@ -3437,10 +3554,10 @@ Get(ref, ...)
 			if (!image)
 			    break;
 			sprintf(b, "%u,%u,%u,%u",
-				    image->border_color.red,
-				    image->border_color.green,
-				    image->border_color.blue,
-				    image->border_color.index);
+				    image->matte_color.red,
+				    image->matte_color.green,
+				    image->matte_color.blue,
+				    image->matte_color.index);
 			s = newSVpv(b, 0);
 		    }
 		    else if (strEQcase(arg, "matte"))
@@ -3492,7 +3609,10 @@ Get(ref, ...)
 		    else if (strEQcase(arg, "packet"))
 		    {
 			if (image)
-			    s = newSViv(image->packets);
+			    {
+				CondenseImage(image);
+				s = newSViv(image->packets);
+			    }
 		    }
 		    else if (strEQcase(arg, "page"))
 		    {
@@ -3500,6 +3620,11 @@ Get(ref, ...)
 			    s = newSVpv(info->info.page, 0);
 			else if (image && image->page)
 			    s = newSVpv(image->page, 0);
+		    }
+		    else if (strEQcase(arg, "pen"))
+		    {
+			if (info)
+			    s = newSVpv(info->info.pen, 0);
 		    }
 		    else if (strEQcase(arg, "pipe"))
 		    {
@@ -3523,7 +3648,7 @@ Get(ref, ...)
 			if (x > image->columns)
 			    x %= image->columns;
 			cp = image->pixels+(y*image->columns+x);
-			sprintf(b, "%u,%u,%u,%u\n", cp->red, cp->green,
+			sprintf(b, "%u,%u,%u,%u", cp->red, cp->green,
 						    cp->blue, cp->index);
 			s = newSVpv(b, 0);
 		    }
@@ -3551,7 +3676,25 @@ Get(ref, ...)
 		    }
 		    break;
 		case 'R': case 'r':
-		    if (strEQcase(arg, "row"))
+		    if (strEQcase(arg, "render"))
+		    {
+			i = image->rendering_intent;
+			s = newSViv(i);
+			if (i >= 0 && i < NUMBEROF(p_intents) - 1)
+			{
+			    sv_setpv(s, p_intents[i]);
+			    SvIOK_on(s);
+			}
+		    }
+		    else if (strEQcase(arg, "red-p"))
+		    {
+			if (!image)
+			    break;
+			sprintf(b, "%g,%g", image->chromaticity.red_primary.x,
+			    image->chromaticity.red_primary.y);
+			s = newSVpv(b, 0);
+		    }
+		    else if (strEQcase(arg, "row"))
 		    {
 			if (image)
 			    s = newSViv(image->rows);
@@ -3590,8 +3733,12 @@ Get(ref, ...)
 		    }
 		    else if (strEQcase(arg, "sign"))
 		    {
-			if (image && image->signature)
+			if (image)
+			  {
+			    if (!image->signature)
+		    		SignatureImage(image);
 			    s = newSVpv(image->signature, 0);
+			  }
 		    }
 		    break;
 		case 'T': case 't':
@@ -3622,6 +3769,11 @@ Get(ref, ...)
 				NumberColors(image,(FILE *) NULL);
 				s = newSViv(image->total_colors);
 			    }
+		    }
+		    else if (strEQcase(arg, "tree"))
+		    {
+			if (info)
+			    s = newSViv(info->quant.tree_depth);
 		    }
 		    else if (strEQcase(arg, "type"))
 		    {
@@ -3667,7 +3819,15 @@ Get(ref, ...)
 		    }
 		    break;
 		case 'W': case 'w':
-		    if (strEQcase(arg, "width"))
+		    if (strEQcase(arg, "white-p"))
+		    {
+			if (!image)
+			    break;
+			sprintf(b, "%g,%g", image->chromaticity.white_point.x,
+			    image->chromaticity.white_point.y);
+			s = newSVpv(b, 0);
+		    }
+		    else if (strEQcase(arg, "width"))
 		    {
 			if (image)
 			    s = newSViv(image->columns);
@@ -3724,6 +3884,13 @@ Ping(ref, ...)
 	    for (n = 1; n < items; n++)
 	    {
 		strcpy(info->info.filename, (char *)SvPV(ST(n), na));
+                if ((items >= 3) && strEQcase(info->info.filename, "filen"))
+		    continue;
+                if ((items >= 3) && strEQcase(info->info.filename, "file"))
+		    {
+			info->info.file = IoIFP(sv_2io(ST(n)));
+			continue;
+		    }
 		filesize=PingImage(&info->info, &columns, &rows);
 		if (filesize == 0)
 		    s = &sv_undef;

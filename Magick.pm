@@ -24,7 +24,7 @@ require AutoLoader;
 	MissingPluginWarning CorruptImageWarning FileOpenWarning
     );
 
-$VERSION = '1.44';
+$VERSION = '1.45';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -40,7 +40,8 @@ sub AUTOLOAD {
 	    goto &AutoLoader::AUTOLOAD;
 	}
 	else {
-		croak "Your vendor has not defined Image::Magick macro $constname";
+	    my($pack,$file,$line) = caller;
+	    die "Your vendor has not defined PerlMagick macro $pack\:\:$constname, used at $file line $line.\n";
 	}
     }
     eval "sub $AUTOLOAD { $val }";

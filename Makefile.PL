@@ -5,7 +5,53 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	=> 'Image::Magick',
     'VERSION_FROM' => 'Magick.pm', # finds $VERSION
-    'LIBS'	=> ['-L/usr/openwin/lib -L/usr/local/lib -lMagick -lX11 -lXext -ljbig -ljpeg -lmpeg -lpng -ltiff -lttf -lz -lm'],
+    'LIBS'	=> ['-L/usr/local/lib -L/usr/X11R6/lib -R/usr/X11R6/lib -L/usr/local/lib -lMagick  -lX11 -lXext -lXt -lm'],
     'DEFINE'	=> '',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '-I/usr/openwin/include -I/usr/openwin/include/X11 -I/usr/local/include/magick',
+    'INC'	=> '-I../magick -I/usr/local/include/magick -I/usr/X11R6/include',
 );
+
+#
+# Modify the MakeMaker test fragment
+#
+sub MY::test
+{
+   #
+   # List any ImageMagick features derived from add-on libraries
+   # or programs you would like to test.
+   #
+   # Valid choices are:
+   #
+   #  Feature   Formats Tested		Prerequisites
+   #  =======   ======================	======================================
+   #   IM	ImageMagick built-ins	None
+   #   cgm	CGM format		'ralcgm' program
+   #   hdf	HDF format		HDF library
+   #   jbig	JBIG format		JBIG library
+   #   jpeg 	JPEG format		JPEG library
+   #   mpeg	MPEG format		'mpeg2decode' & 'mpeg2encode' programs
+   #   png	PNG format		PNG and Zlib libraries
+   #   ps	Postscript format	'gs' program and/or DPS library
+   #   rad	Radiance format		'ra_ppm' program
+   #   tiff	TIFF format		TIFF library
+   #   ttf	TrueType font format	FreeType library
+   #   x	X11 support		X-windows libraries and server
+   #   xfig	Xfig format		'transfig' program
+   #   zlib	Zip compression		Zlib library
+   #
+   # e.g. my @PLUGINS = qw/IM jpeg tiff/;
+   #
+   my @PLUGINS = qw/IM cgm mpeg ps rad x xfig/;
+
+   package MY; # so that "SUPER" works right
+   my $inherited = shift->SUPER::test(@_);
+   my $plugintests='';
+   my $plugin;
+   foreach $plugin (@PLUGINS) {
+     if( -d "t/$plugin" ) {
+       $plugintests .= " t/$plugin/*.t";
+    }
+   }
+   $inherited =~ s:^TEST_FILES =.*:TEST_FILES = t/*.t ${plugintests}:m;
+   $inherited;
+}
+

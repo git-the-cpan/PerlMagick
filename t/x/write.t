@@ -22,7 +22,7 @@ $x=$image->ReadImage('congrats.miff');
 if( "$x" ) {
   print "not ok $test\n";
 } else {
-  $x = $image->Display();
+  $x = $image->Display(delay=>800);
   if( "$x" ) {
     print "not ok $test\n";
   } else {

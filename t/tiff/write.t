@@ -41,8 +41,8 @@ print("PseudoColor image (4 bits/sample + matte channel) ...\n");
 testReadWrite( 'input_16_matte.tiff',
   'output_16_matte.tiff',
   q//,
-  '02852e581ccb4713acf82b99853ac75ca3510af29bc01de221d73ce8940b3b59',
-  '02852e581ccb4713acf82b99853ac75ca3510af29bc01de221d73ce8940b3b59',
+  'eff9f8087197689c717ee4678bc242d2973c569c20dd29bc23631f5f0d0cb058',
+  'eff9f8087197689c717ee4678bc242d2973c569c20dd29bc23631f5f0d0cb058',
   'f30abaca227e9a5e27d1d011d2463ff894e2fb34e696f428fb0f1dd7e1e514d3' );
 
 #

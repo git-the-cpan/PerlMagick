@@ -1,4 +1,16 @@
-# Makefile written by Bob Friesenhahn.
+#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  dedicated to making software imaging solutions freely available.
+#
+#  You may not use this file except in compliance with the License.  You may
+#  obtain a copy of the License at
+#
+#    http://www.imagemagick.org/www/Copyright.html
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
 use ExtUtils::MakeMaker;
 use Config;
@@ -6,7 +18,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jng jpeg png ps tiff ttf x xfig zlib/) {
+foreach $delegate (qw/ bzlib jng jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -26,7 +38,7 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.1.7',
+   'VERSION'   => '6.2.0',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
@@ -50,7 +62,7 @@ WriteMakefile
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/local/lib -L../magick/.libs -lMagick -L/usr/X11R6/lib -lfreetype -lz -L/usr/lib -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
+   'LIBS'	=> ['-L/usr/local/lib -lMagick -L/usr/X11R6/lib -lfreetype -lz -L/usr/lib -llcms -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -61,7 +73,7 @@ WriteMakefile
    # Use same compiler as ImageMagick
    'PERLMAINCC'	=> '',
 
-   # Set Perl installation prefix to ImageMagick
+   # Set Perl installation prefix to ImageMagick installation prefix
 #   'PREFIX'	=> '/usr/local',
 
    # Include delegate directories in tests
@@ -70,26 +82,32 @@ WriteMakefile
    ($Config{'archname'} =~ /-object$/i ? ('CAPI' => 'TRUE') : ()),
 );
 
+
 #
-# Stinky ExtUtils::MM_Unix likes to append its own library path to $(CC),
-# prior to any user-specified library path so that an installed library is
-# used rather than the library just built.  This substitution function
-# tries to insert our library path first. Also, use the same compiler used
-# to build perlmain.c to link so that a C++ compiler may be used if
-# necessary.
+# Substitutions for "makeaperl" section.
 #
 sub MY::makeaperl {
      package MY; # so that "SUPER" works right
      my $inherited = shift->SUPER::makeaperl(@_);
 
+     # Stinky ExtUtils::MM_Unix likes to append its own library path to $(CC),
+     # prior to any user-specified library path so that an installed library is
+     # used rather than the library just built.  This substitution function
+     # tries to insert our library path first. Also, use the same compiler used
+     # to build perlmain.c to link so that a C++ compiler may be used if
+     # necessary.
      $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/local/lib: ;
      $inherited;
  }
 
+#
+# Substitutions for "test" section.
+#
 sub MY::test {
      package MY; # so that "SUPER" works right
      my $inherited = shift->SUPER::test(@_);
-                                                                                
+
      # Run tests in our environment
-     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh ../magick.sh PERL_DL_NONLAZY=1:g ;     $inherited;
+     $inherited =~ s:PERL_DL_NONLAZY=1:PERL_DL_NONLAZY=1:g ;
+     $inherited;
  }

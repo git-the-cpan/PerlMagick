@@ -116,7 +116,7 @@ testFilterCompare('input.miff', q//, 'reference/filter/Negate.miff', 'Negate',
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/Normalize.miff', 'Normalize',
-  q//, 0.001, 0.009 );
+  q//, 0.002, 0.06 );
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/OilPaint.miff', 'OilPaint',

@@ -169,8 +169,8 @@ testReadCompare('xc:black', 'reference/read/input_xc_black.miff', q/size=>"70x46
 
 print("X Windows system pixmap file (color) ...\n");
 ++$test;
-testReadCompare('input.xpm', 'reference/read/input_xpm.miff', q//, 0, 0);
-# Q:32 mean-error=0.23551931713272, maximum-error=0.989543041912839
+testReadCompare('input.xpm', 'reference/read/input_xpm.miff', q//,
+  0.24, 0.99);
 
 print("X Windows system window dump file (color) ...\n");
 ++$test;

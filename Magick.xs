@@ -62,9 +62,6 @@ extern "C" {
 #include <math.h>
 #include <magick/api.h>
 #undef tainted
-#if !defined(__WINDOWS__)
-#include <magick/xwindow.h>
-#endif
 
 #ifdef __cplusplus
 }
@@ -78,7 +75,9 @@ extern "C" {
 #define pTHX_
 #define dTHX
 #endif
+#define DegreesToRadians(x)  (MagickPI*(x)/180.0)
 #define EndOf(array)  (&array[NumberOf(array)])
+#define MagickPI  3.14159265358979323846264338327950288419716939937510
 #define MaxArguments  28
 #ifndef na
 #define na  PL_na
@@ -90,6 +89,8 @@ extern "C" {
 #define PerlIO_importFILE(f, fl)  (f)
 #define PerlIO_findFILE(f)  NULL
 #endif
+#define RoundToQuantum(value)  ((Quantum) ((value) < 0.0 ? 0.0 : \
+  ((value) > (MagickRealType) MaxRGB) ? (MagickRealType) MaxRGB : (value)+0.5))
 #ifndef sv_undef
 #define sv_undef  PL_sv_undef
 #endif
@@ -119,7 +120,7 @@ extern "C" {
 
 #define ThrowPerlException(exception,severity,tag,reason) \
   (void) ThrowMagickException(exception,GetMagickModule(),severity, \
-    tag,reason); \
+    tag,"`%s'",reason); \
 
 /*
   Typedef and structure declarations.
@@ -380,6 +381,10 @@ static struct
       {"y", IntegerReference}, {"fuzz", StringReference} } },
     { "Posterize", { {"levels", IntegerReference},
       {"dither", MagickBooleanOptions} } },
+    { "Shadow", { {"geometry", StringReference}, {"opacity", RealReference},
+      {"sigma", RealReference}, {"x", IntegerReference},
+      {"y", IntegerReference} } },
+    { "Identify", { {"file", FileReference} } },
   };
 
 /*
@@ -928,7 +933,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             limit;
 
           limit=(~0UL);
-          if (LocaleCompare(SvPV(sval,na),"unlimited") == 0)
+          if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
             (void) SetMagickResourceLimit(AreaResource,SvIV(sval));
           break;
         }
@@ -1003,7 +1008,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           Image
             *clip_mask;
 
-          clip_mask=SetupList(aTHX_ SvRV(sval),&info,(SV ***) NULL,exception);
+          clip_mask=(Image *) NULL;
+          if (SvPOK(sval))
+            clip_mask=SetupList(aTHX_ SvRV(sval),&info,(SV ***) NULL,exception);
           for ( ; image; image=image->next)
             SetImageClipMask(image,clip_mask);
           break;
@@ -1012,13 +1019,16 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         {
           for ( ; image; image=image->next)
           {
+            int
+              items;
+
             long
               i;
 
             if (image->storage_class == DirectClass)
               continue;
             i=0;
-            (void) sscanf(attribute,"%*[^[][%ld",&i);
+            items=sscanf(attribute,"%*[^[][%ld",&i);
             if (i > (long) image->colors)
               i%=image->colors;
             if (strchr(SvPV(sval,na),',') == 0)
@@ -1096,7 +1106,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             limit;
 
           limit=(~0UL);
-          if (LocaleCompare(SvPV(sval,na),"unlimited") == 0)
+          if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
             (void) SetMagickResourceLimit(DiskResource,SvIV(sval));
           break;
         }
@@ -1297,11 +1307,14 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleNCompare(attribute,"index",5) == 0)
         {
-          long
-            index;
-
           IndexPacket
             *indexes;
+
+          int
+            items;
+
+          long
+            index;
 
           register PixelPacket
             *p;
@@ -1312,12 +1325,12 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               continue;
             x=0;
             y=0;
-            (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
+            items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
             p=GetImagePixels(image,x,y,1,1);
             if (p == (PixelPacket *) NULL)
               break;
             indexes=GetIndexes(image);
-            (void) sscanf(SvPV(sval,na),"%ld",&index);
+            items=sscanf(SvPV(sval,na),"%ld",&index);
             if ((index >= 0) && (index < (long) image->colors))
               *indexes=(IndexPacket) index;
             (void) SyncImagePixels(image);
@@ -1378,7 +1391,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             limit;
 
           limit=(~0UL);
-          if (LocaleCompare(SvPV(sval,na),"unlimited") == 0)
+          if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
             (void) SetMagickResourceLimit(MapResource,SvIV(sval));
           break;
         }
@@ -1411,7 +1424,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             limit;
 
           limit=(~0UL);
-          if (LocaleCompare(SvPV(sval,na),"unlimited") == 0)
+          if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
             (void) SetMagickResourceLimit(MemoryResource,SvIV(sval));
           break;
         }
@@ -1471,6 +1484,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleNCompare(attribute,"pixel",5) == 0)
         {
+          int
+            items;
+
           register PixelPacket
             *p;
 
@@ -1478,7 +1494,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           {
             x=0;
             y=0;
-            (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
+            items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
             p=GetImagePixels(image,x,y,1,1);
             if (p == (PixelPacket *) NULL)
               break;
@@ -1991,7 +2007,7 @@ Animate(ref,...)
         for (i=2; i < items; i+=2)
           SetAttribute(aTHX_ package_info,image,SvPV(ST(i-1),na),ST(i),
             &exception);
-    AnimateImages(package_info->image_info,image);
+    (void) AnimateImages(package_info->image_info,image);
     (void) CatchImageException(image);
     InheritException(&exception,&image->exception);
 
@@ -2706,7 +2722,7 @@ Display(ref,...)
         for (i=2; i < items; i+=2)
           SetAttribute(aTHX_ package_info,image,SvPV(ST(i-1),na),ST(i),
             &exception);
-    DisplayImages(package_info->image_info,image);
+    (void) DisplayImages(package_info->image_info,image);
     (void) CatchImageException(image);
     InheritException(&exception,&image->exception);
 
@@ -3191,8 +3207,11 @@ Get(ref,...)
 
                   if (image->clip_mask == (Image *) NULL)
                     ClipImage(image);
-                  sv=newSViv((IV) image->clip_mask);
-                  s=sv_bless(newRV(sv),SvSTASH(reference));
+                  if (image->clip_mask != (Image *) NULL)
+                    {
+                      sv=newSViv((IV) image->clip_mask);
+                      s=sv_bless(newRV(sv),SvSTASH(reference));
+                    }
                 }
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
@@ -3230,10 +3249,13 @@ Get(ref,...)
             }
           if (LocaleNCompare(attribute,"colormap",8) == 0)
             {
+              int
+                items;
+
               if (image == (Image *) NULL || !image->colormap)
                 break;
               j=0;
-              (void) sscanf(attribute,"%*[^[][%ld",&j);
+              items=sscanf(attribute,"%*[^[][%ld",&j);
               if (j > (long) image->colors)
                 j%=image->colors;
               (void) FormatMagickString(color,MaxTextExtent,"%u,%u,%u,%u",
@@ -3538,6 +3560,9 @@ Get(ref,...)
               char
                 name[MaxTextExtent];
 
+              int
+                items;
+
               IndexPacket
                 *indexes;
 
@@ -3554,7 +3579,7 @@ Get(ref,...)
                 break;
               x=0;
               y=0;
-              (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
+              items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               p=GetImagePixels(image,x,y,1,1);
               if (p == (PixelPacket *) NULL)
                 break;
@@ -3739,7 +3764,7 @@ Get(ref,...)
                 {
                   char
                     geometry[MaxTextExtent];
-  
+ 
                   (void) FormatMagickString(geometry,MaxTextExtent,
                     "%lux%lu%+ld%+ld",image->page.width,image->page.height,
                     image->page.x,image->page.y);
@@ -3753,6 +3778,9 @@ Get(ref,...)
               char
                 name[MaxTextExtent];
 
+              int
+                items;
+
               long
                 x,
                 y;
@@ -3764,7 +3792,7 @@ Get(ref,...)
                 break;
               x=0;
               y=0;
-              (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
+              items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               pixel=AcquireOnePixel(image,x,y,&image->exception);
               (void) FormatMagickString(name,MaxTextExtent,"%u,%u,%u,%u",
                 pixel.red,pixel.green,pixel.blue,pixel.opacity);
@@ -4238,16 +4266,17 @@ GetPixels(ref,...)
       *attribute,
       *map;
 
-    double
-      *pixels;
-
     ExceptionInfo
       exception;
 
     Image
       *image;
 
+    long
+      option;
+
     MagickBooleanType
+      normalize,
       status;
 
     RectangleInfo
@@ -4276,13 +4305,16 @@ GetPixels(ref,...)
           PackageName);
         goto PerlException;
       }
-    switch (GetImageType(image,&exception))
-    {
-      case TrueColorMatteType: map="RGBA"; break;
-      case ColorSeparationType: map="CMYK"; break;
-      case ColorSeparationMatteType: map="CMYKA"; break;
-      default: map="RGB"; break;
-    }
+    map="RGB";
+    if (image->matte != MagickFalse)
+      map="RGBA";
+    if (image->colorspace == CMYKColorspace)
+      {
+        map="CMYK";
+        if (image->matte != MagickFalse)
+          map="CMYKA";
+      }
+    normalize=MagickFalse;
     region.x=0;
     region.y=0;
     region.width=image->columns;
@@ -4323,6 +4355,26 @@ GetPixels(ref,...)
             {
               map=SvPV(ST(i),na);
               break;
+            }
+          ThrowPerlException(&exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'N':
+        case 'n':
+        {
+          if (LocaleCompare(attribute,"normalize") == 0)
+            {
+              option=ParseMagickOption(MagickBooleanOptions,MagickFalse,
+                SvPV(ST(i),na));
+              if (option < 0)
+                {
+                  ThrowPerlException(&exception,OptionError,"UnrecognizedType",
+                    SvPV(ST(i),na));
+                  break;
+                }
+             normalize=option != 0 ? MagickTrue : MagickFalse;
+             break;
             }
           ThrowPerlException(&exception,OptionError,"UnrecognizedAttribute",
             attribute);
@@ -4372,25 +4424,56 @@ GetPixels(ref,...)
         }
       }
     }
-    pixels=(double *) AcquireMagickMemory(strlen(map)*region.width*
-      region.height*sizeof(*pixels));
-    if (pixels == (double *) NULL)
+    if (normalize != MagickFalse)
       {
-        ThrowPerlException(&exception,ResourceLimitError,
-          "MemoryAllocationFailed",PackageName);
-        goto PerlException;
+        float
+          *pixels;
+
+        pixels=(float *) AcquireMagickMemory(strlen(map)*region.width*
+          region.height*sizeof(*pixels));
+        if (pixels == (float *) NULL)
+          {
+            ThrowPerlException(&exception,ResourceLimitError,
+              "MemoryAllocationFailed",PackageName);
+            goto PerlException;
+          }
+        status=ExportImagePixels(image,region.x,region.y,region.width,
+          region.height,map,FloatPixel,pixels,&exception);
+        if (status == MagickFalse)
+          PUSHs(&sv_undef);
+        else
+          {
+            EXTEND(sp,strlen(map)*region.width*region.height);
+            for (i=0; i < (long) (strlen(map)*region.width*region.height); i++)
+              PUSHs(sv_2mortal(newSVnv(pixels[i])));
+          }
+        pixels=(float *) RelinquishMagickMemory(pixels);
       }
-    status=ExportImagePixels(image,region.x,region.y,region.width,region.height,
-      map,DoublePixel,pixels,&exception);
-    if (status == MagickFalse)
-      PUSHs(&sv_undef);
     else
       {
-        EXTEND(sp,strlen(map)*region.width*region.height);
-        for (i=0; i < (long) (strlen(map)*region.width*region.height); i++)
-          PUSHs(sv_2mortal(newSVnv(pixels[i])));
+        Quantum
+          *pixels;
+
+        pixels=(Quantum *) AcquireMagickMemory(strlen(map)*region.width*
+          region.height*sizeof(*pixels));
+        if (pixels == (Quantum *) NULL)
+          {
+            ThrowPerlException(&exception,ResourceLimitError,
+              "MemoryAllocationFailed",PackageName);
+            goto PerlException;
+          }
+        status=ExportImagePixels(image,region.x,region.y,region.width,
+          region.height,map,QuantumPixel,pixels,&exception);
+        if (status == MagickFalse)
+          PUSHs(&sv_undef);
+        else
+          {
+            EXTEND(sp,strlen(map)*region.width*region.height);
+            for (i=0; i < (long) (strlen(map)*region.width*region.height); i++)
+              PUSHs(sv_2mortal(newSViv(pixels[i])));
+          }
+        pixels=(Quantum *) RelinquishMagickMemory(pixels);
       }
-    pixels=(double *) RelinquishMagickMemory(pixels);
 
   PerlException:
     InheritPerlException(&exception,perl_exception);
@@ -4721,6 +4804,10 @@ Mogrify(ref,...)
     SpliceImage        = 174
     Posterize          = 175
     PosterizeImage     = 176
+    Shadow             = 177
+    ShadowImage        = 178
+    Identify           = 179
+    IdentifyImage      = 180
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -5641,6 +5728,7 @@ Mogrify(ref,...)
           if (attribute_flag[10])
             {
               mask_image=argument_list[10].image_reference;
+              mask_image->matte=MagickFalse;
               SetImageType(composite_image,TrueColorMatteType);
               (void) CompositeImage(composite_image,CopyOpacityCompositeOp,
                 mask_image,0,0);
@@ -6636,7 +6724,7 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].file_reference=stdout;
-          (void) DescribeImage(image,argument_list[0].file_reference,
+          (void) IdentifyImage(image,argument_list[0].file_reference,
             MagickTrue);
           break;
         }
@@ -6728,6 +6816,36 @@ Mogrify(ref,...)
             argument_list[1].long_reference=0;
           (void) PosterizeImage(image,argument_list[0].long_reference,
             argument_list[1].long_reference ? MagickTrue : MagickFalse);
+          break;
+        }
+        case 89:  /* Shadow */
+        {
+          if (attribute_flag[0])
+            {
+              flags=ParseGeometry(argument_list[0].string_reference,
+                &geometry_info);
+              if (!(flags & SigmaValue))
+                geometry_info.sigma=1.0;
+              if (!(flags & XiValue))
+                geometry_info.xi=4.0;
+              if (!(flags & PsiValue))
+                geometry_info.psi=4.0;
+            }
+          if (attribute_flag[1])
+            geometry_info.rho=argument_list[1].real_reference;
+          if (attribute_flag[2])
+            geometry_info.sigma=argument_list[2].real_reference;
+          image=ShadowImage(image,geometry_info.rho,geometry_info.sigma,
+            (long) (geometry_info.xi+0.5),(long) (geometry_info.psi+0.5),
+            &exception);
+          break;
+        }
+        case 90:  /* Identify */
+        {
+          if (!attribute_flag[0])
+            argument_list[0].file_reference=stdout;
+          (void) IdentifyImage(image,argument_list[0].file_reference,
+            MagickTrue);
           break;
         }
       }
@@ -8959,6 +9077,9 @@ Remote(ref,...)
     ExceptionInfo
       exception;
 
+    register long
+      i;
+
     SV
       *perl_exception,
       *reference;
@@ -8972,19 +9093,9 @@ Remote(ref,...)
     av=(AV *) reference;
     info=GetPackageInfo(aTHX_ (void *) av,(struct PackageInfo *) NULL,
       &exception);
-#if defined(XlibSpecificationRelease)
-    {
-      Display
-        *display;
-
-      register long
-        i;
-
-      display=XOpenDisplay(info->image_info->server_name);
-      for (i=1; i < items; i++)
-        XRemoteCommand(display,(char *) NULL,(char *) SvPV(ST(i),na));
-    }
-#endif
+    for (i=1; i < items; i++)
+      (void) RemoteDisplayCommand(info->image_info,(char *) NULL,(char *)
+        SvPV(ST(i),na),&exception);
     InheritPerlException(&exception,perl_exception);
     DestroyExceptionInfo(&exception);
     SvREFCNT_dec(perl_exception);    /* throw away all errors */

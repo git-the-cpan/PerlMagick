@@ -35,8 +35,8 @@ testRead( 'input_16.tiff',
 ++$test;
 print("PseudoColor (16 color + matte channel)...\n");
 testRead( 'input_16_matte.tiff',
-  '37d9cfa7d8d2b5a4224eafe0ace10a4481b9566fb0ba0f29acef95dafd87eabe',
-  '37d9cfa7d8d2b5a4224eafe0ace10a4481b9566fb0ba0f29acef95dafd87eabe',
+  'eff9f8087197689c717ee4678bc242d2973c569c20dd29bc23631f5f0d0cb058',
+  'eff9f8087197689c717ee4678bc242d2973c569c20dd29bc23631f5f0d0cb058',
   'cd4048d89248cf0a6630a9de0d924a2b047ee6bfd58c07723ed55c5564d174cd' );
 
 #

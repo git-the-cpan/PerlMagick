@@ -1,0 +1,75 @@
+/.cvsignore/1.7/Tue May  6 18:36:07 2003//
+/MasterImage_70x46.ppm/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/blob.t/1.4/Thu Nov 25 02:56:10 2004//
+/composite.t/1.6/Fri Dec 10 00:40:15 2004//
+/filter.t/1.35/Wed Feb 23 03:20:28 2005//
+/getattribute.t/1.5/Thu Nov 25 02:56:10 2004//
+/input.avs/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.bie/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.bmp/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.bmp24/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.dcx/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.dib/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.fits/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.gif/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.gif87/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.ico/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.im1/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.im24/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.im8/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.mat/1.1/Tue Mar 25 15:09:40 2003/-kb/
+/input.miff/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.mtv/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.p7/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.pcx/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.pict/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.psd/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.rle/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.sgi/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.tga/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.tim/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.viff/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.wbmp/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.wpg/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.xbm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.xpm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input.xwd/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_16.miff/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_70x46.cmyk/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_70x46.gray/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_70x46.rgb/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_70x46.rgba/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_70x46.uyvy/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_70x46.yuv/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p1.pbm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p2.pgm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p3.ppm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p4.pbm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p5.pgm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p6.ppm/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/input_p7.p7/1.1/Tue Mar 25 15:09:41 2003/-kb/
+/montage.t/1.32/Fri Dec 10 00:32:34 2004//
+/read.t/1.15/Sat Feb 12 14:56:42 2005//
+/setattribute.t/1.4/Thu Nov 25 02:56:10 2004//
+/subroutines.pl/1.6/Wed Jan 21 20:48:55 2004//
+/write.t/1.10/Thu Nov 25 02:56:10 2004//
+D/bzlib////
+D/cgm////
+D/fpx////
+D/hdf////
+D/hpgl////
+D/jbig////
+D/jng////
+D/jp2////
+D/jpeg////
+D/mpeg////
+D/png////
+D/ps////
+D/rad////
+D/reference////
+D/tiff////
+D/ttf////
+D/wmf////
+D/x////
+D/xfig////
+D/zlib////

@@ -1,0 +1,21 @@
+Revision history for Perl extension Image::Magick.
+
+1.00  Mon Apr 01 1997
+	- presumably there are no bugs.
+0.94  Wed Mar 12 1997
+	- Micellanous Montage routine fixes (thanks to
+	  bfriesen@simple.dallas.tx.us).
+0.93  Mon Mar 10 1997
+	- Fixed segmentation fault from the Montage routine.
+	- Fixed the Set routine to correctly set the page, delay, and dispose
+	  image attribute.
+0.92  Sat Mar 01 1997
+	- changed the Draw Operator parameters to make it more intutitive
+	- added non-filled rectangles, circles, and polygons to Draw operator.
+	- added Copy operator
+0.91  Thu Feb. 28 1997
+	- handles individual images of a multi-image sequence
+0.90  Mon Feb. 17 1997
+	- released Alpha version
+0.10  Fri Jan 31 1997
+	- original version; created by h2xs 1.16

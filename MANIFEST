@@ -1,0 +1,8 @@
+Changelog
+README
+MANIFEST
+Magick.pm
+Magick.xs
+Makefile.PL
+test.pl
+t.pl

@@ -406,12 +406,15 @@ static struct
     { "GaussianBlur", { {"geom", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference} } },
     { "Convolve", { {"coefficients", ArrayReference} } },
-    { "Profile", { {"filen", StringReference}, {"profile", StringReference} } },
+    { "Profile", { {"profile", StringReference}, {"filen", StringReference} } },
     { "UnsharpMask", { {"geom", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference}, {"amount", DoubleReference},
       {"threshold", DoubleReference} } },
     { "MotionBlur", { {"geom", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference}, {"angle", DoubleReference} } },
+    { "OrderedDither", },
+    { "Shave", { {"geom", StringReference}, {"width", IntegerReference},
+      {"height", IntegerReference} } },
   };
 
 /*
@@ -976,6 +979,9 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
     opacity,
     red;
 
+  ExceptionInfo
+    exception;
+
   int
     sp;
 
@@ -986,6 +992,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
   register int
     i;
 
+  GetExceptionInfo(&exception);
   switch (*attribute)
   {
     case 'A':
@@ -1231,7 +1238,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"file"))
         {
           if (info)
-            info->image_info->file=IoIFP(sv_2io(sval));
+            info->image_info->file=(FILE *) IoIFP(sv_2io(sval));
           return;
         }
       if (strEQcase(attribute,"font"))
@@ -1351,7 +1358,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
           if (info)
             {
               FormatString(info->image_info->filename,"%.1024s:",SvPV(sval,na));
-              SetImageInfo(info->image_info,True);
+              SetImageInfo(info->image_info,True,&exception);
               if (*info->image_info->magick == '\0')
                 MagickWarning(OptionWarning,"Unrecognized image format",
                   info->image_info->filename);
@@ -2175,7 +2182,7 @@ Average(ref)
     FormatString(info->image_info->filename,"average-%.*s",MaxTextExtent-9,
       ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
     (void) strcpy(image->filename,info->image_info->filename);
-    SetImageInfo(info->image_info,False);
+    SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
     XSRETURN(1);
@@ -2217,6 +2224,8 @@ BlobToImage(ref,...)
       **keep,
       **list;
 
+    ExceptionInfo
+      exception;
 
     HV
       *hv;
@@ -2291,11 +2300,9 @@ BlobToImage(ref,...)
     error_jump=(&error_jmp);
     if (setjmp(error_jmp))
       goto ReturnIt;
+    GetExceptionInfo(&exception);
     for (i=number_images=0; i < n; i++)
     {
-      ExceptionInfo
-        exception;
-
       image=BlobToImage(info->image_info,list[i],length[i],&exception);
       if (image == (Image *) NULL)
         MagickWarning(exception.severity,exception.reason,exception.description);
@@ -2420,7 +2427,7 @@ Coalesce(ref)
     FormatString(info->image_info->filename,"average-%.*s",MaxTextExtent-9,
       ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
     (void) strcpy(image->filename,info->image_info->filename);
-    SetImageInfo(info->image_info,False);
+    SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
     XSRETURN(1);
@@ -2779,7 +2786,7 @@ Flatten(ref)
     FormatString(info->image_info->filename,"average-%.*s",MaxTextExtent-9,
       ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
     (void) strcpy(image->filename,info->image_info->filename);
-    SetImageInfo(info->image_info,False);
+    SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
     XSRETURN(1);
@@ -2820,6 +2827,9 @@ Get(ref,...)
       *attribute,
       color[MaxTextExtent];
 
+    ExceptionInfo
+      exception;
+
     Image
       *image;
 
@@ -2849,6 +2859,7 @@ Get(ref,...)
         XSRETURN_EMPTY;
       }
     EXTEND(sp,items-1);
+    GetExceptionInfo(&exception);
     for (i=1; i < items; i++)
     {
       attribute=(char *) SvPV(ST(i),na);
@@ -3129,10 +3140,11 @@ Get(ref,...)
 
               if (info && (*info->image_info->magick != '\0'))
                 magick_info=(MagickInfo *)
-                  GetMagickInfo(info->image_info->magick);
+                  GetMagickInfo(info->image_info->magick,&exception);
               else
                 if (image)
-                  magick_info=(MagickInfo *) GetMagickInfo(image->magick);
+                  magick_info=(MagickInfo *)
+                    GetMagickInfo(image->magick,&image->exception);
                 if ((magick_info != (MagickInfo *) NULL) &&
                     (*magick_info->description != '\0'))
                   s=newSVpv((char *) magick_info->description,0);
@@ -3630,6 +3642,9 @@ ImageToBlob(ref,...)
     char
       filename[MaxTextExtent];
 
+    ExceptionInfo
+      exception;
+
     Image
       *image,
       *next;
@@ -3683,12 +3698,10 @@ ImageToBlob(ref,...)
       (void) strcpy(next->filename,filename);
       next->scene=scene++;
     }
-    SetImageInfo(package_info->image_info,True);
+    SetImageInfo(package_info->image_info,True,&image->exception);
+    GetExceptionInfo(&exception);
     for (next=image; next; next=next->next)
     {
-      ExceptionInfo
-        exception;
-
       length=0;
       blob=ImageToBlob(package_info->image_info,next,&length,&exception);
       if (blob == (void *) NULL)
@@ -3864,6 +3877,10 @@ Mogrify(ref,...)
     UnsharpMaskImage   = 138
     MotionBlur         = 139
     MotionBlurImage    = 140
+    OrderedDither      = 141
+    OrderedDitherImage = 142
+    Shave              = 143
+    ShaveImage         = 144
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -4080,7 +4097,8 @@ Mogrify(ref,...)
       image=next;
       rectangle_info.width=image->columns;
       rectangle_info.height=image->rows;
-      rectangle_info.x=rectangle_info.y=0;
+      rectangle_info.x=0;
+      rectangle_info.y=0;
       GetExceptionInfo(&exception);
       if ((region_info.width*region_info.height) != 0)
         {
@@ -4137,7 +4155,7 @@ Mogrify(ref,...)
             (void) QueryColorDatabase(argument_list[0].string_reference,
               &target);
           if (!attribute_flag[1])
-            argument_list[1].string_reference="100";
+            argument_list[1].string_reference=AllocateString("100");
           image=ColorizeImage(image,argument_list[1].string_reference,target,
             &exception);
           break;
@@ -4146,8 +4164,6 @@ Mogrify(ref,...)
         {
           if (first)
             {
-              rectangle_info.width=6;
-              rectangle_info.height=6;
               if (attribute_flag[0])
                 {
                   flags=ParseGeometry(argument_list[0].string_reference,
@@ -4216,7 +4232,7 @@ Mogrify(ref,...)
           if (attribute_flag[0])
             image->fuzz=argument_list[0].double_reference;
           attribute_flag[0]++;
-          argument_list[0].string_reference="0x0";
+          argument_list[0].string_reference=AllocateString("0x0");
         }
         case 8:  /* Crop */
         {
@@ -5024,7 +5040,7 @@ Mogrify(ref,...)
                     argument_list[1].double_reference,
                     argument_list[2].double_reference,
                     argument_list[3].double_reference);
-                  argument_list[0].string_reference=message;
+                  argument_list[0].string_reference=AllocateString(message);
                 }
             }
           GammaImage(image,argument_list[0].string_reference);
@@ -5098,7 +5114,7 @@ Mogrify(ref,...)
                 argument_list[2].double_reference,
                 argument_list[3].double_reference);
               if (!attribute_flag[0])
-                argument_list[0].string_reference=message;
+                argument_list[0].string_reference=AllocateString(message);
             }
           ModulateImage(image,argument_list[0].string_reference);
           break;
@@ -5174,7 +5190,6 @@ Mogrify(ref,...)
         {
           if (first)
             {
-              rectangle_info.height=rectangle_info.width=6;
               if (attribute_flag[0])
                 {
                   flags=ParseGeometry(argument_list[0].string_reference,
@@ -5402,11 +5417,11 @@ Mogrify(ref,...)
         case 68:  /* Profile */
         {
           if (!attribute_flag[0])
-            argument_list[0].string_reference=(char *) NULL;
+            argument_list[0].string_reference=AllocateString("*");
           if (!attribute_flag[1])
             argument_list[1].string_reference=(char *) NULL;
-          (void) ProfileImage(image,argument_list[1].string_reference,
-            argument_list[0].string_reference);
+          (void) ProfileImage(image,argument_list[0].string_reference,
+            argument_list[1].string_reference);
         }
         case 69:  /* UnsharpMask */
         {
@@ -5455,6 +5470,31 @@ Mogrify(ref,...)
             (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
               &radius,&sigma);
           image=MotionBlurImage(image,radius,sigma,angle,&exception);
+          break;
+        }
+        case 71:  /* OrderedDither */
+        {
+          (void) OrderedDitherImage(image);
+          break;
+        }
+        case 72:  /* Shave */
+        {
+          if (first)
+            {
+              if (attribute_flag[0])
+                {
+                  flags=ParseGeometry(argument_list[0].string_reference,
+                    &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
+                    &rectangle_info.height);
+                  if (!(flags & HeightValue))
+                    rectangle_info.height=rectangle_info.width;
+                }
+              if (attribute_flag[1])
+                rectangle_info.width=argument_list[1].int_reference;
+              if (attribute_flag[2])
+                rectangle_info.height=argument_list[2].int_reference;
+            }
+          image=ShaveImage(image,&rectangle_info,&exception);
           break;
         }
       }
@@ -5860,7 +5900,7 @@ Montage(ref,...)
     if (transparent_color.opacity != TransparentOpacity)
       for (next=image; next; next=next->next)
         TransparentImage(next,transparent_color,TransparentOpacity);
-    (void) SetImageInfo(info->image_info,False);
+    (void) SetImageInfo(info->image_info,False,&image->exception);
     for (next=image; next; next=next->next)
     {
       sv=newSViv((IV) next);
@@ -6108,7 +6148,7 @@ Mosaic(ref)
     SvREFCNT_dec(sv);
     info=GetPackageInfo((void *) av,info);
     (void) strcpy(image->filename,info->image_info->filename);
-    SetImageInfo(info->image_info,False);
+    SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
     XSRETURN(1);
@@ -6178,7 +6218,7 @@ Ping(ref,...)
         continue;
       if ((items >= 3) && strEQcase(info->image_info->filename,"file"))
         {
-          info->image_info->file=IoIFP(sv_2io(ST(i)));
+          info->image_info->file=(FILE *) IoIFP(sv_2io(ST(i)));
           continue;
         }
       image=PingImage(info->image_info,&exception);
@@ -6273,14 +6313,20 @@ QueryColor(ref,...)
 #
 #
 void
-QueryColorName(ref,...)
+QueryColorname(ref,...)
   Image::Magick ref=NO_INIT
   ALIAS:
     querycolorname = 1
   PPCODE:
   {
+    AV
+      *av;
+
     char
       message[MaxTextExtent];
+
+    Image
+      *image;
 
     PixelPacket
       target_color;
@@ -6288,15 +6334,23 @@ QueryColorName(ref,...)
     register int
       i;
 
+    struct PackageInfo
+      *info;
+
     SV
+      *reference,  /* reference is the SV* of ref=SvIV(reference) */
       *s;
 
     EXTEND(sp,items-1);
     error_list=newSVpv("",0);
+    reference=SvRV(ST(0));
+    av=(AV *) reference;
+    info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
+    image=SetupList(reference,&info,(SV ***) NULL);
     for (i=1; i < items; i++)
     {
       (void) QueryColorDatabase(SvPV(ST(i),na),&target_color);
-      if (!QueryColorName(&target_color,message))
+      if (!QueryColorname(image,&target_color,message))
         s=(&sv_undef);
       else
         s=sv_2mortal(newSVpv(message,0));
@@ -6639,7 +6693,7 @@ Read(ref,...)
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            info->image_info->file=IoIFP(sv_2io(ST(i+2)));
+            info->image_info->file=(FILE *) IoIFP(sv_2io(ST(i+2)));
             continue;
           }
         n++;
@@ -7037,7 +7091,7 @@ Write(ref,...)
       (void) strcpy(next->filename,filename);
       next->scene=scene++;
     }
-    SetImageInfo(package_info->image_info,True);
+    SetImageInfo(package_info->image_info,True,&image->exception);
     for (next=image; next; next=next->next)
     {
       status=WriteImage(package_info->image_info,next);

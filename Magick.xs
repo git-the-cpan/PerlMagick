@@ -131,6 +131,9 @@ static char *p_gravities[] = {
 static char *p_interlaces[] = {
     "Undefined", "None", "Line", "Plane", "Partition", 0 };
 
+static char *p_layers[] = {
+    "Undefined", "Red", "Green", "Blue", "Matte", 0 };
+
 static char *p_methods[] = {
     "Point", "Replace", "Floodfill", "Reset", 0 };
 
@@ -267,6 +270,7 @@ static struct routines {
     {   "Charcoal", { {"factor", P_STR} } },
     {	"Trim", },
     {	"Wave", { {"geom", P_STR}, {"ampli", P_DBL}, {"wave", P_DBL} } },
+    {	"Layer", { {"layer", p_layers} } },
 };
 
 static SV *im_er_mes;		/* Perl variable for storing messages */
@@ -2035,6 +2039,8 @@ Mogrify(ref, ...)
 		TrimImage		= 118
 		Wave			= 119
 		WaveImage		= 120
+		Layer			= 121
+		LayerImage		= 122
 		MogrifyRegion		= 666
 	PPCODE:
 	{
@@ -2864,6 +2870,11 @@ Mogrify(ref, ...)
 			image = WaveImage(image, amplitude, wavelength);
 			break;
 		    }
+		case 61:	/* Layer */
+		    if (!aflag[0])
+			alist[0].t_int = 0;
+		    LayerImage(image, alist[0].t_int);
+		    break;
 		}
 
 		if (region_image != (Image *) NULL)

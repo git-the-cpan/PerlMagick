@@ -111,9 +111,9 @@ testFilter('input.miff', 'Gamma',
 
 ++$test;
 testFilter('input.miff', 'Implode',
-  q/30/,
-  '595ba49fdaa2052c97ad604fefd2d89e',
-  'a8e08e25ea60706c37b264edfdc9bd99');
+  q/0.5/,
+  'a2d1ee8a517c20c1ec93309b9d934429',
+  'de8e208763de9f3269339d31ed1a3b7d');
 
 ++$test;
 testFilter('input.miff', 'Magnify',
@@ -164,8 +164,8 @@ testFilter('input.miff', 'Opaque',
 ++$test;
 testFilter('input.miff', 'Quantize',
   q/128/,
-  '0fc1f19d9f2928defce16394bc4e437a',
-  'd51eec15134fee4bfcdb732b6d706a17');
+  'a99fc0bbab4e180eef5ba471113daaac',
+  '04d96f4c80e589985a3d3ff86faebe23');
 
 ++$test;
 testFilter('input.miff', 'Raise',
@@ -187,8 +187,8 @@ testFilter('input.miff', 'Roll',
 ++$test;
 testFilter('input.miff', 'Rotate',
   q/10/,
-  '243796938cdf86a0b00a49651f2e2a08',
-  'e94be2d9fb268a78b31182aed1c70597');
+  'af32ccac8c0386ec2b7691bc2d0c75d3',
+  '5cd63ed0f5ee15a4dd0f6723d2c6d90e');
 
 ++$test;
 testFilter('input.miff', 'Sample',
@@ -221,13 +221,14 @@ testFilter('input.miff', 'Sharpen',
 ++$test;
 testFilter('input.miff', 'Shear',
   q/10/,
-  'd9c9229c08a62444db7ccbd487de4b16',
-  '64c4aa4cd14cfa11e357ec880bc818b8');
+  '2f12bbf14ffaa4b5f9660d54c45998e1',
+  '7e936020557a8d0ab7e89ff07fb35e54');
 
 ++$test;
 testFilter('input.miff', 'Solarize',
   q/60/,
-  '2c67db3c251365114d229d5c0a36362b');
+  'c428f5a3d50b22c03fc728ab76414b7b',
+  '7c1ca362ad2afc2eb11d61bc08e48026');
 
 ++$test;
 testFilter('input.miff', 'Swirl',

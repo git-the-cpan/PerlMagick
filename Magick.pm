@@ -23,10 +23,10 @@ require AutoLoader;
       BlobWarning CacheWarning StreamWarning FatalException
       ResourceLimitError XServerError OptionError DelegateError
       MissingDelegateError CorruptImageError FileOpenError BlobError
-      CacheError StreamError Success Transparent Opaque
+      CacheError StreamError Success Transparent Opaque MaxRGB
     );
 
-$VERSION = '5.29';
+$VERSION = '5.32';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -55,6 +55,16 @@ bootstrap Image::Magick $VERSION;
 # Preloaded methods go here.
 
 sub new
+{
+    my $this = shift;
+    my $class = ref($this) || $this || "Image::Magick";
+    my $self = [ ];
+    bless $self, $class;
+    $self->set(@_) if @_;
+    return $self;
+}
+
+sub New
 {
     my $this = shift;
     my $class = ref($this) || $this || "Image::Magick";

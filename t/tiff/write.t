@@ -33,7 +33,7 @@ testReadWrite( 'input_truecolor.tiff',
 	       'output_truecolor.tiff',
 	       q/quality=>55/,
 	       '8023e6a23a15ab1240b48ec6c085ed40',
-               '7877671f634ee3e8b3bc09bc7d2d21c8' );
+               '4d3c3e472ace236f15b27c7af6e3d464' );
 
 #
 # 3) Test monochrome image
@@ -44,4 +44,4 @@ testReadWrite(  'input_mono.tiff',
 		'output_mono.tiff',
 		q//,
 		'782b370d660dff407e883221b20ffbcc',
-		'8023e6a23a15ab1240b48ec6c085ed40' );
+		'b2cc6cad5c66aae9140c96b74437c591' );

@@ -20,16 +20,15 @@ $image->Draw(stroke=>'red',primitive=>'Ellipse',stroke=>'black',fill=>'red',
   stroke_width=>5,points=>'100,100 50,75 0,360');
 $image->Draw(primitive=>'Polygon',fill=>'none',stroke=>'black',stroke_width=>5,
   points=>'30,30 100,10 190,290 30,290');
-$image->Set(fuzz=>80);
-$image->ColorFloodfill(geometry=>'+132+62',fill=>'blue');
+$image->ColorFloodfill(geometry=>'+132+62',fill=>'blue',bordercolor=>'black');
 #
 # Draw text.
 #
-$image->Annotate(fill=>'red',geometry=>'+150+20',font=>'@Generic.ttf',
+$image->Annotate(fill=>'red',geometry=>'+150+20',font=>'Generic.ttf',
   pointsize=>18,text=>'Hello world!');
-$image->Annotate(fill=>'blue',geometry=>'+150+38',font=>'@Generic.ttf',
+$image->Annotate(fill=>'blue',geometry=>'+150+38',font=>'Generic.ttf',
   pointsize=>14,text=>'Goodbye cruel world!');
-$image->Annotate(fill=>'black',geometry=>'+280+120',font=>'@Generic.ttf',
+$image->Annotate(fill=>'black',geometry=>'+280+120',font=>'Generic.ttf',
   pointsize=>14,text=>"I'm climbing the wall!",rotate=>90.0);
 #
 # Write image.

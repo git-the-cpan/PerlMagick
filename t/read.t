@@ -24,7 +24,7 @@ testRead( 'input.bmp', 'eb4d6e084afe2835a1ad28ad7fc12ced');
 
 print("Microsoft Windows 24-bit bitmap image file ...\n");
 ++$test;
-testRead( 'input.bmp24', 'eb4d6e084afe2835a1ad28ad7fc12ced');
+testRead( 'bmp:input.bmp24', 'eb4d6e084afe2835a1ad28ad7fc12ced');
 
 print("ZSoft IBM PC multi-page Paintbrush file ...\n");
 ++$test;
@@ -144,7 +144,7 @@ print("SUN 8-bit Rasterfile ...\n");
 testRead( 'input.im8', '45e5c63ac641eda9bedd4f42a7f6b4cd');
 print("SUN TrueColor Rasterfile ...\n");
 ++$test;
-testRead( 'input.im24', 'eb4d6e084afe2835a1ad28ad7fc12ced');
+testRead( 'sun:input.im24', 'eb4d6e084afe2835a1ad28ad7fc12ced');
 
 print("Truevision Targa image file ...\n");
 ++$test;
@@ -180,7 +180,7 @@ print("TILE (Tile image with a texture) ...\n");
 # We will tile using the default image and a MIFF file
 #
 ++$test;
-testReadSized( 'TILE:input.miff', '140x92', 8, '082708402284c8dc2a17314268ad2673');
+testReadSized( 'TILE:input.miff', '140x92', 8, '4aa6f50cf3005b464eee2f0fbb9c0e46');
 
 
 print("CMYK format ...\n");
@@ -189,7 +189,7 @@ testReadSized( 'input_70x46.cmyk',
 	       '70x46',
 	       8,
 	       'eb059e77f4e55a08861e2ae8a13226c4',
-	       '840c11bcfa1e39cb97589813dc139c28');
+	       'ec3f9a01db1de264d2bb8ab4687d3645');
 
 print("GRAY format ...\n");
 ++$test;

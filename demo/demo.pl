@@ -190,6 +190,12 @@ $example->Label('Implode');
 $example->Implode(0.5);
 push(@$images,$example);
 
+print "Level...\n";
+$example=$model->Clone();
+$example->Label('Level');
+$example->Border(level=>'20%');
+push(@$images,$example);
+
 print "Median Filter...\n";
 $example=$model->Clone();
 $example->Label('Median Filter');

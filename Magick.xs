@@ -24,7 +24,7 @@
 %                             February 1997                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright (C) 2002 ImageMagick Studio, a non-profit organization dedicated %
+%  Copyright (C) 2003 ImageMagick Studio, a non-profit organization dedicated %
 %  to making software imaging solutions freely available.                     %
 %                                                                             %
 %  Permission is hereby granted, free of charge, to any person obtaining a    %
@@ -463,13 +463,16 @@ static struct
     { "Shave", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference} } },
     { "Level", { {"level", StringReference}, {"black-point", DoubleReference},
-      {"mid-point", DoubleReference}, {"white-point", DoubleReference} } },
+      {"white-point", DoubleReference}, {"gamma", DoubleReference} } },
     { "Clip", },
     { "AffineTransform", { {"affine", ArrayReference},
       {"translate", StringReference}, {"scale", StringReference},
       {"rotate", DoubleReference}, {"skewX", DoubleReference},
       {"skewY", DoubleReference} } },
     { "Compare", { {"image", ImageReference} } },
+    { "AdaptiveThreshold", { {"geometry", StringReference},
+      {"width", IntegerReference}, {"height", IntegerReference},
+      {"offset", IntegerReference} } },
   };
 
 #ifdef START_MY_CXT
@@ -582,6 +585,10 @@ static double constant(char *name,int sans)
         return(CacheError);
       if (strEQ(name,"CacheWarning"))
         return(CacheWarning);
+      if (strEQ(name,"CoderError"))
+        return(CoderError);
+      if (strEQ(name,"CoderWarning"))
+        return(CoderWarning);
       if (strEQ(name,"ConfigureError"))
         return(ConfigureError);
       if (strEQ(name,"ConfigureWarning"))
@@ -598,6 +605,10 @@ static double constant(char *name,int sans)
         return(DelegateError);
       if (strEQ(name,"DelegateWarning"))
         return(DelegateWarning);
+      if (strEQ(name,"DrawError"))
+        return(DrawError);
+      if (strEQ(name,"DrawWarning"))
+        return(DrawWarning);
       break;
     }
     case 'E':
@@ -616,6 +627,14 @@ static double constant(char *name,int sans)
         return(FileOpenWarning);
       break;
     }
+    case 'I':
+    {
+      if (strEQ(name,"ImageError"))
+        return(ImageError);
+      if (strEQ(name,"ImageWarning"))
+        return(ImageWarning);
+      break;
+    }
     case 'M':
     {
       if (strEQ(name,"MaxRGB"))
@@ -624,6 +643,10 @@ static double constant(char *name,int sans)
         return(MissingDelegateError);
       if (strEQ(name,"MissingDelegateWarning"))
         return(MissingDelegateWarning);
+      if (strEQ(name,"ModuleError"))
+        return(ModuleError);
+      if (strEQ(name,"ModuleWarning"))
+        return(ModuleWarning);
       break;
     }
     case 'O':
@@ -835,7 +858,7 @@ static Image *GetList(pTHX_ SV *reference,SV ***reference_vector,int *current,
       return(image);
     }
   }
-  (void) fprintf(stderr,"GetList: Invalid reference type %ld\n",
+  (void) fprintf(stderr,"GetList: UnrecognizedType %ld\n",
     (long) SvTYPE(reference));
   return((Image *) NULL);
 }
@@ -883,7 +906,7 @@ static struct PackageInfo *GetPackageInfo(pTHX_ void *reference,
   sv=perl_get_sv(message,(TRUE | 0x02));
   if (!sv)
     {
-      MagickError(ResourceLimitError,"Unable to create info variable",message);
+      MagickError(ResourceLimitError,"UnableToGetPackageInfo",message);
       return(package_info);
     }
   if (SvREFCNT(sv) == 0)
@@ -963,46 +986,42 @@ static int LookupStr(char **list,const char *string)
 %
 %  The format of the MagickErrorHandler routine is:
 %
-%      MagickErrorHandler(const ExceptionType error,const char *message,
+%      MagickErrorHandler(const ExceptionType severity,const char *reason,
 %        const char *qualifier)
 %
 %  A description of each parameter follows:
 %
-%    o error: Specifies the numeric error category.
+%    o severity: The severity of the exception.
 %
-%    o message: Specifies the message to display before terminating the
-%      program.
+%    o reason: The reason of the exception.
 %
-%    o qualifier: Specifies any qualifier to the message.
+%    o description: The exception description.
 %
 %
 */
-static void MagickErrorHandler(const ExceptionType error,const char *message,
-  const char *qualifier)
+static void MagickErrorHandler(const ExceptionType severity,const char *reason,
+  const char *description)
 {
   char
     text[MaxTextExtent];
 
-  int
-    error_number;
-
   dTHX;  /* perl context */
   dMY_CXT;
-  error_number=errno;
   errno=0;
-  FormatString(text,"Exception %d: %.1024s%s%.1024s%s%s%.64s%s",error,
-    (message ? message : "ERROR"),
-    qualifier ? " (" : "",qualifier ? qualifier : "",qualifier ? ")" : "",
-    error_number ? " [" : "",error_number ? strerror(error_number) : "",
-    error_number? "]" : "");
+  FormatString(text,"Exception %d: %.1024s%s%.1024s%s%s%.64s%s",severity,
+    (reason ? GetLocaleExceptionMessage(severity,reason) : "ERROR"),
+    description ? " (" : "",
+    description ? GetLocaleExceptionMessage(severity,description) : "",
+    description ? ")" : "",errno ? " [" : "",errno ? strerror(errno) : "",
+    errno? "]" : "");
   if ((MY_CXT.error_list == NULL) || (MY_CXT.error_jump == NULL))
     {
       /*
-        Set up message buffer.
+        Set up error buffer.
       */
       warn("%s",text);
       if (MY_CXT.error_jump == NULL)
-        exit((int) error % 100);
+        exit((int) severity % 100);
     }
   if (MY_CXT.error_list)
     {
@@ -1010,7 +1029,7 @@ static void MagickErrorHandler(const ExceptionType error,const char *message,
         sv_catpv(MY_CXT.error_list,"\n");
       sv_catpv(MY_CXT.error_list,text);
     }
-  longjmp(*MY_CXT.error_jump,(int) error);
+  longjmp(*MY_CXT.error_jump,(int) severity);
 }
 
 /*
@@ -1025,56 +1044,53 @@ static void MagickErrorHandler(const ExceptionType error,const char *message,
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  Method MagickWarningHandler replaces the ImageMagick warning handler.  This
-%  stores the (possibly multiple) messages in a Perl variable for later
+%  stores the (possibly multiple) reasons in a Perl variable for later
 %  returning.
 %
 %  The format of the MagickWarningHandler routine is:
 %
-%      MagickWarningHandler(const ExceptionType warning,const char *message,
-%        const char *qualifier)
+%      MagickWarningHandler(const ExceptionType severity,const char *reason,
+%        const char *description)
 %
 %  A description of each parameter follows:
 %
-%    o warning: Specifies the numeric warning category.
+%    o severity: Specifies the numeric severity category.
 %
-%    o message: Specifies the message to display before terminating the
-%      program.
+%    o reason: The reason of the exception.
 %
-%    o qualifier: Specifies any qualifier to the message.
+%    o description: Specifies any description to the reason.
 %
 %
 */
 
-static void MagickWarningHandler(const ExceptionType warning,
-  const char *message,const char *qualifier)
+static void MagickWarningHandler(const ExceptionType severity,
+  const char *reason,const char *description)
 {
   char
     text[MaxTextExtent];
 
-  int
-    error_number;
-
   dTHX;  /* perl context */
   dMY_CXT;
-  error_number=errno;
   errno=0;
-  if (!message)
+  if (!reason)
     return;
-  FormatString(text,"Warning %d: %.1024s%s%.1024s%s%s%.64s%s",warning,
-    message,qualifier ? " (" : "",qualifier ? qualifier : "",
-    qualifier? ")" : "",error_number ? " [" : "",
-    error_number ? strerror(error_number) : "",error_number ? "]" : "");
+  FormatString(text,"Exception %d: %.1024s%s%.1024s%s%s%.64s%s",severity,
+    (reason ? GetLocaleExceptionMessage(severity,reason) : "WARNING"),
+    description ? " (" : "",
+    description ? GetLocaleExceptionMessage(severity,description) : "",
+    description ? ")" : "",errno ? " [" : "",errno ? strerror(errno) : "",
+    errno? "]" : "");
   if (MY_CXT.error_list == NULL)
     {
       /*
-        Set up message buffer.
+        Set up reason buffer.
       */
       warn("%s",text);
       if (MY_CXT.error_list == NULL)
         return;
     }
   if (SvCUR(MY_CXT.error_list))
-    sv_catpv(MY_CXT.error_list,"\n");  /* add \n separator between messages */
+    sv_catpv(MY_CXT.error_list,"\n");  /* add \n separator between reasons */
   sv_catpv(MY_CXT.error_list,text);
 }
 
@@ -1111,11 +1127,8 @@ static void MagickWarningHandler(const ExceptionType warning,
 static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
   char *attribute,SV *sval)
 {
-  double
-    blue,
-    green,
-    opacity,
-    red;
+  DoublePixelPacket
+    pixel;
 
   ExceptionInfo
     exception;
@@ -1142,7 +1155,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid adjoin type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1154,7 +1167,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid antialias type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1170,7 +1183,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             (void) CloneString(&info->image_info->authenticate,SvPV(sval,na));
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'B':
@@ -1207,7 +1220,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             image->border_color=target_color;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'C':
@@ -1248,17 +1261,17 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             else
               {
                 color=image->colormap+i;
-                red=color->red;
-                green=color->green;
-                blue=color->blue;
-                (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf",&red,
-                  &green,&blue);
-                color->red=(Quantum)
-                  ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red+0.5);
-                color->green=(Quantum)
-                  ((green < 0) ? 0 : (green > MaxRGB) ? MaxRGB : green+0.5);
-                color->blue=(Quantum)
-                  ((blue < 0) ? 0 : (blue > MaxRGB) ? MaxRGB : blue+0.5);
+                pixel.red=color->red;
+                pixel.green=color->green;
+                pixel.blue=color->blue;
+                (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf",&pixel.red,
+                  &pixel.green,&pixel.blue);
+                color->red=(Quantum) ((pixel.red < 0) ? 0 :
+                  (pixel.red > MaxRGB) ? MaxRGB : pixel.red+0.5);
+                color->green=(Quantum) ((pixel.green < 0) ? 0 :
+                  (pixel.green > MaxRGB) ? MaxRGB : pixel.green+0.5);
+                color->blue=(Quantum) ((pixel.blue < 0) ? 0 :
+                  (pixel.blue > MaxRGB) ? MaxRGB : pixel.blue+0.5);
               }
           }
           return;
@@ -1269,7 +1282,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid colorspace type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedColorspace",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1284,7 +1297,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid compression type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedImageCompression",
+                SvPV(sval,na));
               return;
             }
           if (info)
@@ -1293,7 +1307,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             image->compression=(CompressionType) sp;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'D':
@@ -1319,8 +1333,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         {
           if (!IsGeometry(SvPV(sval,na)))
             {
-              MagickError(OptionError,"Invalid geometry on density",
-                SvPV(sval,na));
+              MagickError(OptionError,"MissingGeometry",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1333,8 +1346,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             int
               count;
 
-            count=sscanf(info->image_info->density,"%lfx%lf",
-              &image->x_resolution,&image->y_resolution);
+            count=sscanf(info->image_info->density,"%lfx%lf",&image->x_resolution,
+              &image->y_resolution);
             if (count != 2)
               image->y_resolution=image->x_resolution;
           }
@@ -1355,7 +1368,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             sp=SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid disposal type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedDisposeMethod",
+                SvPV(sval,na));
               return;
             }
           for ( ; image; image=image->next)
@@ -1370,7 +1384,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
                 SvIV(sval);
               if (sp < 0)
                 {
-                  MagickError(OptionError,"Invalid dither type",SvPV(sval,na));
+                  MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
                   return;
                 }
               info->image_info->dither=sp != 0;
@@ -1387,7 +1401,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             }
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'E':
@@ -1398,7 +1412,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(EndianTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid endian value",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedEndianType",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1407,7 +1421,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             image->endian=(EndianType) sp;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'F':
@@ -1425,7 +1439,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"file") == 0)
         {
           if (info)
-            info->image_info->file=(FILE *) IoIFP(sv_2io(sval));
+            info->image_info->file=PerlIO_findFILE(IoIFP(sv_2io(sval)));
           return;
         }
       if (LocaleCompare(attribute,"fill") == 0)
@@ -1456,7 +1470,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             image->fuzz=SvNV(sval);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'G':
@@ -1474,7 +1488,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid gravity type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedGravityType",SvPV(sval,na));
               return;
             }
           for ( ; image; image=image->next)
@@ -1489,7 +1503,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               &image->chromaticity.green_primary.y);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'I':
@@ -1503,8 +1517,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           IndexPacket
             *indexes;
 
-          PixelPacket
-            *pixel;
+          register PixelPacket
+            *p;
 
           for ( ; image; image=image->next)
           {
@@ -1513,9 +1527,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             x=0;
             y=0;
             (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
-            pixel=GetImagePixels(image,(long) (x % image->columns),
+            p=GetImagePixels(image,(long) (x % image->columns),
               (long) (y % image->rows),1,1);
-            if (pixel == (PixelPacket *) NULL)
+            if (p == (PixelPacket *) NULL)
               break;
             indexes=GetIndexes(image);
             (void) sscanf(SvPV(sval,na),"%ld",&index);
@@ -1537,7 +1551,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(InterlaceTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid interlace value",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedInterlaceType",
+                SvPV(sval,na));
               return;
             }
           if (info)
@@ -1546,7 +1561,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             image->interlace=(InterlaceType) sp;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'L':
@@ -1554,7 +1569,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"loop") == 0)
         goto iterations;
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'M':
@@ -1571,7 +1586,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               FormatString(info->image_info->filename,"%.1024s:",SvPV(sval,na));
               SetImageInfo(info->image_info,True,&exception);
               if (*info->image_info->magick == '\0')
-                MagickError(OptionError,"Unrecognized image format",
+                MagickError(OptionError,"UnrecognizedImageFormat",
                   info->image_info->filename);
               else
                 for ( ; image; image=image->next)
@@ -1601,7 +1616,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid matte type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           for ( ; image; image=image->next)
@@ -1618,14 +1633,14 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid monochrome type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           if (info)
             info->image_info->monochrome=sp != 0;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'P':
@@ -1653,38 +1668,38 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleNCompare(attribute,"pixel",5) == 0)
         {
-          PixelPacket
-            *pixel;
+          register PixelPacket
+            *p;
 
           for ( ; image; image=image->next)
           {
             x=0;
             y=0;
             (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
-            pixel=GetImagePixels(image,(long) (x % image->columns),
+            p=GetImagePixels(image,(long) (x % image->columns),
               (long) (y % image->rows),1,1);
-            if (pixel == (PixelPacket *) NULL)
+            if (p == (PixelPacket *) NULL)
               break;
             SetImageType(image,TrueColorType);
             if (strchr(SvPV(sval,na),',') == 0)
-              QueryColorDatabase(SvPV(sval,na),pixel,
+              QueryColorDatabase(SvPV(sval,na),p,
                 image ? &image->exception : &exception);
             else
               {
-                red=pixel->red;
-                green=pixel->green;
-                blue=pixel->blue;
-                opacity=pixel->opacity;
+                pixel.red=p->red;
+                pixel.green=p->green;
+                pixel.blue=p->blue;
+                pixel.opacity=p->opacity;
                 (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf%*[,/]%lf",
-                  &red,&green,&blue,&opacity);
-                pixel->red=(Quantum)
-                  ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red+0.5);
-                pixel->green=(Quantum)
-                  ((green < 0) ? 0 : (green > MaxRGB) ? MaxRGB : green+0.5);
-                pixel->blue=(Quantum)
-                  ((blue < 0) ? 0 : (blue > MaxRGB) ? MaxRGB : blue+0.5);
-                pixel->opacity=(Quantum) ((opacity < 0) ? 0 :
-                  (opacity > MaxRGB) ? MaxRGB : opacity+0.5);
+                  &pixel.red,&pixel.green,&pixel.blue,&pixel.opacity);
+                p->red=(Quantum) ((pixel.red < 0) ? 0 :
+                  (pixel.red > MaxRGB) ? MaxRGB : pixel.red+0.5);
+                p->green=(Quantum) ((pixel.green < 0) ? 0 :
+                  (pixel.green > MaxRGB) ? MaxRGB : pixel.green+0.5);
+                p->blue=(Quantum) ((pixel.blue < 0) ? 0 :
+                  (pixel.blue > MaxRGB) ? MaxRGB : pixel.blue+0.5);
+                p->opacity=(Quantum) ((pixel.opacity < 0) ? 0 :
+                  (pixel.opacity > MaxRGB) ? MaxRGB : pixel.opacity+0.5);
               }
             (void) SyncImagePixels(image);
           }
@@ -1704,14 +1719,14 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(PreviewTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid preview type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           if (info)
             info->image_info->preview_type=(PreviewType) sp;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'Q':
@@ -1723,7 +1738,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             info->image_info->quality=SvIV(sval);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'R':
@@ -1742,14 +1757,14 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(IntentTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid rendering intent",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedIntentType",SvPV(sval,na));
               return;
             }
          for ( ; image; image=image->next)
            image->rendering_intent=(RenderingIntent) sp;
          return;
        }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'S':
@@ -1759,8 +1774,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         {
           if (!IsGeometry(SvPV(sval,na)))
             {
-              MagickError(OptionError,"Invalid geometry on sample factor",
-                SvPV(sval,na));
+              MagickError(OptionError,"MissingGeometry",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1794,8 +1808,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             {
               if (!IsGeometry(SvPV(sval,na)))
                 {
-                  MagickError(OptionError,"Invalid geometry on size",
-                    SvPV(sval,na));
+                  MagickError(OptionError,"MissingGeometry",SvPV(sval,na));
                   return;
                 }
               (void) CloneString(&info->image_info->size,SvPV(sval,na));
@@ -1809,7 +1822,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               image ? &image->exception : &exception);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'T':
@@ -1832,7 +1845,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(ImageTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid image type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1841,19 +1854,19 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             SetImageType(image,(ImageType) sp);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'U':
     case 'u':
     {
-      if (LocaleCompare(attribute,"unit") == 0)
+      if (LocaleCompare(attribute,"units") == 0)
         {
           sp=SvPOK(sval) ? LookupStr(ResolutionTypes,SvPV(sval,na)) :
             SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid resolution unit",SvPV(sval,na));
+              MagickError(OptionError,"MissingType",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1862,7 +1875,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             image->units=(ResolutionType) sp;
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'V':
@@ -1873,7 +1886,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid verbose type",SvPV(sval,na));
+              MagickError(OptionError,"UnrecognizedType",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1892,7 +1905,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid virtual pixel method",
+              MagickError(OptionError,"UnrecognizedVirtualPixelMethod",
                 SvPV(sval,na));
               return;
             }
@@ -1900,7 +1913,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             SetImageVirtualPixelMethod(image,(VirtualPixelMethod) sp);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     case 'W':
@@ -1914,18 +1927,18 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               &image->chromaticity.white_point.y);
           return;
         }
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
     default:
     {
-      MagickError(OptionError,"Invalid attribute",attribute);
+      MagickError(OptionError,"UnrecognizedAttribute",attribute);
       break;
     }
   }
   DestroyExceptionInfo(&exception);
   if (image == (Image *) NULL)
-    MagickError(OptionError,"Invalid attribute",attribute);
+    MagickError(OptionError,"UnrecognizedAttribute",attribute);
   for ( ; image; image=image->next)
     (void) SetImageAttribute(image,attribute,SvPV(sval,na));
 }
@@ -2108,7 +2121,7 @@ Animate(ref,...)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2119,7 +2132,7 @@ Animate(ref,...)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to animate",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     package_info=ClonePackageInfo(info);
@@ -2135,7 +2148,8 @@ Animate(ref,...)
   MethodException:
     if (package_info)
       DestroyPackageInfo(package_info);
-    sv_setiv(MY_CXT.error_list,(IV) (status ? status : SvCUR(MY_CXT.error_list) != 0));
+    sv_setiv(MY_CXT.error_list,(IV)
+      (status ? status : SvCUR(MY_CXT.error_list) != 0));
     SvPOK_on(MY_CXT.error_list);
     ST(0)=sv_2mortal(MY_CXT.error_list);
     MY_CXT.error_list=NULL;
@@ -2209,7 +2223,7 @@ Append(ref,...)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2224,7 +2238,7 @@ Append(ref,...)
     image=SetupList(aTHX_ reference,&info,&reference_vector);
     if (!image)
       {
-        MagickError(OptionError,"No images to append",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     info=GetPackageInfo(aTHX_ (void *) av,info);
@@ -2245,17 +2259,17 @@ Append(ref,...)
               stack=LookupStr(BooleanTypes,SvPV(ST(i),na));
               if (stack < 0)
                 {
-                  MagickError(OptionError,"Invalid stack type",SvPV(ST(i),na));
+                  MagickError(OptionError,"UnrecognizedType",SvPV(ST(i),na));
                   return;
                 }
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         default:
         {
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
       }
@@ -2343,7 +2357,7 @@ Average(ref)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2355,7 +2369,7 @@ Average(ref)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to average",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     GetExceptionInfo(&exception);
@@ -2463,14 +2477,14 @@ BlobToImage(ref,...)
     length=(STRLEN *) AcquireMemory((ac+1)*sizeof(length));
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto ReturnIt;
       }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
     if (SvTYPE(reference) != SVt_PVAV)
       {
-        MagickError(OptionError,"Unable to read into a single image",NULL);
+        MagickError(OptionError,"ReferenceIsNotMyType",NULL);
         goto ReturnIt;
       }
     av=(AV *) reference;
@@ -2478,7 +2492,7 @@ BlobToImage(ref,...)
     n=1;
     if (items <= 1)
       {
-        MagickError(OptionError,"no blobs to convert",NULL);
+        MagickError(OptionError,"NoBlobDefined",NULL);
         goto ReturnIt;
       }
     for (n=0, i=0; i < ac; i++)
@@ -2526,6 +2540,7 @@ BlobToImage(ref,...)
 
   ReturnIt:
     LiberateMemory((void **) &list);
+    LiberateMemory((void **) &length);
     sv_setiv(MY_CXT.error_list,(IV) number_images);
     SvPOK_on(MY_CXT.error_list);
     ST(0)=sv_2mortal(MY_CXT.error_list);
@@ -2558,9 +2573,6 @@ Coalesce(ref)
     AV
       *av;
 
-    char
-      *p;
-
     ExceptionInfo
       exception;
 
@@ -2592,7 +2604,7 @@ Coalesce(ref)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2607,7 +2619,7 @@ Coalesce(ref)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to coalesce",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     GetExceptionInfo(&exception);
@@ -2694,7 +2706,7 @@ Copy(ref)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2706,7 +2718,7 @@ Copy(ref)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (image == (Image *) NULL)
       {
-        MagickError(OptionError,"No images to clone",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     /*
@@ -2762,7 +2774,7 @@ DESTROY(ref)
       *reference;
 
     if (!sv_isobject(ST(0)))
-      croak("reference is not my type");
+      croak("ReferenceIsNotMyType");
     reference=SvRV(ST(0));
     switch (SvTYPE(reference))
     {
@@ -2861,7 +2873,7 @@ Display(ref,...)
     package_info=(struct PackageInfo *) NULL;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2872,7 +2884,7 @@ Display(ref,...)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (image == (Image *) NULL)
       {
-        MagickError(OptionError,"No images to display",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     package_info=ClonePackageInfo(info);
@@ -2951,7 +2963,7 @@ Flatten(ref)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -2963,7 +2975,7 @@ Flatten(ref)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to flatten",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     GetExceptionInfo(&exception);
@@ -3047,14 +3059,14 @@ Get(ref,...)
 
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         XSRETURN_EMPTY;
       }
     reference=SvRV(ST(0));
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image && !info)
       {
-        MagickError(OptionError,"Nothing to get attributes from",NULL);
+        MagickError(OptionError,"ReferenceIsNotMyType",NULL);
         XSRETURN_EMPTY;
       }
     EXTEND(sp,items);
@@ -3088,7 +3100,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'B':
@@ -3161,7 +3173,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'C':
@@ -3268,7 +3280,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'D':
@@ -3339,7 +3351,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'E':
@@ -3364,7 +3376,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'F':
@@ -3442,7 +3454,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'G':
@@ -3484,7 +3496,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'H':
@@ -3497,7 +3509,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'I':
@@ -3573,7 +3585,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'L':
@@ -3599,7 +3611,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'M':
@@ -3664,7 +3676,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'P':
@@ -3732,7 +3744,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'Q':
@@ -3745,7 +3757,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'R':
@@ -3780,7 +3792,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'S':
@@ -3842,7 +3854,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'T':
@@ -3883,7 +3895,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'U':
@@ -3905,7 +3917,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'V':
@@ -3939,7 +3951,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'W':
@@ -3962,7 +3974,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'X':
@@ -3975,7 +3987,7 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'Y':
@@ -3988,22 +4000,22 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         default:
         {
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
       }
       if (image == (Image *) NULL)
-        MagickError(OptionError,"Invalid attribute",attribute);
+        MagickError(OptionError,"UnrecognizedAttribute",attribute);
       else
         {
           image_attribute=GetImageAttribute(image,attribute);
           if (image_attribute == (ImageAttribute *) NULL)
-            MagickError(OptionError,"Invalid attribute",attribute);
+            MagickError(OptionError,"UnrecognizedAttribute",attribute);
           else
             {
               s=newSVpv(image_attribute->value,0);
@@ -4072,7 +4084,7 @@ ImageToBlob(ref,...)
     package_info=(struct PackageInfo *) NULL;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -4082,7 +4094,7 @@ ImageToBlob(ref,...)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to blob",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     package_info=ClonePackageInfo(info);
@@ -4096,7 +4108,7 @@ ImageToBlob(ref,...)
       next->scene=scene++;
     }
     SetImageInfo(package_info->image_info,True,&image->exception);
-    EXTEND(sp,(long) GetImageListSize(image));
+    EXTEND(sp,(long) GetImageListLength(image));
     GetExceptionInfo(&exception);
     for ( ; image; image=image->next)
     {
@@ -4287,6 +4299,8 @@ Mogrify(ref,...)
     AffineTransformImage = 150
     Compare            = 151
     CompareImage       = 152
+    AdaptiveThreshold  = 153
+    AdaptiveThresholdImage = 154
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -4296,7 +4310,6 @@ Mogrify(ref,...)
 
     char
       *attribute,
-      absolute_geometry[MaxTextExtent],
       attribute_flag[MaxArguments],
       message[MaxTextExtent],
       *value;
@@ -4361,7 +4374,7 @@ Mogrify(ref,...)
     base=2;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto ReturnIt;
       }
     reference=SvRV(ST(0));
@@ -4396,7 +4409,7 @@ Mogrify(ref,...)
         {
           if (rp >= EndOf(Methods))
             {
-              MagickError(OptionError,"Invalid magick method",attribute);
+              MagickError(OptionError,"UnrecognizedPerlMagickMethod",attribute);
               goto ReturnIt;
             }
           if (strEQcase(attribute,rp->name))
@@ -4407,7 +4420,7 @@ Mogrify(ref,...)
       }
     if (!image)
       {
-        MagickError(OptionError,"no images to mogrify",attribute);
+        MagickError(OptionError,"NoImagesDefined",attribute);
         goto ReturnIt;
       }
     Zero(&argument_list,NumberOf(argument_list),struct ArgumentList);
@@ -4448,7 +4461,7 @@ Mogrify(ref,...)
         }
       if (pp == (Arguments *) NULL)
         {
-          MagickError(OptionError,"Unrecognized option",attribute);
+          MagickError(OptionError,"UnrecognizedOption",attribute);
           goto continue_outer_loop;
         }
       al=(&argument_list[pp-rp->arguments]);
@@ -4467,7 +4480,7 @@ Mogrify(ref,...)
                     !(al->image_reference=SetupList(aTHX_ SvRV(sv),
                      (struct PackageInfo **) NULL,(SV ***) NULL)))
                   {
-                    MagickError(OptionError,"Reference is not my type",
+                    MagickError(OptionError,"ReferenceIsNotMyType",
                       PackageName);
                     goto ReturnIt;
                   }
@@ -4517,7 +4530,7 @@ Mogrify(ref,...)
         default:
         {
           FormatString(message,"%d",(long) ix);
-          MagickError(OptionError,"Routine value out of range",message);
+          MagickError(OptionError,"UnrecognizedPerlMagickMethod",message);
           goto ReturnIt;
         }
         case 1:  /* Comment */
@@ -4564,8 +4577,12 @@ Mogrify(ref,...)
         case 5:  /* Border */
         {
           if (attribute_flag[0])
-            flags=GetImageGeometry(image,argument_list[0].string_reference,
-              False,&geometry);
+            {
+              flags=GetImageGeometry(image,argument_list[0].string_reference,
+                False,&geometry);
+              if (!(flags & HeightValue))
+                geometry.height=geometry.width;
+            }
           if (attribute_flag[1])
             geometry.width=argument_list[1].int_reference;
           if (attribute_flag[2])
@@ -4594,8 +4611,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             sigma=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&radius,
+              &sigma);
           image=BlurImage(image,radius,sigma,&exception);
           break;
         }
@@ -4660,8 +4677,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             sigma=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&radius,
+              &sigma);
           image=EmbossImage(image,radius,sigma,&exception);
           break;
         }
@@ -4834,8 +4851,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             sigma=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&radius,
+              &sigma);
           image=SharpenImage(image,radius,sigma,&exception);
           break;
         }
@@ -5103,7 +5120,7 @@ Mogrify(ref,...)
             composite_image=argument_list[0].image_reference;
           else
             {
-              MagickError(OptionError,"Missing image in composite",NULL);
+              MagickError(OptionError,"CompositeImageRequired",NULL);
               goto ReturnIt;
             }
           if (attribute_flag[1])
@@ -5413,7 +5430,7 @@ Mogrify(ref,...)
             argument_list[1].int_reference=1;
           if (!attribute_flag[0])
             {
-              MagickError(OptionError,"Missing image in map",NULL);
+              MagickError(OptionError,"MapImageRequired",NULL);
               goto ReturnIt;
             }
           (void) MapImages(image,argument_list[0].image_reference,
@@ -5632,7 +5649,7 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].string_reference="50%";
-          ChannelThresholdImage(image,argument_list[0].string_reference);
+          ThresholdImageChannel(image,argument_list[0].string_reference);
           break;
         }
         case 58:  /* Charcoal */
@@ -5648,8 +5665,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             sigma=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&radius,
+              &sigma);
           image=CharcoalImage(image,radius,sigma,&exception);
           break;
         }
@@ -5675,8 +5692,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             wavelength=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &amplitude,&wavelength);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&amplitude,
+              &wavelength);
           image=WaveImage(image,amplitude,wavelength,&exception);
           break;
         }
@@ -5691,7 +5708,7 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             {
-              MagickError(OptionError,"Missing image in stereo",NULL);
+              MagickError(OptionError,"StereoImageRequired",NULL);
               goto ReturnIt;
             }
           image=StereoImage(image,argument_list[0].image_reference,&exception);
@@ -5703,7 +5720,7 @@ Mogrify(ref,...)
             argument_list[1].int_reference=0;
           if (!attribute_flag[0])
             {
-              MagickError(OptionError,"Missing image in stegano",NULL);
+              MagickError(OptionError,"SteganoImageRequired",NULL);
               goto ReturnIt;
             }
           image->offset=argument_list[1].int_reference;
@@ -5728,8 +5745,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             sigma=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&radius,
+              &sigma);
           image=GaussianBlurImage(image,radius,sigma,&exception);
           break;
         }
@@ -5789,8 +5806,8 @@ Mogrify(ref,...)
           if (attribute_flag[4])
             threshold=argument_list[4].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf%lf%lf",
+              &radius,&sigma,&amount,&threshold);
           image=UnsharpMaskImage(image,radius,sigma,amount,threshold,
             &exception);
           break;
@@ -5812,8 +5829,8 @@ Mogrify(ref,...)
           if (attribute_flag[3])
             angle=argument_list[3].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &radius,&sigma);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&radius,
+              &sigma);
           image=MotionBlurImage(image,radius,sigma,angle,&exception);
           break;
         }
@@ -5839,9 +5856,9 @@ Mogrify(ref,...)
           if (!attribute_flag[1])
             argument_list[1].double_reference=0.0;
           if (!attribute_flag[2])
-            argument_list[2].double_reference=1.0;
+            argument_list[2].double_reference=MaxRGB;
           if (!attribute_flag[3])
-            argument_list[3].double_reference=MaxRGB;
+            argument_list[3].double_reference=1.0;
           if (!attribute_flag[0])
             {
               FormatString(message,"%g,%g,%g",
@@ -5961,10 +5978,38 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             {
-              MagickError(OptionError,"Missing reference image",NULL);
+              MagickError(OptionError,"ReferenceImageRequired",NULL);
               goto ReturnIt;
             }
           (void) IsImagesEqual(image,argument_list[0].image_reference);
+          break;
+        }
+        case 77:  /* AdaptiveThreshold */
+        {
+          long
+            offset;
+
+          unsigned long
+            height,
+            width;
+
+          height=3;
+          width=3;
+          offset=0;
+          if (attribute_flag[1])
+            width=argument_list[1].int_reference;
+          if (attribute_flag[2])
+            height=argument_list[2].int_reference;
+          if (attribute_flag[3])
+            offset=argument_list[3].int_reference;;
+          if (attribute_flag[0])
+            {
+              (void) sscanf(argument_list[0].string_reference,"%lux%lu%lu",
+                &width,&height,&offset);
+               if (strchr(argument_list[0].string_reference,'%') != (char *) NULL)
+                 offset*=(double) MaxRGB/100.0;
+            }
+          image=AdaptiveThresholdImage(image,width,height,offset,&exception);
           break;
         }
       }
@@ -6085,7 +6130,7 @@ Montage(ref,...)
     attribute=NULL;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -6100,7 +6145,7 @@ Montage(ref,...)
     image=SetupList(aTHX_ reference,&info,&reference_vector);
     if (!image)
       {
-        MagickError(OptionError,"No images to montage",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     /*
@@ -6135,7 +6180,7 @@ Montage(ref,...)
               montage_info->border_width=SvIV(ST(i));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'C':
@@ -6147,7 +6192,7 @@ Montage(ref,...)
                 LookupStr(CompositeTypes,SvPV(ST(i),na));
               if (sp < 0)
                 {
-                  MagickError(OptionError,"Invalid composite type",
+                  MagickError(OptionError,"UnrecognizedType",
                     SvPV(ST(i),na));
                   break;
                 }
@@ -6155,7 +6200,7 @@ Montage(ref,...)
                 next->compose=(CompositeOperator) sp;
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'F':
@@ -6180,7 +6225,7 @@ Montage(ref,...)
               p=SvPV(ST(i),na);
               if (!IsGeometry(p))
                 {
-                  MagickError(OptionError,"Invalid geometry on frame",p);
+                  MagickError(OptionError,"MissingGeometry",p);
                   break;
                 }
               (void) CloneString(&montage_info->frame,p);
@@ -6188,7 +6233,7 @@ Montage(ref,...)
                 montage_info->frame=(char *) NULL;
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'G':
@@ -6202,7 +6247,7 @@ Montage(ref,...)
               p=SvPV(ST(i),na);
               if (!IsGeometry(p))
                 {
-                  MagickError(OptionError,"Invalid geometry on geometry",p);
+                  MagickError(OptionError,"MissingGeometry",p);
                   break;
                 }
              (void) CloneString(&montage_info->geometry,p);
@@ -6219,7 +6264,7 @@ Montage(ref,...)
                LookupStr(GravityTypes,SvPV(ST(i),na));
              if (in < 0)
                {
-                 MagickError(OptionError,"Invalid gravity type",SvPV(ST(i),na));
+                 MagickError(OptionError,"UnrecognizedType",SvPV(ST(i),na));
                  return;
                }
              montage_info->gravity=(GravityType) in;
@@ -6227,7 +6272,7 @@ Montage(ref,...)
                next->gravity=(GravityType) in;
              break;
            }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'L':
@@ -6239,7 +6284,7 @@ Montage(ref,...)
                 (void) SetImageAttribute(next,"label",SvPV(ST(i),na));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'M':
@@ -6262,7 +6307,8 @@ Montage(ref,...)
               {
                 default:
                 {
-                  MagickError(OptionError,"Invalid mode value",SvPV(ST(i),na));
+                  MagickError(OptionError,"UnrecognizedModeType",
+                    SvPV(ST(i),na));
                   break;
                 }
                 case FrameMode:
@@ -6288,7 +6334,7 @@ Montage(ref,...)
               }
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'P':
@@ -6299,7 +6345,7 @@ Montage(ref,...)
               montage_info->pointsize=SvIV(ST(i));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'S':
@@ -6311,7 +6357,7 @@ Montage(ref,...)
                 LookupStr(BooleanTypes,SvPV(ST(i),na));
               if (sp < 0)
                 {
-                  MagickError(OptionError,"Invalid shadow type",SvPV(ST(i),na));
+                  MagickError(OptionError,"UnrecognizedType",SvPV(ST(i),na));
                   break;
                 }
              montage_info->shadow=sp != 0;
@@ -6323,7 +6369,7 @@ Montage(ref,...)
                 &exception);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'T':
@@ -6339,7 +6385,7 @@ Montage(ref,...)
               char *p=SvPV(ST(i),na);
               if (!IsGeometry(p))
                 {
-                  MagickError(OptionError,"Invalid geometry on tile",p);
+                  MagickError(OptionError,"MissingGeometry",p);
                   break;
                 }
               (void) CloneString(&montage_info->tile,p);
@@ -6361,12 +6407,12 @@ Montage(ref,...)
                 TransparentImage(next,transparent_color,TransparentOpacity);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         default:
         {
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
       }
@@ -6467,7 +6513,7 @@ Morph(ref,...)
     attribute=NULL;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -6482,7 +6528,7 @@ Morph(ref,...)
     image=SetupList(aTHX_ reference,&info,&reference_vector);
     if (!image)
       {
-        MagickError(OptionError,"No images to morph",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     info=GetPackageInfo(aTHX_ (void *) av,info);
@@ -6503,12 +6549,12 @@ Morph(ref,...)
               number_frames=SvIV(ST(i));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         default:
         {
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
       }
@@ -6593,7 +6639,7 @@ Mosaic(ref)
     status=0;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -6605,7 +6651,7 @@ Mosaic(ref)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to mosaic",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     GetExceptionInfo(&exception);
@@ -6677,7 +6723,8 @@ Ping(ref,...)
       *hv;
 
     Image
-      *image;
+      *image,
+      *next;
 
     int
       ac,
@@ -6692,14 +6739,15 @@ Ping(ref,...)
     register int
       i;
 
+    STRLEN
+      *length;
+
     struct PackageInfo
       *info,
       *package_info;
 
     SV
-      *reference,
-      *rv,
-      *sv;
+      *reference;
 
     unsigned int
       status;
@@ -6712,8 +6760,19 @@ Ping(ref,...)
     package_info=(struct PackageInfo *) NULL;
     ac=(items < 2) ? 1 : items-1;
     list=(char **) AcquireMemory((ac+1)*sizeof(*list));
+    length=(STRLEN *) AcquireMemory((ac+1)*sizeof(length));
+    if (!sv_isobject(ST(0)))
+      {
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
+        goto ReturnIt;
+      }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
+    if (SvTYPE(reference) != SVt_PVAV)
+      {
+        MagickError(OptionError,"ReferenceIsNotMyType",NULL);
+        goto ReturnIt;
+      }
     av=(AV *) reference;
     info=GetPackageInfo(aTHX_ (void *) av,(struct PackageInfo *) NULL);
     package_info=ClonePackageInfo(info);
@@ -6724,22 +6783,19 @@ Ping(ref,...)
     else
       for (n=0, i=0; i < ac; i++)
       {
-        list[n]=(char *) SvPV(ST(i+1),na);
-        if ((items >= 3) &&
-            strEQcase(package_info->image_info->filename,"blob"))
+        list[n]=(char *) SvPV(ST(i+1),length[n]);
+        if ((items >= 3) && strEQcase(list[n],"blob"))
           {
-            STRLEN
-              length;
-
-            i++;
-            package_info->image_info->blob=(void *) (SvPV(ST(i),length));
-            package_info->image_info->length=length;
+            package_info->image_info->blob=(void *) (SvPV(ST(i+2),length[n]));
+            package_info->image_info->length=length[n];
+            continue;
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            package_info->image_info->file=(FILE *) IoIFP(sv_2io(ST(i+2)));
+            package_info->image_info->file=
+              PerlIO_findFILE(IoIFP(sv_2io(ST(i+2))));
             continue;
           }
         n++;
@@ -6752,7 +6808,7 @@ Ping(ref,...)
     status=ExpandFilenames(&n,&list);
     if (status == False)
       {
-        MagickError(ResourceLimitError,"Memory allocation failed",NULL);
+        MagickError(ResourceLimitError,"MemoryAllocationFailed",NULL);
         goto ReturnIt;
       }
     count=0;
@@ -6764,17 +6820,17 @@ Ping(ref,...)
       image=PingImage(package_info->image_info,&exception);
       if (exception.severity != UndefinedException)
         CatchException(&exception);
-      count+=GetImageListSize(image);
+      count+=GetImageListLength(image);
       EXTEND(sp,4*count);
-      for ( ; image; image=image->next)
+      for (next=image; next; next=next->next)
       {
-        FormatString(message,"%u",image->columns);
+        FormatString(message,"%u",next->columns);
         PUSHs(sv_2mortal(newSVpv(message,0)));
-        FormatString(message,"%u",image->rows);
+        FormatString(message,"%u",next->rows);
         PUSHs(sv_2mortal(newSVpv(message,0)));
-        FormatString(message,"%lu",(unsigned long) GetBlobSize(image));
+        FormatString(message,"%lu",(unsigned long) GetBlobSize(next));
         PUSHs(sv_2mortal(newSVpv(message,0)));
-        PUSHs(sv_2mortal(newSVpv(image->magick,0)));
+        PUSHs(sv_2mortal(newSVpv(next->magick,0)));
       }
       DestroyImageList(image);
     }
@@ -6795,6 +6851,7 @@ Ping(ref,...)
     if (package_info)
       DestroyPackageInfo(package_info);
     LiberateMemory((void **) &list);
+    LiberateMemory((void **) &length);
     SvREFCNT_dec(MY_CXT.error_list);  /* throw away all errors */
     MY_CXT.error_list=NULL;
   }
@@ -7112,7 +7169,7 @@ QueryFontMetrics(ref,...)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No image to query",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     draw_info=CloneDrawInfo(info->image_info,info->draw_info);
@@ -7135,7 +7192,7 @@ QueryFontMetrics(ref,...)
               CloneString(&draw_info->density,SvPV(ST(i),na));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'e':
@@ -7146,7 +7203,7 @@ QueryFontMetrics(ref,...)
               CloneString(&draw_info->encoding,SvPV(ST(i),na));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'f':
@@ -7157,7 +7214,7 @@ QueryFontMetrics(ref,...)
               CloneString(&draw_info->font,SvPV(ST(i),na));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'g':
@@ -7174,7 +7231,7 @@ QueryFontMetrics(ref,...)
                 LookupStr(GravityTypes,SvPV(ST(i),na));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'p':
@@ -7185,7 +7242,7 @@ QueryFontMetrics(ref,...)
               (void) sscanf(SvPV(ST(i),na),"%lf",&draw_info->pointsize);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'r':
@@ -7193,11 +7250,10 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"rotate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.rx,
-                &affine.ry);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.rx,&affine.ry);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 's':
@@ -7205,8 +7261,7 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"scale") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.sx,
-                &affine.sy);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.sx,&affine.sy);
               break;
             }
           if (LocaleCompare(attribute,"skew") == 0)
@@ -7222,7 +7277,7 @@ QueryFontMetrics(ref,...)
               affine.rx=tan(DegreesToRadians(fmod(y_angle,360.0)));
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 't':
@@ -7235,11 +7290,10 @@ QueryFontMetrics(ref,...)
             }
           if (LocaleCompare(attribute,"translate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.tx,
-                &affine.ty);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.tx,&affine.ty);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'x':
@@ -7250,7 +7304,7 @@ QueryFontMetrics(ref,...)
               (void) sscanf(SvPV(ST(i),na),"%lf",&x);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'y':
@@ -7261,12 +7315,12 @@ QueryFontMetrics(ref,...)
               (void) sscanf(SvPV(ST(i),na),"%lf",&y);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         default:
         {
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
       }
@@ -7458,6 +7512,9 @@ Read(ref,...)
     register int
       i;
 
+    STRLEN
+      *length;
+
     struct PackageInfo
       *info,
       *package_info;
@@ -7479,16 +7536,17 @@ Read(ref,...)
     number_images=0;
     ac=(items < 2) ? 1 : items-1;
     list=(char **) AcquireMemory((ac+1)*sizeof(*list));
+    length=(STRLEN *) AcquireMemory((ac+1)*sizeof(length));
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto ReturnIt;
       }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
     if (SvTYPE(reference) != SVt_PVAV)
       {
-        MagickError(OptionError,"Unable to read into a single image",NULL);
+        MagickError(OptionError,"ReferenceIsNotMyType",NULL);
         goto ReturnIt;
       }
     av=(AV *) reference;
@@ -7501,22 +7559,19 @@ Read(ref,...)
     else
       for (n=0, i=0; i < ac; i++)
       {
-        list[n]=(char *) SvPV(ST(i+1),na);
-        if ((items >= 3) &&
-            strEQcase(package_info->image_info->filename,"blob"))
+        list[n]=(char *) SvPV(ST(i+1),length[n]);
+        if ((items >= 3) && strEQcase(list[n],"blob"))
           {
-            STRLEN
-              length;
-
-            i++;
-            package_info->image_info->blob=(void *) (SvPV(ST(i),length));
-            package_info->image_info->length=length;
+            package_info->image_info->blob=(void *) (SvPV(ST(i+2),length[n]));
+            package_info->image_info->length=length[n];
+            continue;
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            package_info->image_info->file=(FILE *) IoIFP(sv_2io(ST(i+2)));
+            package_info->image_info->file=
+              PerlIO_findFILE(IoIFP(sv_2io(ST(i+2))));
             continue;
           }
         n++;
@@ -7529,11 +7584,12 @@ Read(ref,...)
     status=ExpandFilenames(&n,&list);
     if (status == False)
       {
-        MagickError(ResourceLimitError,"Memory allocation failed",NULL);
+        MagickError(ResourceLimitError,"MemoryAllocationFailed",NULL);
         goto ReturnIt;
       }
     GetExceptionInfo(&exception);
-    for (i=number_images=0; i < n; i++)
+    number_images=0;
+    for (i=0; i < n; i++)
     {
       (void) strncpy(package_info->image_info->filename,list[i],
         MaxTextExtent-1);
@@ -7566,6 +7622,7 @@ Read(ref,...)
     if (package_info)
       DestroyPackageInfo(package_info);
     LiberateMemory((void **) &list);
+    LiberateMemory((void **) &length);
     sv_setiv(MY_CXT.error_list,(IV) number_images);
     SvPOK_on(MY_CXT.error_list);
     ST(0)=sv_2mortal(MY_CXT.error_list);
@@ -7665,7 +7722,7 @@ Set(ref,...)
     MY_CXT.error_list=newSVpv("",0);
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -7750,7 +7807,7 @@ Transform(ref,...)
     attribute=NULL;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -7765,7 +7822,7 @@ Transform(ref,...)
     image=SetupList(aTHX_ reference,&info,&reference_vector);
     if (!image)
       {
-        MagickError(OptionError,"No images to transform",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     info=GetPackageInfo(aTHX_ (void *) av,info);
@@ -7787,7 +7844,7 @@ Transform(ref,...)
               crop_geometry=SvPV(ST(i),na);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         case 'g':
@@ -7798,12 +7855,12 @@ Transform(ref,...)
               geometry=SvPV(ST(i),na);
               break;
             }
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
         default:
         {
-          MagickError(OptionError,"Invalid attribute",attribute);
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
         }
       }
@@ -7896,7 +7953,7 @@ Write(ref,...)
     package_info=(struct PackageInfo *) NULL;
     if (!sv_isobject(ST(0)))
       {
-        MagickError(OptionError,"Reference is not my type",PackageName);
+        MagickError(OptionError,"ReferenceIsNotMyType",PackageName);
         goto MethodException;
       }
     reference=SvRV(ST(0));
@@ -7906,7 +7963,7 @@ Write(ref,...)
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickError(OptionError,"No images to write",NULL);
+        MagickError(OptionError,"NoImagesDefined",NULL);
         goto MethodException;
       }
     package_info=ClonePackageInfo(info);

@@ -1,6 +1,6 @@
 package Image::Magick;
 
-# Released Feb. 17, 1997  by Kyle Shorter (magick@wizards.dupont.com)
+# Released Feb. 17, 1997  by Kyle Shorter (magick-users@imagemagick.org)
 # Public Domain
 
 use strict;
@@ -21,15 +21,16 @@ require AutoLoader;
       Success Transparent Opaque MaxRGB WarningException
       ResourceLimitWarning TypeWarning OptionWarning DelegateWarning
       MissingDelegateWarning CorruptImageWarning FileOpenWarning
-      BlobWarning StreamWarning CacheWarning XServerWarning
-      RegistryWarning ConfigureWarning ErrorException
-      ResourceLimitError TypeError OptionError DelegateError
-      MissingDelegateError CorruptImageError FileOpenError BlobError
-      StreamError CacheError XServerError RegistryError ConfigureError
-      FatalErrorException
+      BlobWarning StreamWarning CacheWarning CoderWarning ModuleWarning
+      DrawWarning ImageWarning XServerWarning RegistryWarning
+      ConfigureWarning ErrorException ResourceLimitError TypeError
+      OptionError DelegateError MissingDelegateError CorruptImageError
+      FileOpenError BlobError StreamError CacheError CoderError
+      ModuleError DrawError ImageError XServerError RegistryError
+      ConfigureError FatalErrorException
     );
 
-$VERSION = '5.51';
+$VERSION = '5.53';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -101,16 +102,16 @@ Image::Magick - Perl extension for calling ImageMagick's libmagick routines
 
 This Perl extension allows the reading, manipulation and writing of
 a large number of image file formats using the magick library from
-ImageMagick by John Cristy (magick@wizards.dupont.com).  It was originally
+ImageMagick by John Cristy (magick-users@imagemagick.org).  It was originally
 developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.simplesystems.org/ImageMagick/www/perl.html
+	http://www.imagemagick.org/ImageMagick/www/perl.html
 
 =head1 AUTHOR
 
-Kyle Shorter	magick@wizards.dupont.com
+Kyle Shorter	magick-users@imagemagick.org
 
 =head1 BUGS
 

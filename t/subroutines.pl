@@ -42,35 +42,94 @@ elsif ($QuantumDepth == 32)
 sub testRead {
   my( $infile, $md5, $md5_16 ) =  @_;
 
-  my($image);
+  my($image,$magick,$success);
+
+  $failure=0;
 
   if ( !defined( $md5_16 ) )
     {
       $md5_16 = $md5;
     }
-  
-  $image=Image::Magick->new;
-  $image->Set(size=>'512x512');
-  $status=$image->ReadImage("$infile");
-  if( "$status" ) {
-    print "ReadImage $infile: $status";
+
+  $magick='';
+
+  #
+  # Test reading from file
+  #
+  {
+    my($image, $signature, $status);
+
+    print( "  testing reading from file \"", $infile, "\" ...\n");
+    $image=Image::Magick->new;
+    $image->Set(size=>'512x512');
+    $status=$image->ReadImage("$infile");
+    if( "$status" ) {
+      print "ReadImage $infile: $status";
+      ++$failure;
+    } else {
+      $magick=$image->Get('magick');
+      $signature=$image->Get('signature');
+      if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
+        print "Image: $infile, signatures do not match.\n";
+        print "       Computed: $signature\n";
+        print "       Expected: $md5\n";
+        if ( $md5 ne $md5_16 ) {
+          print "      if 16-bit: $md5_16\n";
+        }
+        ++$failure;
+        #$image->Display();
+      }
+    }
+    undef $image;
+  }
+
+  #
+  # Test reading from blob
+  #
+  {
+    my(@blob, $blob_length, $image, $signature, $status);
+
+    if( open( FILE, "< $infile"))
+      {
+        print( "  testing reading from BLOB with magick \"", $magick, "\"...\n");
+        binmode( FILE );
+        $blob_length = read( FILE, $blob, 10000000 );
+        close( FILE );
+        if( defined( $blob ) ) {
+          $image=Image::Magick->new(magick=>$magick);
+          $status=$image->BlobToImage( $blob );
+          undef $blob;
+          if( "$status" ) {
+            print "BlobToImage $infile: $status";
+            ++$failure;
+          } else {
+            $signature=$image->Get('signature');
+            if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
+              print "Image: $infile, signatures do not match.\n";
+              print "       Computed: $signature\n";
+              print "       Expected: $md5\n";
+              if ( $md5 ne $md5_16 ) {
+                print "      if 16-bit: $md5_16\n";
+              }
+              #$image->Display();
+              ++$failure;
+            }
+          }
+        }
+      }
+    undef $image;
+  }
+
+  #
+  # Display test status
+  #
+  if ( $failure != 0 ) {
     print "not ok $test\n";
   } else {
-    $signature=$image->Get('signature');
-    if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
-      print "Image: $infile, signatures do not match.\n";
-      print "       Computed: $signature\n";
-      print "       Expected: $md5\n";
-      if ( $md5 ne $md5_16 ) {
-         print "      if 16-bit: $md5_16\n";
-      }
-      #$image->Display();
-      print "not ok $test\n";
-    } else {
-      print "ok $test\n";
-    }
-  }
+    print "ok $test\n";
+  }    
 }
+
 
 #
 # Test reading a file, and compare with a reference file
@@ -258,11 +317,11 @@ sub testReadWrite {
       $image=Image::Magick->new;
       $status=$image->ReadImage("$outfile");
       if( "$status" ) {
-	print "ReadImage $outfile: $status\n";
-	print "not ok $test\n";
+        print "ReadImage $outfile: $status\n";
+        print "not ok $test\n";
       } else {
-	# Check signature
-	$signature=$image->Get('signature');
+        # Check signature
+        $signature=$image->Get('signature');
         if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
           print "Image: $infile, signatures do not match.\n";
           print "       Computed: $signature\n";
@@ -270,12 +329,12 @@ sub testReadWrite {
           if ( $md5 ne $md5_16 ) {
              print "      if 16-bit: $md5_16\n";
           }
-	  print "not ok $test\n";
-	} else {
-	  print "ok $test\n";
-	  ($file = $outfile) =~ s/.*://g;
-	  unlink "$file";
-	}
+          print "not ok $test\n";
+        } else {
+          print "ok $test\n";
+          ($file = $outfile) =~ s/.*://g;
+          unlink "$file";
+        }
       }
     }
   }
@@ -465,11 +524,11 @@ sub testReadWriteNoVerify {
       $image=Image::Magick->new;
       $status=$image->ReadImage("$outfile");
       if( "$status" ) {
-	print "ReadImage $outfile: $status\n";
-	print "not ok $test\n";
+        print "ReadImage $outfile: $status\n";
+        print "not ok $test\n";
       } else {
-	print "ok $test\n";
-	unlink $outfile;
+        print "ok $test\n";
+        unlink $outfile;
       }
     }
   }
@@ -545,11 +604,11 @@ sub testReadWriteSized {
       # Read image just written
       $status=$image->ReadImage("$outfile");
       if( "$status" ) {
-	print "ReadImage $outfile: $status\n";
-	print "not ok $test\n";
+        print "ReadImage $outfile: $status\n";
+        print "not ok $test\n";
       } else {
-	# Check signature
-	$signature=$image->Get('signature');
+        # Check signature
+        $signature=$image->Get('signature');
         if ( ( $signature ne $md5 ) and ( $signature ne $md5_16 ) ) {
           print "Image: $infile, signatures do not match.\n";
           print "       Computed: $signature\n";
@@ -557,14 +616,14 @@ sub testReadWriteSized {
           if ( $md5 ne $md5_16 ) {
              print "   if 16-bit: $md5_16\n";
           }
-	  print "not ok $test\n";
+          print "not ok $test\n";
           #$image->Display();
-	} else {
-	  print "ok $test\n";
-	  #$image->Display();
-	  ($file = $outfile) =~ s/.*://g;
-	  unlink "$file";
-	}
+        } else {
+          print "ok $test\n";
+          #$image->Display();
+          ($file = $outfile) =~ s/.*://g;
+          unlink "$file";
+        }
       }
     }
   }
@@ -667,9 +726,9 @@ sub testMontage {
   $image=Image::Magick->new;
 
   my @colors = ( '#000000', '#008000', '#C0C0C0', '#00FF00',
-		 '#808080', '#808000', '#FFFFFF', '#FFFF00',
-		 '#800000', '#000080', '#FF0000', '#0000FF',
-		 '#800080', '#008080', '#FF00FF', '#00FFFF' );
+                 '#808080', '#808000', '#FFFFFF', '#FFFF00',
+                 '#800000', '#000080', '#FF0000', '#0000FF',
+                 '#800080', '#008080', '#FF00FF', '#00FFFF' );
   
   my $color;
   foreach $color ( @colors ) {
@@ -717,34 +776,34 @@ sub testMontage {
           if ( $md5 ne $md5_16 ) {
              print "   if 16-bit: $md5_16\n";
           }
-	
+        
         $status = $montage->Write("test_${test}_out.miff");
         warn "Write: $status" if "$status";
-	
-	print "not ok $test\n";
+        
+        print "not ok $test\n";
       } else {
-	# Check montage directory
-	my $directory = $montage->Get('directory');
-	my $expected = join( "\n", @colors ) . "\n";
-	if ( !defined($directory) ) {
-	  print "ok $test\n";
-	} elsif ( $directory  ne $expected) {
-	  print("Invalid montage directory:\n\"$directory\"\n");
-	  print("Expected:\n\"$expected\"\n");
-	  print "not ok $test\n";
-	} else {
-	  # Check montage geometry
-	  $montage_geom=$montage->Get('montage');
-	  if( !defined($montage_geom) ) {
-	    print("Montage geometry not defined!\n");
-	    print "not ok $test\n";
-	  } elsif ( $montage_geom !~ /^\d+x\d+\+\d+\+\d+$/ ) {
-	    print("Montage geometry not in correct format: \"$montage_geom\"\n");
-	    print "not ok $test\n";
-	  } else {
-	    print "ok $test\n";
-	  }
-	}
+        # Check montage directory
+        my $directory = $montage->Get('directory');
+        my $expected = join( "\n", @colors ) . "\n";
+        if ( !defined($directory) ) {
+          print "ok $test\n";
+        } elsif ( $directory  ne $expected) {
+          print("Invalid montage directory:\n\"$directory\"\n");
+          print("Expected:\n\"$expected\"\n");
+          print "not ok $test\n";
+        } else {
+          # Check montage geometry
+          $montage_geom=$montage->Get('montage');
+          if( !defined($montage_geom) ) {
+            print("Montage geometry not defined!\n");
+            print "not ok $test\n";
+          } elsif ( $montage_geom !~ /^\d+x\d+\+\d+\+\d+$/ ) {
+            print("Montage geometry not in correct format: \"$montage_geom\"\n");
+            print "not ok $test\n";
+          } else {
+            print "ok $test\n";
+          }
+        }
       }
     } else {
       warn "GetAttribute returned undefined value!";
@@ -841,6 +900,7 @@ sub testFilterCompare {
     }
 
   $srcimage->set(depth=>8);
+  #$srcimage->Display();
 #  $srcimage->write(filename=>"$refimage_name", compression=>'None');
 
   $status=$refimage->ReadImage("$refimage_name");

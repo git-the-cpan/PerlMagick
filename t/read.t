@@ -26,7 +26,7 @@ testRead( 'input.bmp',
 
 print("Microsoft Windows 24-bit bitmap image file ...\n");
 ++$test;
-testRead( 'bmp:input.bmp24',
+testRead( 'input.bmp24',
   '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
 
 print("ZSoft IBM PC multi-page Paintbrush file ...\n");
@@ -57,8 +57,8 @@ testRead( 'input.gif87',
 print("Gradient (gradual passing from one shade to another) ...\n");
 ++$test;
 testRead( 'gradient:red-blue',
-  '7f708830d2766a485e07526173008906a7154ac50088d2ac58be41a0bbf987c1',
-  '455f985c3755024be2a0165774166d8dcee66edb9b5381b9569605cb29b102d5' );
+  '08415768d4a96f53b8e74ec33400650a1c6d31ab0ecab617466680ca54c25472',
+  'a998be3784293c29adaeab7d6d2dcea78211b9768a0f9e0066975cc442af6e58' );
 
 print("GRANITE (granite texture) ...\n");
 ++$test;
@@ -193,7 +193,7 @@ testRead( 'input.wbmp',
 print("X Windows system bitmap (black and white only) ...\n");
 ++$test;
 testRead( 'input.xbm',
-  '615fa1d8bae486118b3733c1dba4e2a225fc1f4f8ff9441bcb7c3293753e4da1');
+  '86cf46ab9d620aa85eba722d777cc97e30df51916b2380df3cbc2685614d1222');
 
 print("XC: Constant image of X server color ...\n");
 ++$test;
@@ -255,5 +255,5 @@ print("UYVY format ...\n");
 testReadSized( 'input_70x46.uyvy',
    '70x46',
    0,
-   'd88b2fcee63384f58ad68eb114b10dab96957f9a56a09738cc90e85ecd028c16',
+   '088c606a61cb7f51728d8409d061d2c19d9ded3346e1d9ee6799e0cdd8a115b3',
    '03d13172c954470b8da3c817afb2b4f1c1c365dafefb86227d44d40240f95393' );

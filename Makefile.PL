@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2002 ImageMagick Studio, a non-profit organization dedicated
+# Copyright (C) 2003 ImageMagick Studio, a non-profit organization dedicated
 # to making software imaging solutions freely available.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -54,19 +54,19 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio',
 
    # Set compiler flags other than INC and OPTIMIZE
-   # 'CCFLAGS'	=> '-g -O2 -Wall',
+   # 'CCFLAGS'	=> '-O3 -g -Wall',
 
    # Preprocessor defines
    'DEFINE'	=> '-DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
 
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I../ -I.. -D_REENTRANT -D_FILE_OFFSET_BITS=64 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/freetype2 -I/usr/include/libxml2',
+   'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -D_REENTRANT -D_FILE_OFFSET_BITS=64 -I/usr/X11R6/include -I/usr/include/libxml2',
 
    # Install PerlMagick binary into ImageMagick bin directory
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/X11R6/lib -L/usr/lib -L/usr/lib -L/usr/local/lib -lMagick -llcms -lfreetype -lXext -lXt -lSM -lICE -lX11 -lz -lpthread -lm'],
+   'LIBS'	=> ['-L/usr/X11R6/lib -L/usr/lib -L/usr/lib -L/usr/local/lib -lMagick -llcms -lfreetype -lXext -lSM -lICE -lX11 -lbz2 -lz -lpthread -lm'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -78,7 +78,7 @@ WriteMakefile
    # 'OPTIMIZE'	=> '',
 
    # Use same compiler as ImageMagick
-   # 'PERLMAINCC'	=> 'gcc -L/home/cristy/ImageMagick-5.5.1/ttf/objs',
+   # 'PERLMAINCC'	=> 'gcc -L/home/cristy/ImageMagick-5.5.4/ttf/objs',
 
    # Set Perl installation prefix to ImageMagick installation prefix
 #   'PREFIX'	=> '/usr/local',

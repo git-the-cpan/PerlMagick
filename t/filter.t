@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 #
 # Test image filters.
 #
@@ -104,7 +104,7 @@ testFilterCompare('input.miff', q//, 'reference/filter/Minify.miff', 'Minify',
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/Modulate.miff', 'Modulate',
-  q/brightness=>60, saturation=>30, hue=>20/, 0.0026, 0.004);
+  q/brightness=>60, saturation=>30, hue=>20/, 0.0033, 0.165);
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/MotionBlur.miff', 'MotionBlur',

@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 # Copyright (C) 1994-2004 ImageMagick Studio LLC
 # Copyright (C) 2003 GraphicsMagick Group
 #
@@ -136,7 +136,7 @@ testCompositeCompare('gradient:white-black',q/size=>"100x80"/,
 ++$test;
 testCompositeCompare('gradient:white-black',q/size=>"100x80"/,
   'input.miff', q//, q/, gravity=>'Center', compose=>'Plus'/,
-  'reference/composite/Plus.miff',0.0025,0.008);
+  'reference/composite/Plus.miff',0.06,0.5);
 
 #
 # Subtract

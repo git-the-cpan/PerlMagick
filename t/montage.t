@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 #
 # Test montage method.
 #
@@ -111,8 +111,8 @@ testMontage( q//,
 testMontage( q/bordercolor=>'blue', mattecolor=>'red'/, 
   q/background=>'#696e7e', label=>'', tile=>'4x4', geometry=>'90x80+3+3>', frame=>'8x10',
   borderwidth=>'0', gravity=>'Center', background=>'gray'/,
-  'b8f575e35a0730873e88f4b6b289e517d4e2f1b76a6916cab9626fe268fefff7',
-  'b8f575e35a0730873e88f4b6b289e517d4e2f1b76a6916cab9626fe268fefff7',
+  'a850f7c36bd1f36c2716503fba898a26f7139340888f0cfe6923c6615d8348d5',
+  'a850f7c36bd1f36c2716503fba898a26f7139340888f0cfe6923c6615d8348d5',
   'e08c0e6c19ed24b2d0d2fe96e8b8cdf99e0102e6ade368bc0f328443aaed1f18');
 
 #
@@ -122,8 +122,8 @@ testMontage( q/bordercolor=>'blue', mattecolor=>'red'/,
 testMontage( q/bordercolor=>'blue', mattecolor=>'red'/, 
   q/background=>'#696e7e', label=>'', tile=>'4x4', geometry=>'90x80+6+6>', frame=>'8x10',
   borderwidth=>'0', gravity=>'Center', shadow=>'True',background=>'gray'/,
-  '8092a0d66e8856f8ecbff43c534b93eca21942468956ca238bdcc4fc74d3cb24',
-  'a686625ee84345193f2a5cb4a16e49bf8b9ea44a842b7484b2a34e5e646eb010',
+  '21124ffb6ab7ccd5dbe636abd4dfd1d328c7214dbfd8a9ff0e0cb8e1fd49b498',
+  'ffc23a4e4d83330d90ffa925e4403f5ffa793f30e7a0523cf6082656b2739ccf',
   '3ff5c584e7f22134ee49c9082d2b60aadecabd1020671b76b94703dc0cffe553');
 
 #
@@ -133,8 +133,8 @@ testMontage( q/bordercolor=>'blue', mattecolor=>'red'/,
 testMontage( q/bordercolor=>'blue', mattecolor=>'red'/, 
   q/background=>'#696e7e', label=>'', tile=>'4x4', geometry=>'90x80+6+6>', frame=>'8x10',
   borderwidth=>'0', gravity=>'Center', shadow=>'True', texture=>'granite:'/,
-  '36aab8cdbf0dd787d73ef780295df9b350694189fe61f06bbcccce57c57c61b1',
-  '12972173aef9e114f4f011cf16b6a279ab93ba3469bf6460f8ede896e402d881',
+  'c6e859384231de57c3d25ca54486abcf8e17a5fce040fbd86878c2f36e1f49be',
+  '599245f2e86466075417f8e43bcfc791a28a837b34f4a365739342aa53380e4d',
   '0548e1a350e783f3352da96d0367cff352593fc1b30b4692316bbb34475351c3');
 
 #

@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 #
 # Test setting & getting attributes.
 #
@@ -104,7 +104,7 @@ testSetAttribute('input.miff','monochrome','True');
 testSetAttribute('input.miff','monochrome','False');
 
 ++$test;
-testSetAttribute('input.miff','page','595x842>+0+0');
+testSetAttribute('input.miff','page','595x842+0+0');
 
 ++$test;
 testSetAttribute('input.miff','pointsize',12);

@@ -6,7 +6,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jng jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
+foreach $delegate (qw/ bzlib jng jpeg png ps tiff ttf x xfig zlib/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -26,7 +26,7 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.1.1',
+   'VERSION'   => '6.1.7',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
@@ -38,7 +38,7 @@ WriteMakefile
    # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
-   'CCFLAGS'     => "$Config{'ccflags'} -Wunused -Wall -pthread",
+   'CCFLAGS'     => "$Config{'ccflags'} -g -O2 -Wall -pthread",
 
    # Linker flags for building an executable
    'LDFLAGS'    =>  "-L/usr/local/lib $Config{'ldflags'}",
@@ -50,7 +50,7 @@ WriteMakefile
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/local/lib -L../magick/.libs -lMagick -L/usr/X11R6/lib -lfreetype -lz -L/usr/lib -llcms -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
+   'LIBS'	=> ['-L/usr/local/lib -L../magick/.libs -lMagick -L/usr/X11R6/lib -lfreetype -lz -L/usr/lib -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',

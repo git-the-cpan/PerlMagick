@@ -1,4 +1,4 @@
-# Copyright (C) 1999-2004 ImageMagick Studio LLC
+# Copyright (C) 1999-2005 ImageMagick Studio LLC
 #
 # This program is covered by multiple licenses, which are described in
 # LICENSE.  You should have received a copy of LICENSE with this
@@ -85,7 +85,7 @@ ppm: ppd pure_all htmlifypods manifypods
 ppm-full: ppd pure_all htmlifypods manifypods
         if exist PerlMagick-full.zip del PerlMagick-full.zip
         copy ..\VisualMagick\bin\*.dll blib\arch\auto\Image\Magick
-        copy ..\VisualMagick\bin\*.mgk blib\arch\auto\Image\Magick
+        copy ..\VisualMagick\bin\*.xml blib\arch\auto\Image\Magick
         $(TAR) $(TARFLAGS) Image-Magick.tar blib
         $(COMPRESS) -q Image-Magick.tar
         if exist x86 del x86 /f /q

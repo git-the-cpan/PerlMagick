@@ -1275,8 +1275,10 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
                 pixel.red=color->red;
                 pixel.green=color->green;
                 pixel.blue=color->blue;
-                (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf",&pixel.red,
-                  &pixel.green,&pixel.blue);
+                flags=ParseGeometry(SvPV(sval,na),&geometry_info);
+                pixel.red=geometry_info.rho;
+                pixel.green=geometry_info.sigma;
+                pixel.blue=geometry_info.xi;
                 color->red=(Quantum) ((pixel.red < 0) ? 0 :
                   (pixel.red > MaxRGB) ? MaxRGB : pixel.red+0.5);
                 color->green=(Quantum) ((pixel.green < 0) ? 0 :
@@ -1299,7 +1301,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           if (info)
             info->image_info->colorspace=(ColorspaceType) sp;
           for ( ; image; image=image->next)
-            RGBTransformImage(image,(ColorspaceType) sp);
+            TransformColorspace(image,(ColorspaceType) sp);
           return;
         }
       if (LocaleCompare(attribute,"compression") == 0)
@@ -1704,8 +1706,11 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
                 pixel.green=p->green;
                 pixel.blue=p->blue;
                 pixel.opacity=p->opacity;
-                (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf%*[,/]%lf",
-                  &pixel.red,&pixel.green,&pixel.blue,&pixel.opacity);
+                flags=ParseGeometry(SvPV(sval,na),&geometry_info);
+                pixel.red=geometry_info.rho;
+                pixel.green=geometry_info.sigma;
+                pixel.blue=geometry_info.xi;
+                pixel.opacity=geometry_info.psi;
                 p->red=(Quantum) ((pixel.red < 0) ? 0 :
                   (pixel.red > MaxRGB) ? MaxRGB : pixel.red+0.5);
                 p->green=(Quantum) ((pixel.green < 0) ? 0 :
@@ -4362,7 +4367,6 @@ Mogrify(ref,...)
     int
       base,
       j,
-      k,
       y;
 
     PixelPacket
@@ -5007,8 +5011,10 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%*[,/]%lf",&affine.tx,&affine.ty);
-                if (k == 1)
+                flags=ParseGeometry(value,&geometry_info);
+                affine.tx=geometry_info.rho;
+                affine.ty=geometry_info.sigma;
+                if (!(flags & SigmaValue))
                   affine.ty=affine.tx;
                 break;
               }
@@ -5017,8 +5023,10 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%*[,/]%lf",&affine.sx,&affine.sy);
-                if (k == 1)
+                flags=ParseGeometry(value,&geometry_info);
+                affine.sx=geometry_info.rho;
+                affine.sy=geometry_info.sigma;
+                if (!(flags & SigmaValue))
                   affine.sy=affine.sx;
                 break;
               }
@@ -5348,8 +5356,10 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%*[,/]%lf",&affine.tx,&affine.ty);
-                if (k == 1)
+                flags=ParseGeometry(value,&geometry_info);
+                affine.tx=geometry_info.rho;
+                affine.ty=geometry_info.sigma;
+                if (!(flags & SigmaValue))
                   affine.ty=affine.tx;
                 break;
               }
@@ -5358,8 +5368,10 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%*[,/]%lf",&affine.sx,&affine.sy);
-                if (k == 1)
+                flags=ParseGeometry(value,&geometry_info);
+                affine.sx=geometry_info.rho;
+                affine.sy=geometry_info.sigma;
+                if (!(flags & SigmaValue))
                   affine.sy=affine.sx;
                 break;
               }
@@ -5611,8 +5623,13 @@ Mogrify(ref,...)
           colorspace=RGBColorspace;
           verbose=False;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
-              &cluster_threshold,&smoothing_threshold);
+            {
+              flags=ParseGeometry(argument_list[0].string_reference,
+                &geometry_info);
+              cluster_threshold=geometry_info.rho;
+              if (flags & SigmaValue)
+                smoothing_threshold=geometry_info.sigma;
+            }
           if (attribute_flag[1])
             cluster_threshold=argument_list[1].double_reference;
           if (attribute_flag[2])
@@ -5937,8 +5954,10 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%*[,/]%lf",&affine.tx,&affine.ty);
-                if (k == 1)
+                flags=ParseGeometry(value,&geometry_info);
+                affine.tx=geometry_info.rho;
+                affine.ty=geometry_info.sigma;
+                if (!(flags & SigmaValue))
                   affine.ty=affine.tx;
                 break;
               }
@@ -5947,8 +5966,10 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%*[,/]%lf",&affine.sx,&affine.sy);
-                if (k == 1)
+                flags=ParseGeometry(value,&geometry_info);
+                affine.sx=geometry_info.rho;
+                affine.sy=geometry_info.sigma;
+                if (!(flags & SigmaValue))
                   affine.sy=affine.sx;
                 break;
               }
@@ -7156,6 +7177,9 @@ QueryFontMetrics(ref,...)
     DrawInfo
       *draw_info;
 
+    GeometryInfo
+      geometry_info;
+
     Image
       *image;
 
@@ -7172,6 +7196,7 @@ QueryFontMetrics(ref,...)
       metrics;
 
     unsigned int
+      flags,
       status;
 
     dMY_CXT;
@@ -7197,6 +7222,26 @@ QueryFontMetrics(ref,...)
       attribute=(char *) SvPV(ST(i-1),na);
       switch (*attribute)
       {
+        case 'A':
+        case 'a':
+        {
+          if (LocaleCompare(attribute,"antialias") == 0)
+            {
+              int
+                sp;
+
+              sp=LookupStr(BooleanTypes,SvPV(ST(i),na));
+              if (sp < 0)
+                {
+                  MagickError(OptionError,"UnrecognizedType",SvPV(ST(i),na));
+                  break;
+                }
+              draw_info->text_antialias=sp != 0;
+              break;
+            }
+          MagickError(OptionError,"UnrecognizedAttribute",attribute);
+          break;
+        }
         case 'd':
         case 'D':
         {
@@ -7222,6 +7267,13 @@ QueryFontMetrics(ref,...)
         case 'f':
         case 'F':
         {
+          if (LocaleCompare(attribute,"fill") == 0)
+            {
+              if (info)
+                (void) QueryColorDatabase(SvPV(ST(i),na),&draw_info->fill,
+                  &image->exception);
+              return;
+            }
           if (LocaleCompare(attribute,"font") == 0)
             {
               CloneString(&draw_info->font,SvPV(ST(i),na));
@@ -7252,7 +7304,8 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"pointsize") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf",&draw_info->pointsize);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              draw_info->pointsize=geometry_info.rho;
               break;
             }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);
@@ -7263,7 +7316,11 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"rotate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.rx,&affine.ry);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              affine.rx=geometry_info.rho;
+              affine.ry=geometry_info.sigma;
+              if (!(flags & SigmaValue))
+                affine.ry=affine.rx;
               break;
             }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);
@@ -7274,7 +7331,11 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"scale") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.sx,&affine.sy);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              affine.sx=geometry_info.rho;
+              affine.sy=geometry_info.sigma;
+              if (!(flags & SigmaValue))
+                affine.sy=affine.sx;
               break;
             }
           if (LocaleCompare(attribute,"skew") == 0)
@@ -7283,12 +7344,21 @@ QueryFontMetrics(ref,...)
                 x_angle,
                 y_angle;
 
-              x_angle=0.0;
-              y_angle=0.0;
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&x_angle,&y_angle);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              x_angle=geometry_info.rho;
+              y_angle=geometry_info.sigma;
+              if (!(flags & SigmaValue))
+                y_angle=x_angle;
               affine.ry=tan(DegreesToRadians(fmod(x_angle,360.0)));
               affine.rx=tan(DegreesToRadians(fmod(y_angle,360.0)));
               break;
+            }
+          if (LocaleCompare(attribute,"stroke") == 0)
+            {
+              if (info)
+                (void) QueryColorDatabase(SvPV(ST(i),na),&draw_info->stroke,
+                  &image->exception);
+              return;
             }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);
           break;
@@ -7303,7 +7373,11 @@ QueryFontMetrics(ref,...)
             }
           if (LocaleCompare(attribute,"translate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.tx,&affine.ty);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              affine.tx=geometry_info.rho;
+              affine.ty=geometry_info.sigma;
+              if (!(flags & SigmaValue))
+                affine.ty=affine.tx;
               break;
             }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);
@@ -7314,7 +7388,8 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"x") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf",&x);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              x=geometry_info.rho;
               break;
             }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);
@@ -7325,7 +7400,8 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"y") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf",&y);
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              y=geometry_info.rho;
               break;
             }
           MagickError(OptionError,"UnrecognizedAttribute",attribute);

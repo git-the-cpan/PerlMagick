@@ -17,68 +17,68 @@ chdir 't' || die 'Cd failed';
 
 print("AVS X image file ...\n");
 testRead( 'input.avs',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Microsoft Windows bitmap image file ...\n");
 ++$test;
 testRead( 'input.bmp',
-  '5083e062c7e4d3d462944bc1e89c4f491bf1f0241352e0a93988c8854c261fdb');
+  '63f3fc759dc1f25640b5bff50ffbb826b978bc215ae4bd5382abcb45bd2f8351');
 
 print("Microsoft Windows 24-bit bitmap image file ...\n");
 ++$test;
 testRead( 'input.bmp24',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("ZSoft IBM PC multi-page Paintbrush file ...\n");
 ++$test;
 testRead( 'input.dcx',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Microsoft Windows bitmap image file ...\n");
 ++$test;
 testRead( 'input.dib',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Flexible Image Transport System ...\n");
 ++$test;
 testRead( 'input.fits',
-  '0e54b24352da9f7d0966c9b882988b9124b6b7fd7493ff266f4c03382b94a42a' );
+  '48782ed397e05a2e44984fb7e79dc3490b8eb48f9ad72da26da9eda6c613eaba' );
 
 print("CompuServe graphics interchange format ...\n");
 ++$test;
 testRead( 'input.gif',
-  'f84cb6b5817ea2f6f313c2bdd90c94af0d0e7fb144528994050b355f8d5e6a94');
+  'd23fa2a0b73778b25971b6c9c0391f07596fcb1d7c4f79f304c14716c24b043d');
 
 print("CompuServe graphics interchange format (1987) ...\n");
 ++$test;
 testRead( 'input.gif87',
-  'f84cb6b5817ea2f6f313c2bdd90c94af0d0e7fb144528994050b355f8d5e6a94');
+  'd23fa2a0b73778b25971b6c9c0391f07596fcb1d7c4f79f304c14716c24b043d');
 
 print("Gradient (gradual passing from one shade to another) ...\n");
 ++$test;
 testRead( 'gradient:red-blue',
-  '08415768d4a96f53b8e74ec33400650a1c6d31ab0ecab617466680ca54c25472',
-  'a998be3784293c29adaeab7d6d2dcea78211b9768a0f9e0066975cc442af6e58' );
+  'd3e9e39e646147e5998a7b869185d9f8f1ad134e5fa85513d56de5d9fc19b14c',
+  '82e7ef902c58e93654e79ed71521560dc765289a8ef3616445cf496cd4d11636' );
 
 print("GRANITE (granite texture) ...\n");
 ++$test;
 testRead( 'granite:',
-  '6e7317a9cb3abb1fe090d2d43c7645be455b6116ef8e93ca193d1df421447602');
+  'd84df0faf2e452f4b1cfb65a3d378b3240cdda27497a3f1fde0059ed060e65c2');
 
 print("Microsoft icon ...\n");
 ++$test;
 testRead( 'input.ico',
-  'a8b1aae465606b8273caf1035f95b7c1262bcb1f72fcb73bfe2d3640ff6b45ef' );
+  'a30cea966c108ed60af71aaf3180a4d5fe29f3ab2a66b4389e97815dfe93e1aa' );
 
 print("Magick image file format ...\n");
 ++$test;
 testRead( 'input.miff',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("MTV Raytracing image format ...\n");
 ++$test;
 testRead( 'input.mtv',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Xv's visual schnauzer format. ...\n");
 ++$test;
@@ -88,127 +88,127 @@ testReadCompare('input_p7.p7', 'reference/read/input_p7.miff', q//,
 print("NULL (white image) ...\n");
 ++$test;
 testRead( 'NULL:white', '3c907c7fc6edfcf15767c67e22c25cf9f907ba8ee59811aaae79dafd7c8ff198',
-  'b57ca51881682b98a084a42beb8325895fdbc90d6f874ad8cdea7858d4907845');
+  '90fe9d00c453d0fa8a023a589b601e6fca2536f6429a227835bb7b6824f7d32a');
 
 print("NULL (black image) ...\n");
 ++$test;
 testRead( 'NULL:black',
-  '8851aa72e74300d3a50cb246c69d03a7d6c7cc53be91d894e232053f1b859513');
+  'bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8');
 
 print("NULL (DarkOrange image) ...\n");
 ++$test;
 testRead( 'NULL:DarkOrange',
-  '295732fb13da5439fa0f08fc1d1a27d9a24f28c6f5c86d6dfb07ac73bd4d10cd');
+  '13e1759e5d83e22b26f0ff42dd0d1db07d936ec21a95b2655ed77e1e2a4f82ee');
 
 print("Portable bitmap format (black and white), ASCII format ...\n");
 ++$test;
 testRead( 'input_p1.pbm',
-  '2b48bcf7d93cc31a8deb3026d872f1bb0a300b0f4e177423e5301adc638179e4');
+  'c3db0a928eb365a8d4c132fccf913174f22864253e3974d89e7af6b81f57b14e');
 
 print("Portable bitmap format (black and white), binary format ...\n");
 ++$test;
 testRead( 'input_p4.pbm',
-  '2b48bcf7d93cc31a8deb3026d872f1bb0a300b0f4e177423e5301adc638179e4');
+  'c3db0a928eb365a8d4c132fccf913174f22864253e3974d89e7af6b81f57b14e');
 
 print("ZSoft IBM PC Paintbrush file ...\n");
 ++$test;
 testRead( 'input.pcx',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Portable graymap format (gray scale), ASCII format ...\n");
 ++$test;
 testRead( 'input_p2.pgm',
-  '04c5604964838e47aba7a355efee266a4d0f1b90f672ff56863440e5e5a29761');
+  'be2672b247d1d131614d2225ba6abf062c835a5b353a90c98b814832a417424c');
 
 print("Portable graymap format (gray scale), binary format ...\n");
 ++$test;
 testRead( 'input_p5.pgm',
-  '04c5604964838e47aba7a355efee266a4d0f1b90f672ff56863440e5e5a29761');
+  'be2672b247d1d131614d2225ba6abf062c835a5b353a90c98b814832a417424c');
 
 print("Apple Macintosh QuickDraw/PICT file ...\n");
 ++$test;
 testRead( 'input.pict',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Alias/Wavefront RLE image format ...\n");
 ++$test;
 testRead( 'input.rle',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Portable pixmap format (color), ASCII format ...\n");
 ++$test;
 testRead( 'input_p3.ppm',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Portable pixmap format (color), binary format ...\n");
 ++$test;
 testRead( 'input_p6.ppm',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Adobe Photoshop bitmap file ...\n");
 ++$test;
 testRead( 'input.psd',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Irix RGB image file ...\n");
 ++$test;
 testRead( 'input.sgi',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("SUN 1-bit Rasterfile ...\n");
 ++$test;
 testRead( 'input.im1',
-  '615fa1d8bae486118b3733c1dba4e2a225fc1f4f8ff9441bcb7c3293753e4da1');
+  'd2c99db9feac60999e89e6ff9e9561ebd880009e1406fe069917164fcd277ab2');
 
 print("SUN 8-bit Rasterfile ...\n");
 ++$test;
 testRead( 'input.im8',
-  'f84cb6b5817ea2f6f313c2bdd90c94af0d0e7fb144528994050b355f8d5e6a94');
+  'd23fa2a0b73778b25971b6c9c0391f07596fcb1d7c4f79f304c14716c24b043d');
 
 print("SUN TrueColor Rasterfile ...\n");
 ++$test;
 testRead( 'sun:input.im24',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("Truevision Targa image file ...\n");
 ++$test;
 testRead( 'input.tga',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("PSX TIM file ...\n");
 ++$test;
 testRead( 'input.tim',
-  '403a78aa326ce7fae09e350bc36344b3263e9aede1a16bb8ea6e9b923b27b374');
+  'c0de44d598be0f20ada13725070711f21b809025b3296bb0f8cb926e0b091ee0');
 
 print("Khoros Visualization image file ...\n");
 ++$test;
 testRead( 'input.viff',
-  '9c01e510e4aa7c369895db51389ae917a0d4f9004ffb4edf81e5e2302cab98a3');
+  '0be6b76ef0f8748db46b023a171588c2c27832e22000f44f0788f8270b6ffd5f');
 
 print("WBMP (Wireless Bitmap (level 0) image) ...\n");
 ++$test;
 testRead( 'input.wbmp',
-  'ccde39dba836a36bbc076e7e6f20f06b034dab0eb2613b350b17c2759533b2ca');
+  '2d30f7486d995c1cb86fea6e134e5ab71fd081aff55d107ac0db728e8b090e86');
 
 print("X Windows system bitmap (black and white only) ...\n");
 ++$test;
 testRead( 'input.xbm',
-  '86cf46ab9d620aa85eba722d777cc97e30df51916b2380df3cbc2685614d1222');
+  '49bf0a542c68d40e95da31aae596d4fa2269adeac9bb781a7fc92bdb845a888f');
 
 print("XC: Constant image of X server color ...\n");
 ++$test;
 testRead( 'xc:black',
-  '8851aa72e74300d3a50cb246c69d03a7d6c7cc53be91d894e232053f1b859513');
+  'bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8');
 
 print("X Windows system pixmap file (color) ...\n");
 ++$test;
 testRead( 'input.xpm',
-  'f84cb6b5817ea2f6f313c2bdd90c94af0d0e7fb144528994050b355f8d5e6a94');
+  'd23fa2a0b73778b25971b6c9c0391f07596fcb1d7c4f79f304c14716c24b043d');
 
 print("X Windows system window dump file (color) ...\n");
 ++$test;
 testRead( 'input.xwd',
-  '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f');
+  '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584');
 
 print("TILE (Tile image with a texture) ...\n");
 # This is an internal generated format
@@ -218,7 +218,7 @@ print("TILE (Tile image with a texture) ...\n");
 testReadSized( 'TILE:input.miff',
   '140x92',
   8,
-  'e1384a6f9f75d4a86f6291c47171a9039972718d9e5092294746cca57fd7b02e');
+  'a961d7f88c9cf7e432545d0340edcf908b4c8f16326d6434ce22eeaaecf4cf47');
 
 
 print("CMYK format ...\n");
@@ -226,28 +226,28 @@ print("CMYK format ...\n");
 testReadSized( 'input_70x46.cmyk',
    '70x46',
    8,
-   '1a1b99a35b962941e2a1cfc01e34907539f6d6ddc4a8df09fc024ef58e16d4e2');
+   '3bda6f5e91f5964ee82a4ed7328bec206e715833051d921b09108707e695e8b5');
 
 print("GRAY format ...\n");
 ++$test;
 testReadSized( 'input_70x46.gray',
    '70x46',
    8,
-   '0e54b24352da9f7d0966c9b882988b9124b6b7fd7493ff266f4c03382b94a42a' );
+   '48782ed397e05a2e44984fb7e79dc3490b8eb48f9ad72da26da9eda6c613eaba' );
 
 print("RGB format ...\n");
 ++$test;
 testReadSized( 'input_70x46.rgb',
    '70x46',
    8,
-   '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f' );
+   '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584' );
 
 print("RGBA format ...\n");
 ++$test;
 testReadSized( 'input_70x46.rgba',
    '70x46',
    8,
-   '8b19185a62241bd7b79ecf3f619711f4ebbedd73eaeca0366f05778762b6614f' );
+   '975cdb03f0fa923936f1cecf7b8a49a917493393a0eb098828ab710295195584' );
 
 
 print("UYVY format ...\n");
@@ -255,5 +255,5 @@ print("UYVY format ...\n");
 testReadSized( 'input_70x46.uyvy',
    '70x46',
    0,
-   '088c606a61cb7f51728d8409d061d2c19d9ded3346e1d9ee6799e0cdd8a115b3',
-   '03d13172c954470b8da3c817afb2b4f1c1c365dafefb86227d44d40240f95393' );
+   'd4d5645764026663f4004b41ec5f4b694994ee43afe54af03a7e9af45884f032',
+   '1ef67135bbe2aadc1c06997566f9d84fc8600c0a4c5a01e701296530e057726f' );

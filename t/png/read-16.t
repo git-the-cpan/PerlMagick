@@ -18,34 +18,34 @@ chdir 't/png' || die 'Cd failed';
 # 1) Test Monochrome PNG
 # 
 testRead( 'input_mono.png',
-  '19da3123692c66d023074dd1e272119ab2357b9a34855a393ad18c88af01ae86' );
+  '9806baaaff93f82136ef9c5de65b81ec728c5ee2bd518b6766fa2d656d113dbc' );
 
 #
 # 2) Test 256 color pseudocolor PNG
 # 
 ++$test;
 testRead( 'input_256.png',
-  'd1340caccc7351834f1ca9693489ee780ac326a0d6bb660cd550c5c28711b2fe' );
+  '764c39b3dd959383ede9ad0217d655ced14f6e4a649b962be71680992916528e' );
 
 #
 # 3) Test TrueColor PNG
 # 
 ++$test;
 testRead( 'input_truecolor.png',
-  'b84c31bbe78d84d0432c7414b25c58599484aa2c7174af8332509966d07f265b' );
+  '1aa26327416ce05264f89c6a23643d84b1f2cc263a944a809807066f3ff87e36' );
 
 #
 # 4) Test Multiple-image Network Graphics
 # 
 ++$test;
 testRead( 'input.mng',
-  'eb089161ebc5ab3964cdec1b72628c4d1c29ebd78f333a3d4a0d47c614fb3897' );
+  'b054bb6b19eba09f9ae531ca3e66399125d564cc056e3b5c230782f162af2a59' );
 
 #
 # 5) Test 16-bit Portable Network Graphics
 # 
 ++$test;
 testRead( 'input_16.png',
-  'a6c3f3ce8772cd6aa973ae1f3ebd94ee65292112d3f1e8e86171bf4d931bd181',
-  'c87cc12715f3e0619d6fe871bd8132f88facffb3d38dd8869cb262ec6b9c4cef');
+  '72fccba220406b3ea3383cf74313b0f7491f80af800506b63851cee056e5ad8e',
+  'e1069360f0afcb5b4661ecae6c4a96c5bb8c3c707e0554054bd4adbb8b7fc6db');
 

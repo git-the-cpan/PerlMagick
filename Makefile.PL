@@ -5,9 +5,9 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	=> 'Image::Magick',
     'VERSION_FROM' => 'Magick.pm', # finds $VERSION
-    'LIBS'	=> ['-L/usr/local/lib -L/usr/X11R6/lib -R/usr/X11R6/lib -L/usr/local/lib -lMagick  -lX11 -lXext -lXt -lm'],
+    'LIBS'	=> ['-L/pathos/home/cristy/ImageMagick/bzlib -L/pathos/home/cristy/ImageMagick/hdf/hdf/src -L/pathos/home/cristy/ImageMagick/jbig/libjbig -L/pathos/home/cristy/ImageMagick/jpeg -L/pathos/home/cristy/ImageMagick/zlib -L/pathos/home/cristy/ImageMagick/png -L/pathos/home/cristy/ImageMagick/tiff/libtiff -L/pathos/home/cristy/ImageMagick/ttf -L/pathos/home/cristy/ImageMagick/ttf/lib -L/pathos/home/cristy/ImageMagick/ttf/lib/.libs -L/usr/local/lib -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/local/lib -L/usr/local/lib -lMagick  -lX11 -lsocket -lnsl -lXext -lXt -ljbig -ljpeg -lbz2 -ldf -lpng -ltiff -lttf -ldpstk -ldps -lz -lm'],
     'DEFINE'	=> '',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '-I../magick -I/usr/local/include/magick -I/usr/X11R6/include',
+    'INC'	=> '-I../magick -I/pathos/home/cristy/ImageMagick/bzlib -I/pathos/home/cristy/ImageMagick/hdf/hdf/src -I/pathos/home/cristy/ImageMagick/jbig/libjbig -I/pathos/home/cristy/ImageMagick/jpeg -I/pathos/home/cristy/ImageMagick/zlib -I/pathos/home/cristy/ImageMagick/png -I/pathos/home/cristy/ImageMagick/tiff/libtiff -I/pathos/home/cristy/ImageMagick/ttf -I/pathos/home/cristy/ImageMagick/ttf/lib -I/pathos/home/cristy/ImageMagick/ttf/lib/.libs -I/usr/local/include -I/usr/openwin/include -I/usr/openwin/include/X11',
 );
 
 #
@@ -17,13 +17,12 @@ sub MY::test
 {
    #
    # List any ImageMagick features derived from add-on libraries
-   # or programs you would like to test.
+   # or programs (delegate) you would like to test.
    #
    # Valid choices are:
    #
    #  Feature   Formats Tested		Prerequisites
    #  =======   ======================	======================================
-   #   IM	ImageMagick built-ins	None
    #   cgm	CGM format		'ralcgm' program
    #   hdf	HDF format		HDF library
    #   jbig	JBIG format		JBIG library
@@ -38,20 +37,19 @@ sub MY::test
    #   xfig	Xfig format		'transfig' program
    #   zlib	Zip compression		Zlib library
    #
-   # e.g. my @PLUGINS = qw/IM jpeg tiff/;
+   # e.g. my @DELEGATES = qw/jpeg tiff/;
    #
-   my @PLUGINS = qw//;
+   my @DELEGATES = qw/ /;
 
    package MY; # so that "SUPER" works right
    my $inherited = shift->SUPER::test(@_);
-   my $plugintests='';
-   my $plugin;
-   foreach $plugin (@PLUGINS) {
-     if( -d "t/$plugin" ) {
-       $plugintests .= " t/$plugin/*.t";
+   my $delegatetests='';
+   my $delegate;
+   foreach $delegate (@DELEGATES) {
+     if( -d "t/$delegate" ) {
+       $delegatetests .= " t/$delegate/*.t";
     }
    }
-   $inherited =~ s:^TEST_FILES =.*:TEST_FILES = t/*.t ${plugintests}:m;
+   $inherited =~ s:^TEST_FILES =.*:TEST_FILES = t/*.t ${delegatetests}:m;
    $inherited;
 }
-

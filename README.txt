@@ -1,9 +1,9 @@
 Introduction 
 
-    PerlMagick, version 1.46, is an objected-oriented Perl interface to
+    PerlMagick, version 1.47, is an objected-oriented Perl interface to
     ImageMagick.  Use the module to read, manipulate, or write an image
     or image sequence from within a Perl script. This makes it suitable
-    for Web CGI scripts. You must have ImageMagick 4.1.1 above and Perl
+    for Web CGI scripts. You must have ImageMagick 4.1.2 above and Perl
     version 5.002 or greater installed on your system.  Perl version
     5.005_02 or greater is required for PerlMagick to work under NT.
 
@@ -22,8 +22,8 @@ Installation
 
     Get the PerlMagick distribution and type the following: 
 
-        gunzip PerlMagick-1.46.tar.gz
-        tar xvf PerlMagick-1.46.tar
+        gunzip PerlMagick-1.47.tar.gz
+        tar xvf PerlMagick-1.47.tar
         cd Magick
 
     Next, edit Makefile.PL and change LIBS and INC to include the
@@ -81,7 +81,7 @@ Testing PerlMagick
         make test
 
     to verify that PERL can load the PerlMagick extension ok.  Chances are
-    some of the tests will fail if you do not have the proper plugs-in
+    some of the tests will fail if you do not have the proper delegates
     installed for formats like JPEG, TIFF, etc.
 
     To see a number of PerlMagick demonstration scripts, type

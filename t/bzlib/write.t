@@ -12,15 +12,15 @@ $loaded=1;
 
 require 't/subroutines.pl';
 
-chdir 't/zlib' || die 'Cd failed';
+chdir 't/bzlib' || die 'Cd failed';
 
 #
-# 1) Test writing Zip-compressed MIFF
+# Test writing BZip-compressed MIFF
 #
 
 testReadWrite( 'input.miff',
 	       'output.miff',
-	       q/compress=>'Zip'/,
+	       q/compress=>'BZip'/,
 	       '7785d161ea66bd39394bb74ef704a0aa' );
 
 $test = 0;  # Quench PERL compliaint

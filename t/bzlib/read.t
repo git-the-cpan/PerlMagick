@@ -1,6 +1,6 @@
 #!/usr/local/bin/perl
 #
-# Test reading an image which uses Zip compression
+# Test reading an image which uses BZip compression
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
@@ -12,9 +12,9 @@ $loaded=1;
 
 require 't/subroutines.pl';
 
-chdir 't/zlib' || die 'Cd failed';
+chdir 't/bzlib' || die 'Cd failed';
 
 #
-# 1) Test reading Zip compressed MIFF
+# Test reading BZip compressed MIFF
 # 
 testRead( 'input.miff', '7785d161ea66bd39394bb74ef704a0aa' );

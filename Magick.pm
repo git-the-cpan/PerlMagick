@@ -20,11 +20,12 @@ require AutoLoader;
   qw(
     ResourceLimitError XServerError OptionError 
     Success
-    ResourceLimitWarning XServerWarning OptionWarning PluginWarning
-	MissingPluginWarning CorruptImageWarning FileOpenWarning
+    ResourceLimitWarning XServerWarning OptionWarning DelegateWarning
+	MissingDelegateWarning CorruptImageWarning FileOpenWarning
+	Transparent Opaque
     );
 
-$VERSION = '1.46';
+$VERSION = '1.47';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()

@@ -8,7 +8,7 @@
 # Whenever a new test is added/removed, be sure to update the
 # 1..n ouput.
 
-BEGIN { $| = 1; $test=1; print "1..34\n"; }
+BEGIN { $| = 1; $test=1; print "1..32\n"; }
 END {print "not ok $test\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -158,7 +158,7 @@ testReadWrite( 'PGM:input_p2.pgm',
 testReadWrite( 'PICT:input.pict',
                'PICT:output.pict',
                q//,
-               'e9b162b8431709942886f79b7b7c11bb' );
+               '2cdf3d196a7974c33e788c032cb918e0' );
 
 #
 # Portable pixmap format (color), ASCII format
@@ -266,7 +266,7 @@ testReadWrite( 'XBM:input.xbm',
 testReadWrite( 'XPM:input.xpm',
                'XPM:output.xpm',
                q//,
-               'd5a97a3cec301d8848102f513ceb3f3c' );
+               '7785d161ea66bd39394bb74ef704a0aa' );
 
 #
 # X Windows system window dump file (color)
@@ -306,26 +306,5 @@ testReadWriteSized( 'RGBA:input_70x46.rgba',
 		    '70x46',
 		    q//,
 		    'f3e5ab88e328da3044c1fc177a7e2978' );
-
-#
-# CMYK format
-#
-++$test;
-testReadWriteSized( 'CMYK:input_70x46.cmyk',
-		    'CMYK:output_70x46.cmyk',
-		    '70x46',
-		    q//,
-		    '70b0c3d7fcc7a617481285a1e27345d5' );
-
-#
-# UYVY format
-#
-++$test;
-testReadWriteSized( 'UYVY:input_70x46.uyvy',
-		    'UYVY:output_70x46.uyvy',
-		    '70x46',
-		    q//,
-		    'b063c2f7ad1a48a58d3f80291b780180' );
-
 
 1;

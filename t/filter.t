@@ -4,7 +4,7 @@
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
-BEGIN { $| = 1; $test=1, print "1..44\n"; }
+BEGIN { $| = 1; $test=1, print "1..43\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -26,11 +26,6 @@ testFilter('input.miff', 'Blur',
 testFilter('input.miff', 'Border',
   q/10/,
   '60b20d26fbf98095cc994c21d013d42e');
-
-++$test;
-testFilter('input.miff', 'Charcoal',
-  q/60/,
-  'e6e381790100fb5300ed464c2b49ecf8');
 
 ++$test;
 testFilter('input.miff', 'Chop',
@@ -229,8 +224,8 @@ testFilter('input.miff', 'Wave',
 
 ++$test;
 testFilter('input.miff', 'Zoom',
-  q/geometry=>50%,filter=>Mitchell/,
-  '134d44d8737e0c6e3953e4536eae08d8');
+  q/geometry=>50%,filter=>Point/,
+  'f9a5ccced93db546404214742d5329d2');
 
 ++$test;
 

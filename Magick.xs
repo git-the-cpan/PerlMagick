@@ -51,7 +51,7 @@
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% PerlMagick, version 1.52, is an objected-oriented Perl interface to
+% PerlMagick, version 4.26, is an objected-oriented Perl interface to
 % ImageMagick.  Use the module to read,manipulate,or write an image or
 % image sequence from within a Perl script.  This makes it very suitable
 % for Web CGI scripts.  You must have ImageMagick 4.1.5 or above and Perl
@@ -305,14 +305,15 @@ static struct
     { "Spread", { {"amount", IntegerReference} } },
     { "Swirl", { {"degree", DoubleReference} } },
     { "Zoom", { {"geom", StringReference}, {"width", IntegerReference},
-      {"height", IntegerReference}, {"filter", FilterTypes} } },
+      {"height", IntegerReference}, {"filter", FilterTypes},
+      {"blur", DoubleReference } } },
     { "IsGrayImage", },
     { "Annotate", { {"text", StringReference}, {"font", StringReference},
       {"point", IntegerReference}, {"density", StringReference},
       {"box", StringReference}, {"pen", StringReference},
       {"geom", StringReference}, {"server", StringReference},
       {"x", IntegerReference}, {"y", IntegerReference},
-      {"grav", GravityTypes} } },
+      {"grav", GravityTypes}, {"degree", DoubleReference} } },
     { "ColorFloodfill", { {"geom", StringReference}, {"x", IntegerReference},
       {"y", IntegerReference}, {"pen", StringReference},
       {"bordercolor", StringReference} } },
@@ -363,6 +364,7 @@ static struct
     { "Stereo", { {"image", ImageReference} } },
     { "Stegano", { {"image", ImageReference}, {"offset", IntegerReference} } },
     { "Coalesce", },
+    { "Deconstruct", },
   };
 
 /*
@@ -884,7 +886,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
   SV *sval)
 {
   ColorPacket
-    *color;
+    *color,
+    target_color;
 
   int
     blue,
@@ -895,9 +898,6 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
 
   register int
     i;
-
-  XColor
-    target_color;
 
   switch (*attribute)
   {
@@ -939,7 +939,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
           if (info)
             (void) CloneString(&info->image_info->background_color,
               SvPV(sval,na));
-          (void) XQueryColorDatabase(SvPV(sval,na),&target_color);
+          (void) QueryColorDatabase(SvPV(sval,na),&target_color);
           for ( ; image; image=image->next)
           {
             image->background_color.red=XDownScale(target_color.red);
@@ -960,7 +960,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
         {
           if (info)
             (void) CloneString(&info->image_info->border_color,SvPV(sval,na));
-          (void) XQueryColorDatabase(SvPV(sval,na),&target_color);
+          (void) QueryColorDatabase(SvPV(sval,na),&target_color);
           for ( ; image; image=image->next)
           {
             image->border_color.red=XDownScale(target_color.red);
@@ -990,7 +990,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
             color=image->colormap+i;
             if (strchr(SvPV(sval,na),',') == 0)
               {
-                XQueryColorDatabase(SvPV(sval,na),&target_color);
+                QueryColorDatabase(SvPV(sval,na),&target_color);
                 color->red=XDownScale(target_color.red);
                 color->green=XDownScale(target_color.green);
                 color->blue=XDownScale(target_color.blue);
@@ -1023,12 +1023,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
                     SvPV(sval,na));
                   return;
                 }
-              for ( ; image; image=image->next)
-                if ((ColorspaceType) sp == CMYKColorspace)
-                  RGBTransformImage(image,CMYKColorspace);
-                else
-                  if ((ColorspaceType) sp == CMYKColorspace)
-                    TransformRGBImage(image,RGBColorspace);
+              if (info)
+                info->image_info->colorspace=(ColorspaceType) sp;
             }
         }
       if (strEQcase(attribute,"colors"))
@@ -1136,20 +1132,6 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
             info->image_info->file=IoIFP(sv_2io(sval));
           return;
         }
-      if (strEQcase(attribute,"filter"))
-        {
-          sp=SvPOK(sval) ? LookupStr(FilterTypes,SvPV(sval,na)) : SvIV(sval);
-          if (sp < 0)
-            {
-              MagickWarning(OptionWarning,"Invalid filter type",SvPV(sval,na));
-              return;
-            }
-          if (info)
-            info->image_info->filter=(FilterType) sp;
-          for ( ; image; image=image->next)
-            image->filter=(FilterType) sp;
-          return;
-        }
       if (strEQcase(attribute,"font"))
         {
           if (info)
@@ -1247,7 +1229,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
         {
           if (info)
             (void) CloneString(&info->image_info->matte_color,SvPV(sval,na));
-          (void) XQueryColorDatabase(SvPV(sval,na),&target_color);
+          (void) QueryColorDatabase(SvPV(sval,na),&target_color);
           for ( ; image; image=image->next)
           {
             image->matte_color.red=XDownScale(target_color.red);
@@ -1335,7 +1317,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
             image->class=DirectClass;
             if (strchr(SvPV(sval,na),',') == 0)
               {
-                XQueryColorDatabase(SvPV(sval,na),&target_color);
+                QueryColorDatabase(SvPV(sval,na),&target_color);
                 color->red=XDownScale(target_color.red);
                 color->green=XDownScale(target_color.green);
                 color->blue=XDownScale(target_color.blue);
@@ -1756,12 +1738,6 @@ Animate(ref,...)
     animateimage  = 3
   PPCODE:
   {
-    char
-      *resource_value;
-
-    Display
-      *display;
-
     jmp_buf
       error_jmp;
 
@@ -1780,12 +1756,6 @@ Animate(ref,...)
 
     volatile int
       status;
-
-    XResourceInfo
-      resource;
-
-    XrmDatabase
-      resource_database;
 
     package_info=(struct PackageInfo *) NULL;
     error_list=newSVpv("",0);
@@ -1813,17 +1783,7 @@ Animate(ref,...)
       if (items > 2)
         for (i=2; i < items; i+=2)
           SetAttribute(package_info,NULL,SvPV(ST(i-1),na),ST(i));
-    display=XOpenDisplay(package_info->image_info->server_name);
-    if (display)
-      {
-        XSetErrorHandler(XError);
-        resource_database=XGetResourceDatabase(display,client_name);
-        XGetResourceInfo(resource_database,client_name,&resource);
-        *resource.image_info=(*package_info->image_info);
-        *resource.quantize_info=(*package_info->quantize_info);
-        (void) XAnimateImages(display,&resource,&client_name,1,image);
-        XCloseDisplay(display);
-      }
+    AnimateImages(package_info->image_info,image);
 
   MethodError:
     if (package_info)
@@ -2154,22 +2114,27 @@ Blob(ref,...)
       clone->scene=scene++;
       if (!WriteImage(package_info->image_info,clone))
         {
+          DestroyImage(clone);
           PUSHs(&sv_undef);
           continue;
         }
-      DestroyImage(clone);
-      image->file=fopen(filename,"rb");
-      if (image->file == (FILE *) NULL)
-        {
-          PUSHs(&sv_undef);
-          continue;
-        }
-      data=(char *) safemalloc(image->filesize);
-      ReadData(data,1,image->filesize,image->file);
-      (void) fclose(image->file);
+      clone->file=fopen(filename,"rb");
       remove(filename);
-      PUSHs(sv_2mortal(newSVpv(data,image->filesize)));
+      if (clone->file == (FILE *) NULL)
+        {
+          DestroyImage(clone);
+          PUSHs(&sv_undef);
+          continue;
+        }
+      (void) fseek(clone->file,0L,SEEK_END);
+      clone->filesize=ftell(clone->file);
+      (void) fseek(clone->file,0L,SEEK_SET);
+      data=(char *) safemalloc(clone->filesize);
+      ReadData(data,1,clone->filesize,clone->file);
+      (void) fclose(clone->file);
+      PUSHs(sv_2mortal(newSVpv(data,clone->filesize)));
       safefree((char *) data);
+      DestroyImage(clone);
     }
 
   MethodError:
@@ -2375,18 +2340,11 @@ Display(ref,...)
     displayimage  = 3
   PPCODE:
   {
-    char
-      *resource_value;
-
-    Display
-      *display;
-
     jmp_buf
       error_jmp;
 
     Image
-      *image,
-      *next;
+      *image;
 
     register int
       i;
@@ -2397,15 +2355,6 @@ Display(ref,...)
 
     SV
       *reference;
-
-    XrmDatabase
-      resource_database;
-
-    XResourceInfo
-      resource;
-
-    unsigned long
-      state;
 
     volatile int
       status;
@@ -2436,29 +2385,7 @@ Display(ref,...)
       if (items > 2)
         for (i=2; i < items; i+=2)
           SetAttribute(package_info,NULL,SvPV(ST(i-1),na),ST(i));
-    display=XOpenDisplay(package_info->image_info->server_name);
-    if (!display)
-      MagickWarning(XServerError,"Unable to connect to X server",
-        XDisplayName(package_info->image_info->server_name));
-    else
-      {
-        XSetErrorHandler(XError);
-        resource_database=XGetResourceDatabase(display,client_name);
-        XGetResourceInfo(resource_database,client_name,&resource);
-        *resource.image_info=(*package_info->image_info);
-        *resource.quantize_info=(*package_info->quantize_info);
-        resource.immutable=True;
-        if (package_info->image_info->delay)
-          resource.delay=atoi(package_info->image_info->delay);
-        for (next=image; next; next=next->next)
-        {
-          state=DefaultState;
-          (void) XDisplayImage(display,&resource,&client_name,1,&next,&state);
-          if (state & ExitState)
-            break;
-        }
-        XCloseDisplay(display);
-      }
+    DisplayImages(package_info->image_info,image);
 
   MethodError:
     if (package_info)
@@ -2777,7 +2704,7 @@ Get(ref,...)
             }
           if (strEQcase(attribute,"filter"))
             {
-              j=info ? info->image_info->filter : image->filter;
+              j=image->filter;
               s=newSViv(j);
               if ((j >= 0) && (j < NumberOf(FilterTypes)-1))
                 {
@@ -3433,6 +3360,8 @@ Mogrify(ref,...)
     SteganoImage       = 128
     Coalesce           = 129
     CoalesceImage      = 130
+    Deconstruct        = 131
+    DeconstructImage   = 132
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -3444,6 +3373,10 @@ Mogrify(ref,...)
       attribute_flag[MaxArguments],
       *commands[10],
       message[MaxTextExtent];
+
+    ColorPacket
+      border_color,
+      pen_color;
 
     FrameInfo
       frame_info;
@@ -3486,10 +3419,6 @@ Mogrify(ref,...)
     volatile int
       number_images;
 
-    XColor
-      border_color,
-      pen_color;
-
     reference_vector=NULL;
     package_info=(struct PackageInfo *) NULL;
     region_image=NULL;
@@ -3524,7 +3453,7 @@ Mogrify(ref,...)
         attribute=(char *) SvPV(ST(1),na);
         if (ix)
           {
-            flags=XParseGeometry(attribute,&region_info.x,&region_info.y,
+            flags=ParseGeometry(attribute,&region_info.x,&region_info.y,
               &region_info.width,&region_info.height);
             if (!(flags & HeightValue))
               region_info.height=region_info.width;
@@ -3696,7 +3625,7 @@ Mogrify(ref,...)
               rectangle_info.height=6;
               if (attribute_flag[0])
                 {
-                  flags=XParseGeometry(argument_list[0].string_reference,
+                  flags=ParseGeometry(argument_list[0].string_reference,
                     &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
                     &rectangle_info.height);
                   if (!(flags & HeightValue))
@@ -3707,7 +3636,7 @@ Mogrify(ref,...)
               if (attribute_flag[2])
                 rectangle_info.width=argument_list[2].int_reference;
               if (attribute_flag[3])
-                XQueryColorDatabase(argument_list[3].string_reference,
+                QueryColorDatabase(argument_list[3].string_reference,
                   &border_color);
             }
           if (attribute_flag[3])
@@ -3730,7 +3659,7 @@ Mogrify(ref,...)
         {
           if (attribute_flag[0])
             {
-              flags=XParseGeometry(argument_list[0].string_reference,
+              flags=ParseGeometry(argument_list[0].string_reference,
                 &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
                 &rectangle_info.height);
               if (!(flags & HeightValue))
@@ -3756,7 +3685,7 @@ Mogrify(ref,...)
         {
           if (attribute_flag[0])
             {
-              flags=XParseGeometry(argument_list[0].string_reference,
+              flags=ParseGeometry(argument_list[0].string_reference,
                 &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
                 &rectangle_info.height);
               if (!(flags & HeightValue))
@@ -3814,7 +3743,7 @@ Mogrify(ref,...)
               frame_info.inner_bevel=frame_info.outer_bevel=6;
               if (attribute_flag[0])
                 {
-                  flags=XParseGeometry(argument_list[0].string_reference,
+                  flags=ParseGeometry(argument_list[0].string_reference,
                     &frame_info.outer_bevel,&frame_info.inner_bevel,
                     &frame_info.width,&frame_info.height);
                   if (!(flags & HeightValue))
@@ -3835,7 +3764,7 @@ Mogrify(ref,...)
               frame_info.x=frame_info.width;
               frame_info.y=frame_info.height;
               if (attribute_flag[5])
-                XQueryColorDatabase(argument_list[5].string_reference,
+                QueryColorDatabase(argument_list[5].string_reference,
                   &pen_color);
             }
           frame_info.width=image->columns+(frame_info.x << 1);
@@ -3887,7 +3816,7 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             rectangle_info.y=argument_list[2].int_reference;
           if (attribute_flag[0])
-            (void) XParseGeometry(argument_list[0].string_reference,
+            (void) ParseGeometry(argument_list[0].string_reference,
               &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
               &rectangle_info.height);
           image=RollImage(image,rectangle_info.x,rectangle_info.y);
@@ -4000,9 +3929,10 @@ Mogrify(ref,...)
             (void) ParseImageGeometry(argument_list[0].string_reference,
               &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
               &rectangle_info.height);
-          if (!attribute_flag[3])
-            argument_list[3].int_reference=(int) MitchellFilter;
-          image->filter=(FilterType) argument_list[3].int_reference;
+          if (attribute_flag[3])
+            image->filter=(FilterType) argument_list[3].int_reference;
+          if (attribute_flag[4])
+            image->blur=argument_list[4].double_reference;
           image=ZoomImage(image,rectangle_info.width,rectangle_info.height);
           break;
         }
@@ -4050,6 +3980,8 @@ Mogrify(ref,...)
                 }
               if (attribute_flag[10])
                 annotate_info.gravity=argument_list[10].int_reference;
+              if (attribute_flag[11])
+                annotate_info.degrees=argument_list[11].double_reference;
             }
           AnnotateImage(image,&annotate_info);
           break;
@@ -4063,7 +3995,7 @@ Mogrify(ref,...)
             {
               package_info=ClonePackageInfo(info);
               if (attribute_flag[0])
-                (void) XParseGeometry(argument_list[0].string_reference,
+                (void) ParseGeometry(argument_list[0].string_reference,
                   &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
                   &rectangle_info.height);
               if (attribute_flag[1])
@@ -4074,7 +4006,7 @@ Mogrify(ref,...)
                 (void) CloneString(&package_info->image_info->pen,
                   argument_list[3].string_reference);
               if (attribute_flag[4])
-                XQueryColorDatabase(argument_list[4].string_reference,
+                QueryColorDatabase(argument_list[4].string_reference,
                   &border_color);
               GetAnnotateInfo(package_info->image_info,&annotate_info);
             }
@@ -4298,7 +4230,7 @@ Mogrify(ref,...)
             {
               if (attribute_flag[0])
                 {
-                  flags=XParseGeometry(argument_list[0].string_reference,
+                  flags=ParseGeometry(argument_list[0].string_reference,
                     &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
                     &rectangle_info.height);
                 }
@@ -4307,7 +4239,7 @@ Mogrify(ref,...)
               if (attribute_flag[2])
                 rectangle_info.y=argument_list[2].int_reference;
               if (attribute_flag[4])
-                XQueryColorDatabase(argument_list[4].string_reference,
+                QueryColorDatabase(argument_list[4].string_reference,
                   &border_color);
             }
           if (!UncondenseImage(image))
@@ -4424,7 +4356,7 @@ Mogrify(ref,...)
               rectangle_info.height=rectangle_info.width=6;
               if (attribute_flag[0])
                 {
-                  flags=XParseGeometry(argument_list[0].string_reference,
+                  flags=ParseGeometry(argument_list[0].string_reference,
                     &rectangle_info.x,&rectangle_info.y,&rectangle_info.width,
                     &rectangle_info.height);
                   if (!(flags & HeightValue))
@@ -4584,6 +4516,11 @@ Mogrify(ref,...)
         case 65:  /* Coalesce */
         {
           CoalesceImages(image);
+          break;
+        }
+        case 66:  /* Deconstruct */
+        {
+          DeconstructImages(image);
           break;
         }
       }
@@ -5165,6 +5102,9 @@ Ping(ref,...)
     char
       message[MaxTextExtent];
 
+    Image
+      *image;
+
     register int
       i;
 
@@ -5195,14 +5135,15 @@ Ping(ref,...)
           info->image_info->file=IoIFP(sv_2io(ST(i)));
           continue;
         }
-      filesize=PingImage(info->image_info,&columns,&rows);
-      if (filesize == 0)
+      image=PingImage(info->image_info);
+      if (image == (Image *) NULL)
         s=(&sv_undef);
       else
         {
-          FormatString(message,"%u,%u,%u,%s",columns,rows,filesize,
-            info->image_info->magick);
+          FormatString(message,"%u,%u,%u,%s",image->columns,image->rows,
+            image->filesize,image->magick);
           s=sv_2mortal(newSVpv(message,0));
+          DestroyImage(image);
         }
       PUSHs(s);
     }
@@ -5233,11 +5174,11 @@ QueryColor(ref,...)
       *attribute,
       message[MaxTextExtent];
 
+    ColorPacket
+      target_color;
+
     register int
       i;
-
-    XColor
-      target_color;
 
     SV
       *s;
@@ -5247,7 +5188,7 @@ QueryColor(ref,...)
     for (i=1; i < items; i++)
     {
       attribute=(char *) SvPV(ST(i),na);
-      if (!XQueryColorDatabase(attribute,&target_color))
+      if (!QueryColorDatabase(attribute,&target_color))
         s=(&sv_undef);
       else
         {
@@ -5418,9 +5359,6 @@ Remote(ref,...)
     AV
       *av;
 
-    Display
-      *display;
-
     register int
       i;
 
@@ -5438,9 +5376,16 @@ Remote(ref,...)
     reference=SvRV(ST(0));
     av=(AV *) reference;
     info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
-    display=XOpenDisplay(info->image_info->server_name);
-    for (i=1; i < items; i++)
-      XRemoteCommand(display,(char *) NULL,(char *) SvPV(ST(i),na));
+#if defined(XlibSpecificationRelease)
+    {
+      Display
+        *display;
+
+      display=XOpenDisplay(info->image_info->server_name);
+      for (i=1; i < items; i++)
+        XRemoteCommand(display,(char *) NULL,(char *) SvPV(ST(i),na));
+    }
+#endif
     SvREFCNT_dec(error_list);    /* throw away all errors */
     error_list=NULL;
   }
@@ -5578,6 +5523,7 @@ Write(ref,...)
       (void) strcpy(next->filename,filename);
       next->scene=scene++;
     }
+    SetImageInfo(package_info->image_info,True);
     for (next=image; next; next=next->next)
     {
       if (WriteImage(package_info->image_info,next))

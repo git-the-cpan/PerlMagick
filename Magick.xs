@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 #include "EXTERN.h"
-#include "perl.h"
 #include "XSUB.h"
 #include "magick.h"
+#include "perl.h"
 #include <setjmp.h>
 #ifdef __cplusplus
 }
@@ -18,23 +18,67 @@ extern "C" {
 #define NULV	    ((void *)NULL)
 
 char *IM_packname = "Image::Magick";
+char *client_name = "PerlMagick";
 int IM_do_warn = 0;		/* if != 0: error messages call Perl warn */
 
 static char *complain = "Reference is not my type";
 
+#define warning(e, s1, s2) { magick_status = e; warninghandler(s1, s2); }
+
 static double
 constant(name, arg)
-char *name;
-int arg;
+    char *name;
+    int arg;
 {
     errno = 0;
-    switch (*name) {
-    }
-    errno = EINVAL;
-    return 0;
+    switch (*name)
+    {
+    case 'P':
+	if (strEQ(name, "PluginWarning"))
+	    return PluginWarning;
+	break;
 
-not_there:
-    errno = ENOENT;
+    case 'O':
+	if (strEQ(name, "OptionError"))
+	    return OptionError;
+	if (strEQ(name, "OptionWarning"))
+	    return OptionWarning;
+	break;
+
+    case 'X':
+	if (strEQ(name, "XServerError"))
+	    return XServerError;
+	if (strEQ(name, "XServerWarning"))
+	    return XServerWarning;
+	break;
+
+    case 'R':
+	if (strEQ(name, "ResourceLimitError"))
+	    return ResourceLimitError;
+	break;
+
+    case 'S':
+	if (strEQ(name, "Success"))
+	    return 0;
+	break;
+
+    case 'M':
+	if (strEQ(name, "MissingPluginWarning"))
+	    return MissingPluginWarning;
+	break;
+
+    case 'C':
+	if (strEQ(name, "CorruptImageWarning"))
+	    return CorruptImageWarning;
+	break;
+
+    case 'F':
+	if (strEQ(name, "FileOpenWarning"))
+	    return FileOpenWarning;
+	break;
+    }
+
+    errno = EINVAL;
     return 0;
 }
 
@@ -55,14 +99,14 @@ struct info {
 
 /* the different types of arguments that can be passed as arguments from Perl */
 union alist {
-	int t_int;
-	double t_dbl;
-	char *t_str;
-	Image *t_img;
+    int t_int;
+    double t_dbl;
+    char *t_str;
+    Image *t_img;
 };
 
 /*  The p_XXX arrays match the ImageMagick enums.  The positions must match
- *  between both.  The names are the minimum length to match (e.g., in p_noises
+ *  between both.  The names are the minimum length to match, e.g., in p_noises
  *  AddNoise("laplacian")  and  AddNoise("LaplacianNoise") both work.
  */
 static char *p_noises[] = {
@@ -335,34 +379,33 @@ destroy_info(info)
  *  multiple) messages in a Perl variable for later returning.  If the
  *  IM_do_warn variable is set, it also calls the Perl warn routine.
  */
+
 static void
 warninghandler(message, qual)
     const char *message, *qual;
 {
+    char b[400];
     int en = errno;
     errno = 0;
 
     if (!message)
 	return;
-    if (im_er_mes == NULL || IM_do_warn)	/* message buffer not set up */
-    {
-	warn("%s%s%s%s%s%s%s", message,
+
+    sprintf(b, "Warning %d: %.128s%s%.128s%s%s%.64s%s",
+		magick_status, message,
 		qual? " (" : "", qual? qual : "", qual? ")" : "",
 		en? " [" : "", en? strerror(en) : "", en? "]" : "");
+
+    if (im_er_mes == NULL || IM_do_warn)	/* message buffer not set up */
+    {
+	warn("%s", b);
 	if (im_er_mes == NULL)
 	    return;
     }
 
     if (SvCUR(im_er_mes))	/* add \n separator between messages */
 	sv_catpv(im_er_mes, "\n");
-    sv_catpv(im_er_mes, (char *)message);
-
-    if (qual)
-    {
-	sv_catpv(im_er_mes, " (");	/* sure would be nice to use formats */
-	sv_catpv(im_er_mes, (char *)qual);
-	sv_catpv(im_er_mes, ")");
-    }
+    sv_catpv(im_er_mes, b);
 }
 
 /*
@@ -376,39 +419,30 @@ static void
 errorhandler(message, qual)
     const char *message, *qual;
 {
+    char b[400];
     int en = errno;
     errno = 0;
 
-    if (!message)
-	message = "ERROR";
-    if (im_er_mes == NULL || im_er_jmp == NULL || IM_do_warn)
-    {
-	warn("%s%s%s%s%s%s%s", message,
+    sprintf(b, "Error %d: %.128s%s%.128s%s%s%.64s%s",
+		magick_status,
+		(message ? message : "ERROR"),
 		qual? " (" : "", qual? qual : "", qual? ")" : "",
 		en? " [" : "", en? strerror(en) : "", en? "]" : "");
+    if (im_er_mes == NULL || im_er_jmp == NULL || IM_do_warn)
+    {
+	warn("%s", b);
 	if (im_er_jmp == NULL)
-	    exit(1);
+	    exit(magick_status % 100);
     }
 
     if (im_er_mes)
     {
-	sv_setpv(im_er_mes, (char *)message);
-
-	if (qual)
-	{
-	    sv_catpv(im_er_mes, " (");
-	    sv_catpv(im_er_mes, (char *)qual);
-	    sv_catpv(im_er_mes, ")");
-	}
-	if (en)
-	{
-	    sv_catpv(im_er_mes, " [");
-	    sv_catpv(im_er_mes, strerror(en));
-	    sv_catpv(im_er_mes, "]");
-	}
+	if (SvCUR(im_er_mes))	/* add \n separator between messages */
+	    sv_catpv(im_er_mes, "\n");
+	sv_catpv(im_er_mes, b);
     }
 
-    longjmp(*im_er_jmp, 1);	/* tell caller to return error */
+    longjmp(*im_er_jmp, magick_status);	/* tell caller to return error */
 }
 
 /*  Used mostly for the info structure members.  It sets those elements
@@ -421,7 +455,7 @@ newval(dest, src)
     char *m = malloc(strlen(src) + 1);
     if (!m)
     {
-	warninghandler("Malloc failed", NULV);
+	warning(ResourceLimitWarning, "Malloc failed", NULV);
 	return;
     }
     if (*dest)
@@ -447,7 +481,7 @@ getinfo(rref, oldinfo)
     sv = perl_get_sv(b, (TRUE | 0x2));
     if (!sv)
     {
-	warninghandler("Can't create info variable", b);
+	warning(ResourceLimitWarning, "Can't create info variable", b);
 	return oldinfo;
     }
     if (SvIOKp(sv) && (info = (struct info *)SvIV(sv)))
@@ -546,7 +580,8 @@ SetAttribute(info, image, attr, sval)
 				     : SvIV(sval);
 		if (sp < 0)
 		{
-		    warninghandler("Unknown colorspace type", SvPV(sval, na));
+		    warning(OptionWarning, "Unknown colorspace type",
+					   SvPV(sval, na));
 		    return;
 		}
 		info->quant.colorspace = sp;
@@ -566,7 +601,7 @@ SetAttribute(info, image, attr, sval)
 				  : SvIV(sval);
 	    if (com < 0)
 	    {
-		warninghandler("Unknown compression type", SvPV(sval, na));
+		warning(OptionWarning, "Unknown compression type", SvPV(sval, na));
 		return;
 	    }
 	    if (info)
@@ -582,7 +617,7 @@ SetAttribute(info, image, attr, sval)
 	    char *p = SvPV(sval, na);
 	    if (!IsGeometry(p))
 	    {
-		warninghandler("bad geometry on density", p);
+		warning(OptionWarning, "bad geometry on density", p);
 		return;
 	    }
 	    if (info)
@@ -613,7 +648,7 @@ SetAttribute(info, image, attr, sval)
 				     : SvIV(sval);
 		if (sp < 0)
 		{
-		    warninghandler("Unknown dither type", SvPV(sval, na));
+		    warning(OptionWarning, "Unknown dither type", SvPV(sval, na));
 		    return;
 		}
 		info->info.dither = sp;
@@ -655,8 +690,8 @@ SetAttribute(info, image, attr, sval)
 		sprintf(info->info.filename, "%.70s:", SvPV(sval, na));
 		SetImageInfo(&info->info, 0);
 		if (*info->info.magick == '\0')
-		    warninghandler("Unrecognized image format",
-							info->info.filename);
+		    warning(OptionWarning, "Unrecognized image format",
+					    info->info.filename);
 	    }
 	    return;
 	}
@@ -680,7 +715,7 @@ SetAttribute(info, image, attr, sval)
 	    int in = SvPOK(sval) ? LookupStr(p_interlaces, SvPV(sval, na))
 				 : SvIV(sval);
 	    if (in < 0)
-		warninghandler("Unknown interlace value", SvPV(sval, na));
+		warning(OptionWarning, "Unknown interlace value", SvPV(sval,na))
 	    else if (info)
 		info->info.interlace = in;
 	    return;
@@ -810,7 +845,7 @@ SetAttribute(info, image, attr, sval)
 		char *p = SvPV(sval, na);
 		if (!IsGeometry(p))
 		{
-		    warninghandler("Bad geometry on size", p);
+		    warning(OptionWarning, "Bad geometry on size", p);
 		    return;
 		}
 		newval(&info->info.size, p);
@@ -865,7 +900,7 @@ SetAttribute(info, image, attr, sval)
     }
 
     /* fall through to here for unknown attributes */
-    warninghandler("Unknown attribute", attr);
+    warning(OptionWarning, "Unknown attribute", attr);
 }
 
 /*  This recursive routine is called by setup_list to traverse the
@@ -971,7 +1006,6 @@ PROTOTYPES: ENABLE
 BOOT:
 	SetWarningHandler(warninghandler);
 	SetErrorHandler(errorhandler);
-	client_name="PerlMagick";
 
 double
 constant(name, arg)
@@ -1048,20 +1082,21 @@ Animate(ref, ...)
 	    volatile int retval = 0;
 
 	    im_er_mes = newSVpv("", 0);
+
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
 
 	    im_er_jmp = &error_jmp;
-	    if (setjmp(error_jmp))
+	    if ((retval = setjmp(error_jmp)))
 		goto badreturn;
 
 	    if (!(image = setup_list(rref, &info, NULV)))
 	    {
-		warninghandler("No images to Display", NULV);
+		warning(OptionWarning, "No images to Display", NULV);
 		goto badreturn;
 	    }
 
@@ -1075,7 +1110,8 @@ Animate(ref, ...)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
 	    display = XOpenDisplay(info->info.server_name);
-	    if (display != (Display *) NULL) {
+	    if (display)
+	    {
 		XSetErrorHandler(XError);
 		resource_database = XGetResourceDatabase(display, client_name);
 		XGetResourceInfo(resource_database, client_name, &resource);
@@ -1085,14 +1121,13 @@ Animate(ref, ...)
 		(void) XAnimateImages(display, &resource, (char **) NULL, 0,
 		    image);
 
-		SetMonitorHandler((MonitorHandler) NULL);
 		XCloseDisplay(display);
 	    }
 
 	badreturn:
 	    if (temp)
 		destroy_info(temp);
-	    sv_setiv(im_er_mes, (IV)retval);
+	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
 	    SvPOK_on(im_er_mes);
 	    ST(0) = sv_2mortal(im_er_mes);
 	    im_er_mes = NULL, im_er_jmp = NULL;
@@ -1116,36 +1151,31 @@ Average(ref)
 	    SV *sv, *rv;
 	    AV *av;
 	    HV *hv;
+	    volatile int retval = 0;
 
-	    im_er_mes = NULL;	/* we can't handle returning messages */
+	    im_er_mes = newSVpv("", 0);
+
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
-		XSRETURN_EMPTY;
+		warning(OptionWarning, complain, IM_packname);
+		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
 	    hv = SvSTASH(rref);
 
 	    im_er_jmp = &error_jmp;
-	    if (setjmp(error_jmp))
-	    {
-		im_er_jmp = NULL;
-		XSRETURN_EMPTY;
-	    }
+	    if (retval = setjmp(error_jmp))
+		goto badreturn;
 
 	    if (!(image = setup_list(rref, &info, NULV)))
 	    {
-		warninghandler("No images to Average", NULV);
-		im_er_jmp = NULL;
-		XSRETURN_EMPTY;
+		warning(OptionWarning, "No images to Average", NULV);
+		goto badreturn;
 	    }
 
 	    image = AverageImages(image);
 	    if (!image)
-	    {
-		im_er_jmp = NULL;
-		XSRETURN_EMPTY;
-	    }
+		goto badreturn;
 
 	    /* create blessed Perl array for the returned image */
 	    av = newAV();
@@ -1163,7 +1193,16 @@ Average(ref)
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
 	    strcpy(image->filename, info->info.filename);
 	    SetImageInfo(&info->info, False);
+
+	    SvREFCNT_dec(im_er_mes);
 	    im_er_jmp = NULL;
+	    XSRETURN(1);
+
+	badreturn:
+	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
+	    SvPOK_on(im_er_mes);	/* return messages in string context */
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
 	    XSRETURN(1);
 	}
 
@@ -1187,28 +1226,26 @@ Copy(ref)
 	    SV *sv, *rv;
 	    AV *av;
 	    HV *hv;
+	    volatile int retval = 0;
 
-	    im_er_mes = NULL;   /* we can't handle returning messages */
+	    im_er_mes = newSVpv("", 0);
+
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
-		XSRETURN_EMPTY;
+		warning(OptionWarning, complain, IM_packname);
+		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
 	    hv = SvSTASH(rref);
 
 	    im_er_jmp = &error_jmp;
-	    if (setjmp(error_jmp))
-	    {
-		im_er_jmp = NULL;
-		XSRETURN_EMPTY;
-	    }
+	    if (retval = setjmp(error_jmp))
+	        goto badreturn;
 
 	    if (!(image = setup_list(rref, &info, NULV)))
 	    {
-		warninghandler("No images to Copy", NULV);
-		im_er_jmp = NULL;
-		XSRETURN_EMPTY;
+		warning(OptionWarning, "No images to Copy", NULV);
+		goto badreturn;
 	    }
 
 	    /* create blessed Perl array for the returned image */
@@ -1228,7 +1265,15 @@ Copy(ref)
 	    }
 
 	    info = getinfo(av, info);
+	    SvREFCNT_dec(im_er_mes);
 	    im_er_jmp = NULL;
+	    XSRETURN(1);
+
+	badreturn:
+	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
+	    SvPOK_on(im_er_mes);	/* return messages in string context */
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
 	    XSRETURN(1);
 	}
 
@@ -1257,18 +1302,18 @@ Display(ref, ...)
 	    im_er_mes = newSVpv("", 0);
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
 
 	    im_er_jmp = &error_jmp;
-	    if (setjmp(error_jmp))
+	    if ((retval = setjmp(error_jmp)))
 		goto badreturn;
 
 	    if (!(image = setup_list(rref, &info, NULV)))
 	    {
-		warninghandler("No images to Display", NULV);
+		warning(OptionWarning, "No images to Display", NULV);
 		goto badreturn;
 	    }
 
@@ -1282,7 +1327,8 @@ Display(ref, ...)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
 	    display = XOpenDisplay(info->info.server_name);
-	    if (display != (Display *) NULL) {
+	    if (display)
+	    {
 		XSetErrorHandler(XError);
 		resource_database = XGetResourceDatabase(display, client_name);
 		XGetResourceInfo(resource_database, client_name, &resource);
@@ -1295,7 +1341,6 @@ Display(ref, ...)
 			&im, &state);
 	        }
 
-		SetMonitorHandler((MonitorHandler) NULL);
 		XCloseDisplay(display);
 	    }
 
@@ -1328,38 +1373,35 @@ Montage(ref, ...)
 	    jmp_buf error_jmp;
 	    Image *im, *image;
 	    struct info *info;
-	    volatile SV *retval;
+	    volatile int retval = 0;
 	    SV **svarr = NULL;
-	    AV *av;
+	    AV *av = NULL;
 	    HV *hv;
-	    SV *sv, *rv;
+	    SV *sv, *rv, *avref;
+
+	    im_er_mes = newSVpv("", 0);
 
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
-		XSRETURN_EMPTY;
+		warning(OptionWarning, complain, IM_packname);
+		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
 	    hv = SvSTASH(rref);
 
 	    av = newAV();
-	    retval = sv_2mortal(sv_bless(newRV((SV *)av), hv));
+	    avref = sv_2mortal(sv_bless(newRV((SV *)av), hv));
 	    SvREFCNT_dec(av);
 
 	    transparent_color = montage.tile = montage.texture = NULL;
 
-	    im_er_mes = NULL;	/* we can't handle returning messages */
 	    im_er_jmp = &error_jmp;
-	    if (setjmp(error_jmp))
-	    {
-		im_er_jmp = NULL;
+	    if ((retval = setjmp(error_jmp)))
 		goto badreturn;
-	    }
 
 	    if (!(image = setup_list(rref, &info, &svarr)))
 	    {
-		warninghandler("No images to Montage", NULV);
-		im_er_jmp = NULL;
+		warning(OptionWarning, "No images to Montage", NULV);
 		goto badreturn;
 	    }
 	    info = getinfo(av, info);
@@ -1370,10 +1412,11 @@ Montage(ref, ...)
 	    XGetMontageInfo(&montage);
 	    sprintf(montage.filename, "montage-%.*s", MaxTextExtent - 9,
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
+
 	    display = XOpenDisplay(info->info.server_name);
-	    if (display != (Display *) NULL)
-	      XSetErrorHandler(XError);
-	    resource_database=XGetResourceDatabase(display, client_name);
+	    if (display)
+		XSetErrorHandler(XError);
+	    resource_database = XGetResourceDatabase(display, client_name);
 	    XGetResourceInfo(resource_database, client_name, &resource);
 	    resource.background_color = XGetResourceInstance(resource_database,
 	      client_name, "background", DefaultTileBackground);
@@ -1391,8 +1434,8 @@ Montage(ref, ...)
 	    montage.shadow = IsTrue(resource_value);
 	    montage.tile = XGetResourceClass(resource_database, client_name,
 		"tile", montage.tile);
-	    if (display != (Display *) NULL)
-	      XCloseDisplay(display);
+	    if (display)
+		XCloseDisplay(display);
 
 	    concatenate = 0;
 	    for (n = 2; n < items; n += 2)
@@ -1426,8 +1469,8 @@ Montage(ref, ...)
                                  LookupStr(p_composites, SvPV(ST(n), na));
                         if (sp < 0)
                         {
-                            warninghandler("Unknown composite type",
-                                                        SvPV(ST(n), na));
+			    warning(OptionWarning, "Unknown composite type",
+						    SvPV(ST(n), na));
                             continue;
                         }
                         montage.compose = sp;
@@ -1440,7 +1483,7 @@ Montage(ref, ...)
 			char *p = SvPV(ST(n), na);
 			if (!IsGeometry(p))
 			{
-			    warninghandler("bad geometry on frame", p);
+			    warning(OptionWarning, "bad geometry on frame", p);
 			    continue;
 			}
 			montage.frame = p;
@@ -1460,8 +1503,8 @@ Montage(ref, ...)
                                  LookupStr(p_filters, SvPV(ST(n), na));
                         if (sp < 0)
                         {
-                            warninghandler("Unknown filter type",
-                                                        SvPV(ST(n), na));
+			    warning(OptionWarning, "Unknown filter type",
+						    SvPV(ST(n), na));
                             continue;
                         }
                         montage.filter = sp;
@@ -1484,7 +1527,7 @@ Montage(ref, ...)
 			char *p = SvPV(ST(n), na);
 			if (!IsGeometry(p))
 			{
-			    warninghandler("bad geometry on geometry", p);
+			    warning(OptionWarning, "bad geometry on geometry", p);
 			    continue;
 			}
 			resource.image_geometry = p;
@@ -1498,8 +1541,8 @@ Montage(ref, ...)
 				  LookupStr(p_gravities, SvPV(ST(n), na));
 		    	if (in < 0)
 			{
-			    warninghandler("Unknown gravity type",
-			      SvPV(ST(n), na));
+			    warning(OptionWarning, "Unknown gravity type",
+						    SvPV(ST(n), na));
 			    return;
 			}
 			resource.gravity = in;
@@ -1527,8 +1570,8 @@ Montage(ref, ...)
 			switch (in)
 			{
 			default:
-			    warninghandler("Unknown mode value",
-							SvPV(ST(n), na));
+			    warning(OptionWarning, "Unknown mode value",
+						    SvPV(ST(n), na));
 			    break;
 			case FrameMode:
 			    montage.frame = DefaultTileFrame;
@@ -1556,8 +1599,8 @@ Montage(ref, ...)
                                  LookupStr(p_boolean, SvPV(ST(n), na));
                         if (sp < 0)
                         {
-                            warninghandler("Unknown shadow type",
-                                                        SvPV(ST(n), na));
+			    warning(OptionWarning, "Unknown shadow type",
+						    SvPV(ST(n), na));
                             continue;
                         }
                         montage.shadow = sp;
@@ -1575,7 +1618,7 @@ Montage(ref, ...)
 			char *p = SvPV(ST(n), na);
 			if (!IsGeometry(p))
 			{
-			    warninghandler("bad geometry on tile", p);
+			    warning(OptionWarning, "bad geometry on tile", p);
 			    continue;
 			}
 			montage.tile = p;
@@ -1591,19 +1634,17 @@ Montage(ref, ...)
 		    break;
 		}
 		/* fall through to here for unknown attributes */
-		warninghandler("Unknown attribute", arg);
+		warning(OptionWarning, "Unknown attribute", arg);
 	    }
 
 	    image = XMontageImages(&resource, &montage, image);
-
 	    if (!image)
-	    {
-		im_er_jmp = NULL;
 		goto badreturn;
-	    }
+
 	    if (transparent_color)
-	      for (im = image ; im; im = im->next)
-	        TransparentImage(im, transparent_color);
+		for (im = image; im; im = im->next)
+		    TransparentImage(im, transparent_color);
+
 	    strcpy(info->info.filename, montage.filename);
 	    SetImageInfo(&info->info, False);
 
@@ -1613,12 +1654,18 @@ Montage(ref, ...)
 	    SvREFCNT_dec(sv);
 	    /*SvREFCNT_dec(rv);*/
 
-	badreturn:
-	    if (!im_er_jmp)
-		XSRETURN_UNDEF;
-
+	    ST(0) = avref;
 	    im_er_jmp = NULL;
-	    ST(0) = (SV *)retval;
+	    SvREFCNT_dec(im_er_mes);	/* can't return warning messages */
+	    im_er_mes = NULL;
+	    XSRETURN(1);
+
+	badreturn:
+	    im_er_jmp = NULL;
+	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
+	    SvPOK_on(im_er_mes);
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
 	    XSRETURN(1);
 	}
 
@@ -1634,7 +1681,7 @@ Read(ref, ...)
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
 	    jmp_buf error_jmp;
 	    int n, ac;
-	    volatile int nimg = -1;
+	    volatile int nimg = 0;
 	    char **list, **keep, **kp;
 	    struct info *info;
 	    Image *image;
@@ -1642,12 +1689,13 @@ Read(ref, ...)
 	    HV *hv;
 
 	    im_er_mes = newSVpv("", 0);
+
 	    ac = (items < 2) ? 1 : items - 1;
 	    list = safemalloc((ac + 1) * sizeof *list);
 
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		goto return_it;
 	    }
 	    rref = SvRV(ST(0));
@@ -1655,7 +1703,7 @@ Read(ref, ...)
 
 	    if (SvTYPE(rref) != SVt_PVAV)	/* array of images */
 	    {
-		warninghandler("Can't (yet) read into a single image", NULV);
+		warning(OptionWarning, "Can't (yet) read into a single image", NULV);
 		goto return_it;
 	    }
 
@@ -1724,14 +1772,14 @@ Write(ref, ...)
 	    volatile struct info *temp = NULL;
 	    int n, display = ix >= 4;
 	    jmp_buf error_jmp;
-	    volatile int retval = 0;
+	    volatile int nimg = 0;
 	    char fn[MaxTextExtent], magick[MaxTextExtent];
 	    char format[MaxTextExtent];
 
 	    im_er_mes = newSVpv("", 0);
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
@@ -1742,7 +1790,7 @@ Write(ref, ...)
 
 	    if (!(image = setup_list(rref, &info, NULV)))
 	    {
-		warninghandler("No images to Write", NULV);
+		warning(OptionWarning, "No images to Write", NULV);
 		goto badreturn;
 	    }
 
@@ -1770,7 +1818,7 @@ Write(ref, ...)
 		sprintf(im->filename, format, fn);
 
 		if (WriteImage((ImageInfo *) &temp->info, im))
-		    ++retval;
+		    ++nimg;
 
 		strcpy(im->magick, magick);
 		strcpy(im->filename, fn);
@@ -1782,7 +1830,7 @@ Write(ref, ...)
 	badreturn:
 	    if (temp)
 		destroy_info(temp);
-	    sv_setiv(im_er_mes, (IV)retval);
+	    sv_setiv(im_er_mes, (IV)nimg);
 	    SvPOK_on(im_er_mes);
 	    ST(0) = sv_2mortal(im_er_mes);
 	    im_er_mes = NULL, im_er_jmp = NULL;
@@ -1924,7 +1972,8 @@ Mogrify(ref, ...)
 	    union alist alist[ARGMAX];
 	    char aflag[ARGMAX];
 	    jmp_buf error_jmp;
-	    int nimg = 0, first;
+	    volatile int nimg = 0;
+	    int first;
 	    RectangleInfo br;
 	    AnnotateInfo annotate;
 	    FrameInfo fr;
@@ -1939,7 +1988,7 @@ Mogrify(ref, ...)
 	    im_er_mes = newSVpv("", 0);
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		goto return_it;
 	    }
 	    rref = SvRV(ST(0));
@@ -1957,7 +2006,7 @@ Mogrify(ref, ...)
 		{
 		    if (rp >= ENDOF(routines))
 		    {
-			warninghandler("Unknown Magick routine", arg);
+			warning(OptionWarning, "Unknown Magick routine", arg);
 			goto return_it;
 		    }
 		    if (strEQcase(arg, rp->name))
@@ -1970,7 +2019,7 @@ Mogrify(ref, ...)
 
 	    if (!(image = setup_list(rref, &info, &svarr)))
 	    {
-		warninghandler("No Images to Mogrify", arg);
+		warning(OptionWarning, "No Images to Mogrify", arg);
 		goto return_it;
 	    }
 
@@ -2016,8 +2065,7 @@ Mogrify(ref, ...)
 		    if (!sv_isobject(sv) ||
 			!(al->t_img = setup_list(SvRV(sv), NULV, NULV)))
 		    {
-			warninghandler(complain, IM_packname);
-			nimg = -1;
+			warning(OptionWarning, complain, IM_packname);
 			goto return_it;
 		    }
 		}
@@ -2030,7 +2078,7 @@ Mogrify(ref, ...)
 		    {
 			char b[80];
 			sprintf(b, "Invalid %.60s value", pp->varname);
-			warninghandler(b, arg);
+			warning(OptionWarning, b, arg);
 			goto continue_outer_loop;
 		    }
 		}
@@ -2041,10 +2089,7 @@ Mogrify(ref, ...)
 
 	    im_er_jmp = &error_jmp;
 	    if (setjmp(error_jmp))
-	    {
-		nimg = -1;
 		goto return_it;
-	    }
 
 	    first = 1;
 	    for (next = image, pv = svarr; next; first = 0, next = next->next)
@@ -2055,8 +2100,7 @@ Mogrify(ref, ...)
 		{
 		default:
 		    sprintf(b, "%d", (int)ix);
-		    warninghandler("Routine value out of range", b);
-		    nimg = -1;
+		    warning(OptionWarning, "Routine value out of range", b);
 		    goto return_it;
 		case  1:	/* Comment */
 		    if (!aflag[0])
@@ -2404,8 +2448,7 @@ Mogrify(ref, ...)
 
 		    if (!aflag[1])
 		    {
-			warninghandler("Missing image in Composite", NULV);
-			nimg = -1;
+			warning(OptionWarning, "Missing image in Composite", NULV);
 			goto return_it;
 		    }
 		    CompositeImage(image, alist[0].t_int, alist[1].t_img,
@@ -2481,8 +2524,7 @@ Mogrify(ref, ...)
 			alist[1].t_int = 1;
 		    if (!aflag[0])
 		    {
-			warninghandler("Missing image in Map", NULV);
-			nimg = -1;
+			warning(OptionWarning, "Missing image in Map", NULV);
 			goto return_it;
 		    }
 		    MapImage(image, alist[0].t_img, alist[1].t_int);
@@ -2634,22 +2676,22 @@ Mogrify(ref, ...)
 			next = NULL;  /* 'cause it's been blown away */
 		    break;
 		case 60:	/* Wave */
-		{
-		    float amplitude, wavelength;
+		    {
+			float amplitude, wavelength;
 
-		    amplitude = 10.0;
-		    wavelength = 10.0;
-		    if (aflag[1])
-		        amplitude = alist[1].t_dbl;
-		    if (aflag[2])
-		        wavelength = alist[2].t_dbl;
-		    if (aflag[0])
-		      (void) sscanf(alist[0].t_str, "%fx%f", &amplitude,
-							     &wavelength);
+			amplitude = 10.0;
+			wavelength = 10.0;
+			if (aflag[1])
+			    amplitude = alist[1].t_dbl;
+			if (aflag[2])
+			    wavelength = alist[2].t_dbl;
+			if (aflag[0])
+			    (void) sscanf(alist[0].t_str, "%fx%f",
+						    &amplitude, &wavelength);
 
-		    image = WaveImage(image, amplitude, wavelength);
-		    break;
-		}
+			image = WaveImage(image, amplitude, wavelength);
+			break;
+		    }
 		}
 
 		if (image)
@@ -2700,7 +2742,7 @@ Set(ref, ...)
 	    im_er_mes = newSVpv("", 0);
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		goto badreturn;
 	    }
 	    rref = SvRV(ST(0));
@@ -2745,7 +2787,7 @@ Get(ref, ...)
 
 	    if (!sv_isobject(ST(0)))
 	    {
-		warninghandler(complain, IM_packname);
+		warning(OptionWarning, complain, IM_packname);
 		XSRETURN_EMPTY;
 	    }
 	    rref = SvRV(ST(0));
@@ -2753,7 +2795,7 @@ Get(ref, ...)
 	    image = setup_list(rref, &info, NULV);
 	    if (!image && !info)
 	    {
-		warninghandler("Nothing to GetAttributes from", NULV);
+		warning(OptionWarning, "Nothing to GetAttributes from", NULV);
 		XSRETURN_EMPTY;
 	    }
 	    EXTEND(sp, items - 1);
@@ -3279,5 +3321,35 @@ Get(ref, ...)
 
 		/* push return value onto stack */
 		PUSHs(s? sv_2mortal(s) : &sv_undef);
+	    }
+	}
+
+# lookup a color by its name
+
+void
+QueryColor(ref, ...)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+		querycolor = 1
+	PPCODE:
+	{
+	    int n;
+	    char *arg;	/* the color name */
+	    XColor target_color;
+	    char b[80];
+
+	    EXTEND(sp, items - 1);
+
+	    for (n = 1; n < items; n++)
+	    {
+		arg = (char *)SvPV(ST(n), na);
+
+		if (!XQueryColorDatabase(arg, &target_color))
+		    sprintf(b, "0,0,0");
+		else
+		    sprintf(b, "%u,%u,%u", XDownScale(target_color.red),
+					   XDownScale(target_color.green),
+					   XDownScale(target_color.blue));
+		PUSHs(sv_2mortal(newSVpv(b, 0)));
 	    }
 	}

@@ -16,10 +16,15 @@ require AutoLoader;
 # Items to export into callers namespace by default. Note: do not export
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
-@EXPORT = qw(
-	
-);
-$VERSION = '1.13';
+@EXPORT =
+  qw(
+    PluginError OptionError XServerError ResourceLimitError
+    Success
+    ResourceLimitWarning XServerWarning OptionWarning PluginWarning
+	MissingPluginWarning CorruptImageWarning FileOpenWarning
+    );
+
+$VERSION = '1.14';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -80,7 +85,7 @@ Image::Magick - Perl extension for calling ImageMagick's libmagick routines
 
 This Perl extension allows the reading, manipulation and writing of
 a large number of image file formats using the magick library from
-ImageMagick by John Cristy (cristy@dupont.com).  It was originally
+ImageMagick by John Cristy (cristy@mystic.es.dupont.com).  It was originally
 developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
@@ -89,7 +94,7 @@ A Web page has been set up for this extension. See:
 
 =head1 AUTHOR
 
-Kyle Shorter	magick@sympatico.org
+Kyle Shorter	magick@wizards.dupont.com
 
 =head1 BUGS
 

@@ -1,5 +1,8 @@
 Revision history for Perl extension Image::Magick.
 
+1.14  Tue Aug 12 1997
+	- Added numeric error handling
+	- Add QueryColors routine
 1.12  Tue June 03 1997
 	- Changed $q->DisplayMethod() to be more robust.
 1.11  Tue June 03 1997

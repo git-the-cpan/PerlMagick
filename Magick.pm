@@ -7,6 +7,7 @@ use strict;
 use Carp;
 use vars qw($VERSION @ISA @EXPORT $AUTOLOAD);
 
+require 5.002;
 require Exporter;
 require DynaLoader;
 require AutoLoader;
@@ -18,7 +19,7 @@ require AutoLoader;
 @EXPORT = qw(
 	
 );
-$VERSION = '1.12';
+$VERSION = '1.13';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()

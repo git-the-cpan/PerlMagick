@@ -363,12 +363,6 @@ warninghandler(message, qual)
 	sv_catpv(im_er_mes, (char *)qual);
 	sv_catpv(im_er_mes, ")");
     }
-    if (en)			/* dubious at best */
-    {
-	sv_catpv(im_er_mes, " [");
-	sv_catpv(im_er_mes, strerror(en));
-	sv_catpv(im_er_mes, "]");
-    }
 }
 
 /*
@@ -2784,7 +2778,32 @@ Get(ref, ...)
 		    }
 		    break;
 		case 'B': case 'b':
-		    if (strEQcase(arg, "border"))
+		    if (strEQcase(arg, "base_column"))
+		    {
+			if (image)
+			    s = newSViv(image->magick_columns);
+		    }
+		    if (strEQcase(arg, "base_filename"))
+		    {
+			if (image)
+			    s = newSVpv(image->magick_filename, 0);
+		    }
+		    if (strEQcase(arg, "base_height"))
+		    {
+			if (image)
+			    s = newSViv(image->magick_rows);
+		    }
+		    if (strEQcase(arg, "base_row"))
+		    {
+			if (image)
+			    s = newSViv(image->magick_rows);
+		    }
+		    if (strEQcase(arg, "base_width"))
+		    {
+			if (image)
+			    s = newSViv(image->magick_columns);
+		    }
+		    else if (strEQcase(arg, "border"))
 		    {
 			if (!image)
 			    break;

@@ -306,7 +306,7 @@ static struct info *
 copy_info(info)
     struct info *info;
 {
-    struct info *new = safemalloc(sizeof (struct info));
+    struct info *new = (struct info *) safemalloc(sizeof (struct info));
 
     if (!info)
     {
@@ -371,7 +371,7 @@ destroy_info(info)
 	safefree(info->info.texture);
     if (info->info.undercolor)
 	safefree(info->info.undercolor);
-    safefree(info);
+    safefree((char *) info);
 }
 
 /*
@@ -955,7 +955,7 @@ get_list(rref, svarr, cur, last)
 		{
 		    *last += 256;
 		    if (*svarr) 
-			*svarr = (SV **)saferealloc(*svarr, *last * sizeof *svarr);
+			*svarr = (SV **)saferealloc((char *) *svarr, *last * sizeof *svarr);
 		    else
 			*svarr = (SV **)safemalloc(*last * sizeof *svarr);
 		}
@@ -1691,7 +1691,7 @@ Read(ref, ...)
 	    im_er_mes = newSVpv("", 0);
 
 	    ac = (items < 2) ? 1 : items - 1;
-	    list = safemalloc((ac + 1) * sizeof *list);
+	    list = (char **) safemalloc((ac + 1) * sizeof *list);
 
 	    if (!sv_isobject(ST(0)))
 	    {
@@ -1749,7 +1749,7 @@ Read(ref, ...)
 			    break;
 			}
 	return_it:
-	    safefree(list);
+	    safefree((char *) list);
 	    sv_setiv(im_er_mes, (IV)nimg);
 	    SvPOK_on(im_er_mes);	/* return messages in string context */
 	    ST(0) = sv_2mortal(im_er_mes);
@@ -2715,7 +2715,7 @@ Mogrify(ref, ...)
 
 	return_it:
 	    if (svarr)
-		safefree(svarr);
+		safefree((char *) svarr);
 	    sv_setiv(im_er_mes, (IV)nimg);
 	    SvPOK_on(im_er_mes); /* return messages in string context */
 	    ST(0) = sv_2mortal(im_er_mes);
@@ -3339,7 +3339,7 @@ Ping(ref, ...)
 	    int n;
 	    char b[80];
 	    struct info *info;
-	    unsigned int columns, rows;
+	    unsigned int columns, rows, filesize;
 	    AV *av;
 	    SV *s;
 
@@ -3352,10 +3352,12 @@ Ping(ref, ...)
 	    for (n = 1; n < items; n++)
 	    {
 		strcpy(info->info.filename, (char *)SvPV(ST(n), na));
-		if (!PingImage(&info->info, &columns, &rows))
+		filesize=PingImage(&info->info, &columns, &rows);
+		if (filesize == 0)
 		    s = &sv_undef;
 		else {
-		    sprintf(b, "%u,%u", columns, rows);
+		    sprintf(b, "%u,%u,%u,%s", columns, rows, filesize,
+		    	info->info.magick);
 		    s = sv_2mortal(newSVpv(b, 0));
 		}
 		PUSHs(s);

@@ -18,13 +18,13 @@ require AutoLoader;
 # Do not simply export all your public functions/methods/constants.
 @EXPORT =
   qw(
-    PluginError OptionError XServerError ResourceLimitError
+    ResourceLimitError XServerError OptionError 
     Success
     ResourceLimitWarning XServerWarning OptionWarning PluginWarning
 	MissingPluginWarning CorruptImageWarning FileOpenWarning
     );
 
-$VERSION = '1.16';
+$VERSION = '1.17';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()

@@ -1,5 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
+1.17  Thu Oct 15 1997
+	- Added addition parameters to PingImage.
 1.16  Thu Sep 9 1997
 	- New distribution for CPAN
 1.15  Thu Aug 28 1997
@@ -41,4 +43,4 @@ Revision history for Perl extension Image::Magick.
 0.90  Mon Feb. 17 1997
 	- released Alpha version
 0.10  Fri Jan 31 1997
-	- original version; created by h2xs 1.16
+	- original version; created by h2xs 1.17

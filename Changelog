@@ -1,5 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
+1.34 Fri Mar 25 1998
+	- you can now specify a color name for pixel set attribute
 1.33 Fri Mar 15 1998
 	- Added view as an image attribute (for FlashPix).
 1.32 Fri Jan 30 1998

@@ -820,7 +820,7 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	if (strEQcase(attr, "pixel"))
 	{
 	    RunlengthPacket *cp;
-	    int x, y, red, green, blue, index;
+	    int x, y;
 
 	    for ( ; image; image = image->next)
 	    {
@@ -834,16 +834,31 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		if (x > image->columns)
 		    x %= image->columns;
 		cp = image->pixels+(y*image->columns+x);
-		red = cp->red;
-		blue = cp->green;
-		green = cp->blue;
-		index = cp->index;
-		(void) sscanf(SvPV(sval, na), "%d,%d,%d,%d",
-					       &red, &green, &blue, &index);
-		cp->red = red;
-		cp->blue = green;
-		cp->green = blue;
-		cp->index = index;
+		image->class = DirectClass;
+		if (strchr(SvPV(sval, na), ',') == 0)
+		{
+		    XColor xc;
+
+		    XQueryColorDatabase(SvPV(sval, na), &xc);
+		    cp->red = XDownScale(xc.red);
+		    cp->blue = XDownScale(xc.green);
+		    cp->green = XDownScale(xc.blue);
+		}
+		else
+		{
+		    int red, green, blue, index;
+
+		    red = cp->red;
+		    blue = cp->green;
+		    green = cp->blue;
+		    index = cp->index;
+		    (void) sscanf(SvPV(sval, na), "%d,%d,%d,%d",
+						&red, &green, &blue, &index);
+		    cp->red = red;
+		    cp->blue = green;
+		    cp->green = blue;
+		    cp->index = index;
+		}
 	    }
 	    return;
 	}
@@ -1668,6 +1683,12 @@ Montage(ref, ...)
 		    }
 		    break;
 		case 'P': case 'p':
+		    if (strEQcase(arg, "pen"))
+		    {
+			if (info)
+			  newval(&info->info.pen, SvPV(ST(n), na));
+			continue;
+		    }
 		    if (strEQcase(arg, "point"))
 		    {
 			montage.pointsize = SvIV(ST(n));
@@ -1723,6 +1744,7 @@ Montage(ref, ...)
 		/* fall through to here for unknown attributes */
 		warning(OptionWarning, "Unknown attribute", arg);
 	    }
+	    resource.image_info = info->info;
 
 	    image = XMontageImages(&resource, &montage, image);
 	    if (!image)

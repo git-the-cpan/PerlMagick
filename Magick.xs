@@ -1143,14 +1143,12 @@ Montage(ref, ...)
 	    }
 	    info = getinfo(av, info);
 
-	    XGetMontageInfo(&montage);
-	    sprintf(montage.filename, "montage-%.*s", MaxTextExtent - 9,
-		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
-
 	    /*
 	      Get user defaults from X resource database.
 	    */
 	    XGetMontageInfo(&montage);
+	    sprintf(montage.filename, "montage-%.*s", MaxTextExtent - 9,
+		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
 	    display=XOpenDisplay(info->info.server_name);
 	    if (display != (Display *) NULL)
 	      XSetErrorHandler(XError);
@@ -2392,8 +2390,8 @@ Mogrify(ref, ...)
 		    break;
 		case 57:	/* Threshold */
 		    if (!aflag[0])
-			alist[0].t_str = NULL;
-		    ThresholdImage(image, alist[0].t_str);
+			alist[0].t_dbl = (MaxRGB+1)/2.0;
+		    ThresholdImage(image, alist[0].t_dbl);
 		    break;
 		case 58:	/* Charcoal */
 		    if (first)

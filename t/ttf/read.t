@@ -18,8 +18,9 @@ chdir 't/ttf' || die 'Cd failed';
 # 1) Test default ImageMagick read operation on font
 #
 print("Default ImageMagick read ...\n");
-testRead( 'input.ttf', '50c1aefe3240f37827d8e624431cb0b4',
-	               'ec27f0f85819a1d928cf01cf32590778' );
+testRead( 'input.ttf',
+  'ce147e690d9852430de71eaa6e05623056613f62249c441d0174e18d772554f7',
+  '90578100ca9729646a3efe0777eefd993c20f454ae8d70548b4e97e3882f2577' );
 
 #
 # 2) Test drawing text using font
@@ -27,8 +28,8 @@ testRead( 'input.ttf', '50c1aefe3240f37827d8e624431cb0b4',
 ++$test;
 print("Draw text using font ...\n");
 $infile = 'input.ttf';
-$md5    = 'b08d9a69aacf96507e93adf4489d561b';
-$md5_16 = 'ce4685ab97facf0570ea7d8772217f34';
+$md5    = '078de7259b6ddd4dd527112cecb7b7ac3c8be62db79f85d02efbbc26b0412b54';
+$md5_16 = '27b7dc3d2e67a4afbd0703cfef1119f221b0c72bfb706664531f3f7edae263e9';
 
 $image=Image::Magick->new;
 $status=$image->Set(font=>"\@$infile", pen=>'#0000FF', pointsize=>14);
@@ -64,8 +65,8 @@ undef $image;
 ++$test;
 print("Draw text using annotate ...\n");
 $infile = 'input.ttf';
-$md5    = 'ae1f478dd08fa469be1249b1b8228fc5';
-$md5_16 = '241055c1bd183601e14393f28a0f0299';
+$md5    = 'c7872f73dba3023230416f34af159cc4a5613215ce99a48e66d6777d1a354b1d';
+$md5_16 = '5797f93bae76a958b0dff174c99d4894eca2e5eda806cf6ed8e2448123dde248';
 
 $image=Image::Magick->new;
 $status = $image->Set(size=>'330x30');

@@ -274,8 +274,8 @@ static struct
     } arguments[MaxArguments];
   } Methods[] =
   {
-    { "Comment", { {"comment", StringReference} } },
-    { "Label", { {"label", StringReference} } },
+    { "comment", { {"comment", StringReference} } },
+    { "label", { {"label", StringReference} } },
     { "AddNoise", { {"noise", NoiseTypes} } },
     { "Colorize", { {"fill", StringReference}, {"opacity", StringReference} } },
     { "Border", { {"geom", StringReference}, {"width", IntegerReference},
@@ -431,6 +431,9 @@ static jmp_buf
 /*
   Forward declarations.
 */
+static Image
+  *SetupList(SV *,struct PackageInfo **,SV ***);
+
 static int
   strEQcase(const char *,const char *);
 
@@ -469,7 +472,7 @@ static struct PackageInfo *ClonePackageInfo(struct PackageInfo *info)
   cloned_info=(struct PackageInfo *) AcquireMemory(sizeof(struct PackageInfo));
   if (!info)
     {
-      MagickIncarnate(client_name);
+      InitializeMagick(client_name);
       cloned_info->image_info=CloneImageInfo((ImageInfo *) NULL);
       cloned_info->quantize_info=CloneQuantizeInfo((QuantizeInfo *) NULL);
       return(cloned_info);
@@ -1057,9 +1060,19 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
     case 'C':
     case 'c':
     {
-      if (LocaleCompare(attribute,"cache") == 0)
+      if (LocaleCompare(attribute,"cache-threshold") == 0)
         {
           SetCacheThreshold(SvIV(sval));
+          return;
+        }
+      if (LocaleCompare(attribute,"clip-mask") == 0)
+        {
+          Image
+            *clip_mask;
+
+          clip_mask=SetupList(SvRV(sval),&info,(SV ***) NULL);
+          for ( ; image; image=image->next)
+            SetImageClipMask(image,clip_mask);
           return;
         }
       if (LocaleNCompare(attribute,"colormap",8) == 0)
@@ -2017,7 +2030,7 @@ Append(ref,...)
         case 'S':
         case 's':
         {
-          if (strEQcase(attribute,"stack"))
+          if (LocaleCompare(attribute,"stack") == 0)
             {
               stack=LookupStr(BooleanTypes,SvPV(ST(i),na));
               if (stack < 0)
@@ -2830,8 +2843,8 @@ Get(ref,...)
         MagickWarning(OptionWarning,"Nothing to get attributes from",NULL);
         XSRETURN_EMPTY;
       }
-    EXTEND(sp,items-1);
     GetExceptionInfo(&exception);
+    EXTEND(sp,items);
     for (i=1; i < items; i++)
     {
       attribute=(char *) SvPV(ST(i),na);
@@ -2937,7 +2950,7 @@ Get(ref,...)
               ImageAttribute
                 *attribute;
 
-              attribute=GetImageAttribute(image,"Comment");
+              attribute=GetImageAttribute(image,"comment");
               if (attribute != (ImageAttribute *) NULL)
                 s=newSVpv(attribute->value,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
@@ -2990,8 +3003,9 @@ Get(ref,...)
             }
           if (LocaleCompare(attribute,"colors") == 0)
             {
+              (void) GetNumberColors(image,(FILE *) NULL);
               if (image)
-                s=newSViv(GetNumberColors(image,(FILE *) NULL));
+                s=newSViv(image->total_colors);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3081,7 +3095,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"error") == 0)
             {
               if (image)
-                s=newSViv(image->mean_error_per_pixel);
+                s=newSVnv(image->mean_error_per_pixel);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3093,7 +3107,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"filesize") == 0)
             {
               if (image)
-                s=newSViv(image->filesize);
+                s=newSViv(SizeBlob(image));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3263,7 +3277,7 @@ Get(ref,...)
 
               if (!image)
                 break;
-              attribute=GetImageAttribute(image,"Label");
+              attribute=GetImageAttribute(image,"label");
               if (attribute != (ImageAttribute *) NULL)
                 s=newSVpv(attribute->value,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
@@ -3497,7 +3511,7 @@ Get(ref,...)
 
               if (!image)
                 break;
-              SignatureImage(image);
+              (void) SignatureImage(image);
               attribute=GetImageAttribute(image,"Signature");
               if (attribute != (ImageAttribute *) NULL)
                 s=newSVpv(attribute->value,0);
@@ -3741,6 +3755,7 @@ ImageToBlob(ref,...)
     }
     SetImageInfo(package_info->image_info,True,&image->exception);
     GetExceptionInfo(&exception);
+    EXTEND(sp,GetNumberScenes(image));
     for (next=image; next; next=next->next)
     {
       length=0;
@@ -4164,8 +4179,8 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].string_reference=(char *) NULL;
-          while (SetImageAttribute(image,"Comment",(char *) NULL) != False);
-          (void) SetImageAttribute(image,"Comment",
+          while (SetImageAttribute(image,"comment",(char *) NULL) != False);
+          (void) SetImageAttribute(image,"comment",
             argument_list[0].string_reference);
           break;
         }
@@ -4173,8 +4188,8 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].string_reference=(char *) NULL;
-          while (SetImageAttribute(image,"Label",(char *) NULL) != False);
-          (void) SetImageAttribute(image,"Label",
+          while (SetImageAttribute(image,"label",(char *) NULL) != False);
+          (void) SetImageAttribute(image,"label",
             argument_list[0].string_reference);
           break;
         }
@@ -5283,7 +5298,7 @@ Mogrify(ref,...)
         }
         case 51:  /* Signature */
         {
-          SignatureImage(image);
+          (void) SignatureImage(image);
           break;
         }
         case 52:  /* Solarize */
@@ -5693,28 +5708,29 @@ Montage(ref,...)
         case 'B':
         case 'b':
         {
-          if (strEQcase(attribute,"background"))
+          if (LocaleCompare(attribute,"background") == 0)
             {
               (void) QueryColorDatabase(SvPV(ST(i),na),
                 &montage_info->background_color);
               break;
             }
-          if (strEQcase(attribute,"bordercolor"))
+          if (LocaleCompare(attribute,"bordercolor") == 0)
             {
               (void) QueryColorDatabase(SvPV(ST(i),na),
                 &montage_info->border_color);
               break;
             }
-          if (strEQcase(attribute,"borderwidth"))
+          if (LocaleCompare(attribute,"borderwidth") == 0)
             {
               montage_info->border_width=SvIV(ST(i));
               break;
             }
+          break;
         }
         case 'C':
         case 'c':
         {
-          if (strEQcase(attribute,"compos"))
+          if (LocaleCompare(attribute,"compose") == 0)
             {
               sp=!SvPOK(ST(i)) ? SvIV(ST(i)) :
                 LookupStr(CompositeTypes,SvPV(ST(i),na));
@@ -5732,7 +5748,17 @@ Montage(ref,...)
         case 'F':
         case 'f':
         {
-          if (strEQcase(attribute,"frame"))
+          if (LocaleCompare(attribute,"fill") == 0)
+            {
+              (void) QueryColorDatabase(SvPV(ST(i),na),&montage_info->fill);
+              break;
+            }
+          if (LocaleCompare(attribute,"font") == 0)
+            {
+              (void) CloneString(&montage_info->font,SvPV(ST(i),na));
+              break;
+            }
+          if (LocaleCompare(attribute,"frame") == 0)
             {
               char
                 *p;
@@ -5748,22 +5774,12 @@ Montage(ref,...)
                 montage_info->frame=(char *) NULL;
               break;
             }
-          if (strEQcase(attribute,"fill"))
-            {
-              (void) QueryColorDatabase(SvPV(ST(i),na),&montage_info->fill);
-              break;
-            }
-          if (strEQcase(attribute,"font"))
-            {
-              (void) CloneString(&montage_info->font,SvPV(ST(i),na));
-              break;
-            }
           break;
         }
         case 'G':
         case 'g':
         {
-          if (strEQcase(attribute,"geometry"))
+          if (LocaleCompare(attribute,"geometry") == 0)
             {
               char
                 *p;
@@ -5779,7 +5795,7 @@ Montage(ref,...)
                montage_info->geometry=(char *) NULL;
              break;
            }
-         if (strEQcase(attribute,"gravity"))
+         if (LocaleCompare(attribute,"gravity") == 0)
            {
              int
                in;
@@ -5795,15 +5811,15 @@ Montage(ref,...)
              montage_info->gravity=(GravityType) in;
              break;
            }
-         break;
+          break;
         }
         case 'L':
         case 'l':
         {
-          if (strEQcase(attribute,"label"))
+          if (LocaleCompare(attribute,"label") == 0)
             {
               for (next=image; next; next=next->next)
-                (void) SetImageAttribute(next,"Label",SvPV(ST(i),na));
+                (void) SetImageAttribute(next,"label",SvPV(ST(i),na));
               break;
             }
           break;
@@ -5811,13 +5827,13 @@ Montage(ref,...)
         case 'M':
         case 'm':
         {
-          if (strEQcase(attribute,"mattec"))
+          if (LocaleCompare(attribute,"mattecolor") == 0)
             {
               (void) QueryColorDatabase(SvPV(ST(i),na),
                 &montage_info->matte_color);
               break;
             }
-          if (strEQcase(attribute,"mode"))
+          if (LocaleCompare(attribute,"mode") == 0)
             {
               int
                 in;
@@ -5861,7 +5877,7 @@ Montage(ref,...)
         case 'P':
         case 'p':
         {
-          if (strEQcase(attribute,"point"))
+          if (LocaleCompare(attribute,"pointsize") == 0)
             {
               montage_info->pointsize=SvIV(ST(i));
               break;
@@ -5871,7 +5887,7 @@ Montage(ref,...)
         case 'S':
         case 's':
         {
-          if (strEQcase(attribute,"shadow"))
+          if (LocaleCompare(attribute,"shadow") == 0)
             {
               sp=!SvPOK(ST(i)) ? SvIV(ST(i)) :
                 LookupStr(BooleanTypes,SvPV(ST(i),na));
@@ -5884,7 +5900,7 @@ Montage(ref,...)
              montage_info->shadow=sp;
              break;
             }
-          if (strEQcase(attribute,"stroke"))
+          if (LocaleCompare(attribute,"stroke") == 0)
             {
               (void) QueryColorDatabase(SvPV(ST(i),na),&montage_info->stroke);
               break;
@@ -5894,12 +5910,12 @@ Montage(ref,...)
         case 'T':
         case 't':
         {
-          if (strEQcase(attribute,"texture"))
+          if (LocaleCompare(attribute,"texture") == 0)
             {
               (void) CloneString(&montage_info->texture,SvPV(ST(i),na));
               break;
             }
-          if (strEQcase(attribute,"tile"))
+          if (LocaleCompare(attribute,"tile") == 0)
             {
               char *p=SvPV(ST(i),na);
               if (!IsGeometry(p))
@@ -5912,12 +5928,12 @@ Montage(ref,...)
                 montage_info->tile=(char *) NULL;
               break;
             }
-          if (strEQcase(attribute,"title"))
+          if (LocaleCompare(attribute,"title") == 0)
             {
               (void) CloneString(&montage_info->title,SvPV(ST(i),na));
               break;
             }
-          if (strEQcase(attribute,"trans"))
+          if (LocaleCompare(attribute,"transparent") == 0)
             {
               transparent_color=GetOnePixel(image,0,0);
               QueryColorDatabase(SvPV(ST(i),na),&transparent_color);
@@ -6061,7 +6077,7 @@ Morph(ref,...)
         case 'F':
         case 'f':
         {
-          if (strEQcase(attribute,"frames"))
+          if (LocaleCompare(attribute,"frames") == 0)
             {
               number_frames=SvIV(ST(i));
               break;
@@ -6233,6 +6249,12 @@ Ping(ref,...)
     Image
       *image;
 
+    int
+      count;
+
+    register Image
+      *p;
+
     register int
       i;
 
@@ -6243,12 +6265,11 @@ Ping(ref,...)
       *reference,  /* reference is the SV* of ref=SvIV(reference) */
       *s;
 
-    EXTEND(sp,items-1);
     error_list=newSVpv("",0);
     reference=SvRV(ST(0));
     av=(AV *) reference;
     info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
-    EXTEND(sp,4*items-1);
+    count=0;
     for (i=1; i < items; i++)
     {
       (void) strcpy(info->image_info->filename,(char *) SvPV(ST(i),na));
@@ -6265,18 +6286,21 @@ Ping(ref,...)
           MagickWarning(exception.severity,exception.reason,
             exception.description);
           PUSHs(&sv_undef);
+          continue;
         }
-      else
-        {
-          FormatString(message,"%u",image->columns);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
-          FormatString(message,"%u",image->rows);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
-          FormatString(message,"%u",image->filesize);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
-          PUSHs(sv_2mortal(newSVpv(image->magick,0)));
-          DestroyImage(image);
-        }
+      count+=GetNumberScenes(image);
+      EXTEND(sp,4*count);
+      for (p=image ; p != (Image *) NULL; p=p->next)
+      {
+        FormatString(message,"%u",p->columns);
+        PUSHs(sv_2mortal(newSVpv(message,0)));
+        FormatString(message,"%u",p->rows);
+        PUSHs(sv_2mortal(newSVpv(message,0)));
+        FormatString(message,"%lu",(unsigned long) SizeBlob(p));
+        PUSHs(sv_2mortal(newSVpv(message,0)));
+        PUSHs(sv_2mortal(newSVpv(p->magick,0)));
+      }
+      DestroyImage(image);
     }
     info->image_info->file=(FILE *) NULL;
     SvREFCNT_dec(error_list);  /* throw away all errors */
@@ -6303,11 +6327,11 @@ QueryColor(ref,...)
   PPCODE:
   {
     char
-      *attribute,
+      *name,
       message[MaxTextExtent];
 
     PixelPacket
-      target_color;
+      color;
 
     register int
       i;
@@ -6315,25 +6339,60 @@ QueryColor(ref,...)
     SV
       *s;
 
-    EXTEND(sp,items-1);
     error_list=newSVpv("",0);
+    if (items == 1)
+      {
+        ColorInfo
+          *color_info;
+
+        ExceptionInfo 
+          exception;
+
+        register ColorInfo
+          *p;
+
+        GetExceptionInfo(&exception);
+        color_info=GetColorInfo("*",&exception);
+        if (color_info == (ColorInfo *) NULL)
+          {
+            PUSHs(&sv_undef);
+            goto MethodException;
+          }
+        i=0;
+        for (p=color_info; p != (ColorInfo *) NULL; p=p->next)
+          i++;
+        EXTEND(sp,i);
+        for (p=color_info; p != (ColorInfo *) NULL; p=p->next)
+        {
+          if (p->name == (char *) NULL)
+            {
+              PUSHs(&sv_undef);
+              continue;
+            }
+          PUSHs(sv_2mortal(newSVpv(p->name,0)));
+        }
+        goto MethodException;
+      }
+    EXTEND(sp,4*items);
     for (i=1; i < items; i++)
     {
-      attribute=(char *) SvPV(ST(i),na);
-      if (!QueryColorDatabase(attribute,&target_color))
-        PUSHs(&sv_undef);
-      else
+      name=(char *) SvPV(ST(i),na);
+      if (!QueryColorDatabase(name,&color))
         {
-          FormatString(message,"%u",target_color.red);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
-          FormatString(message,"%u",target_color.green);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
-          FormatString(message,"%u",target_color.blue);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
-          FormatString(message,"%u",target_color.opacity);
-          PUSHs(sv_2mortal(newSVpv(message,0)));
+          PUSHs(&sv_undef);
+          continue;
         }
+      FormatString(message,"%u",color.red);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      FormatString(message,"%u",color.green);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      FormatString(message,"%u",color.blue);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      FormatString(message,"%u",color.opacity);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
     }
+
+  MethodException:
     SvREFCNT_dec(error_list);
     error_list=NULL;
   }
@@ -6376,22 +6435,131 @@ QueryColorname(ref,...)
       *info;
 
     SV
-      *reference,  /* reference is the SV* of ref=SvIV(reference) */
-      *s;
+      *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
-    EXTEND(sp,items-1);
     error_list=newSVpv("",0);
     reference=SvRV(ST(0));
     av=(AV *) reference;
     info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
     image=SetupList(reference,&info,(SV ***) NULL);
+    EXTEND(sp,items);
     for (i=1; i < items; i++)
     {
       (void) QueryColorDatabase(SvPV(ST(i),na),&target_color);
       (void) QueryColorname(image,&target_color,AllCompliance,message);
-      s=sv_2mortal(newSVpv(message,0));
-      PUSHs(s);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
     }
+    SvREFCNT_dec(error_list);
+    error_list=NULL;
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   Q u e r y F o n t                                                         #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+QueryFont(ref,...)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    queryfont = 1
+  PPCODE:
+  {
+    char
+      *name;
+
+    ExceptionInfo 
+      exception;
+
+    register int
+      i;
+
+    SV
+      *s;
+
+    TypeInfo
+      *type_info;
+
+    error_list=newSVpv("",0);
+    GetExceptionInfo(&exception);
+    if (items == 1)
+      {
+        register TypeInfo
+          *p;
+
+        type_info=GetTypeInfo("*",&exception);
+        if (type_info == (TypeInfo *) NULL)
+          {
+            PUSHs(&sv_undef);
+            goto MethodException;
+          }
+        i=0;
+        for (p=type_info; p != (TypeInfo *) NULL; p=p->next)
+          i++;
+        EXTEND(sp,i);
+        for (p=type_info; p != (TypeInfo *) NULL; p=p->next)
+        {
+          if (p->name == (char *) NULL)
+            {
+              PUSHs(&sv_undef);
+              continue;
+            }
+          PUSHs(sv_2mortal(newSVpv(p->name,0)));
+        }
+        goto MethodException;
+      }
+    EXTEND(sp,8*items);
+    for (i=1; i < items; i++)
+    {
+      name=(char *) SvPV(ST(i),na);
+      type_info=GetTypeInfo(name,&exception);
+      if (type_info == (TypeInfo *) NULL)
+        {
+          PUSHs(&sv_undef);
+          continue;
+        }
+      if (type_info->family == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->family,0)));
+      if (type_info->alias == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->alias,0)));
+      if (type_info->description == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->description,0)));
+      if (type_info->format == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->format,0)));
+      if (type_info->weight == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->weight,0)));
+      if (type_info->glyphs == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->glyphs,0)));
+      if (type_info->metrics == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->metrics,0)));
+      if (type_info->version == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(type_info->version,0)));
+    }
+
+  MethodException:
     SvREFCNT_dec(error_list);
     error_list=NULL;
   }
@@ -6433,9 +6601,6 @@ QueryFontMetrics(ref,...)
     DrawInfo
       *draw_info;
 
-    FontMetric
-      metrics;
-
     Image
       *image;
 
@@ -6448,19 +6613,20 @@ QueryFontMetrics(ref,...)
     SV
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
+    TypeMetric
+      metrics;
+
     unsigned int
       status;
 
-    EXTEND(sp,items-1);
     error_list=newSVpv("",0);
     reference=SvRV(ST(0));
     av=(AV *) reference;
     info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
-    EXTEND(sp,7*items-1);
     image=SetupList(reference,&info,(SV ***) NULL);
     if (!image)
       {
-        MagickWarning(OptionWarning,"No images to animate",NULL);
+        MagickWarning(OptionWarning,"No image to query",NULL);
         goto MethodException;
       }
     draw_info=CloneDrawInfo(info->image_info,(DrawInfo *) NULL);
@@ -6469,6 +6635,7 @@ QueryFontMetrics(ref,...)
     IdentityAffine(&affine);
     x=0.0;
     y=0.0;
+    EXTEND(sp,7*items);
     for (i=2; i < items; i+=2)
     {
       attribute=(char *) SvPV(ST(i-1),na);
@@ -6477,7 +6644,7 @@ QueryFontMetrics(ref,...)
         case 'd':
         case 'D':
         {
-          if (strEQcase(attribute,"density"))
+          if (LocaleCompare(attribute,"density") == 0)
             {
               CloneString(&draw_info->density,SvPV(ST(i),na));
               break;
@@ -6487,7 +6654,7 @@ QueryFontMetrics(ref,...)
         case 'f':
         case 'F':
         {
-          if (strEQcase(attribute,"font"))
+          if (LocaleCompare(attribute,"font") == 0)
             {
               CloneString(&draw_info->font,SvPV(ST(i),na));
               break;
@@ -6497,12 +6664,12 @@ QueryFontMetrics(ref,...)
         case 'g':
         case 'G':
         {
-          if (strEQcase(attribute,"geometry"))
+          if (LocaleCompare(attribute,"geometry") == 0)
             {
               CloneString(&draw_info->geometry,SvPV(ST(i),na));
               break;
             }
-          if (strEQcase(attribute,"gravity"))
+          if (LocaleCompare(attribute,"gravity") == 0)
             {
               draw_info->gravity=(GravityType)
                 LookupStr(GravityTypes,SvPV(ST(i),na));
@@ -6513,7 +6680,7 @@ QueryFontMetrics(ref,...)
         case 'p':
         case 'P':
         {
-          if (strEQcase(attribute,"pointsize"))
+          if (LocaleCompare(attribute,"pointsize") == 0)
             {
               (void) sscanf(SvPV(ST(i),na),"%lf",&draw_info->pointsize);
               break;
@@ -6523,7 +6690,7 @@ QueryFontMetrics(ref,...)
         case 'r':
         case 'R':
         {
-          if (strEQcase(attribute,"rotate"))
+          if (LocaleCompare(attribute,"rotate") == 0)
             {
               (void) sscanf(SvPV(ST(i),na),"%lf %lf",&affine.rx,&affine.ry);
               (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&affine.rx,&affine.ry);
@@ -6534,13 +6701,13 @@ QueryFontMetrics(ref,...)
         case 's':
         case 'S':
         {
-          if (strEQcase(attribute,"scale"))
+          if (LocaleCompare(attribute,"scale") == 0)
             {
               (void) sscanf(SvPV(ST(i),na),"%lf %lf",&affine.sx,&affine.sy);
               (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&affine.sx,&affine.sy);
               break;
             }
-          if (strEQcase(attribute,"skew"))
+          if (LocaleCompare(attribute,"skew") == 0)
             {
               double
                 x_angle,
@@ -6559,12 +6726,12 @@ QueryFontMetrics(ref,...)
         case 't':
         case 'T':
         {
-          if (strEQcase(attribute,"text"))
+          if (LocaleCompare(attribute,"text") == 0)
             {
               CloneString(&draw_info->text,SvPV(ST(i),na));
               break;
             }
-          if (strEQcase(attribute,"translate"))
+          if (LocaleCompare(attribute,"translate") == 0)
             {
               (void) sscanf(SvPV(ST(i),na),"%lf %lf",&affine.tx,&affine.ty);
               (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&affine.tx,&affine.ty);
@@ -6575,7 +6742,7 @@ QueryFontMetrics(ref,...)
         case 'x':
         case 'X':
         {
-          if (strEQcase(attribute,"x"))
+          if (LocaleCompare(attribute,"x") == 0)
             {
               (void) sscanf(SvPV(ST(i),na),"%lf",&x);
               break;
@@ -6585,16 +6752,15 @@ QueryFontMetrics(ref,...)
         case 'y':
         case 'Y':
         {
-          if (strEQcase(attribute,"y"))
+          if (LocaleCompare(attribute,"y") == 0)
             {
               (void) sscanf(SvPV(ST(i),na),"%lf",&y);
               break;
             }
           break;
         }
-        default:
-          break;
       }
+      MagickWarning(OptionWarning,"Invalid attribute",attribute);
     }
     draw_info->affine.sx=current.sx*affine.sx+current.ry*affine.rx;
     draw_info->affine.rx=current.rx*affine.sx+current.sy*affine.rx;
@@ -6607,7 +6773,7 @@ QueryFontMetrics(ref,...)
         draw_info->geometry=AllocateString((char *) NULL);
         FormatString(draw_info->geometry,"%f,%f",x,y);
       }
-    status=GetFontMetrics(image,draw_info,&metrics);
+    status=GetTypeMetrics(image,draw_info,&metrics);
     if (status == False)
       PUSHs(&sv_undef);
     else
@@ -6628,6 +6794,101 @@ QueryFontMetrics(ref,...)
         PUSHs(sv_2mortal(newSVpv(message,0)));
       }
     DestroyDrawInfo(draw_info);
+
+  MethodException:
+    SvREFCNT_dec(error_list);
+    error_list=NULL;
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   Q u e r y F o r m a t                                                     #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+QueryFormat(ref,...)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    queryformat = 1
+  PPCODE:
+  {
+    char
+      message[MaxTextExtent],
+      *name;
+
+    ExceptionInfo 
+      exception;
+
+    MagickInfo
+      *magick_info;
+
+    register int
+      i;
+
+    SV
+      *s;
+
+    error_list=newSVpv("",0);
+    GetExceptionInfo(&exception);
+    if (items == 1)
+      {
+        register MagickInfo
+          *p;
+
+        magick_info=GetMagickInfo("*",&exception);
+        if (magick_info == (MagickInfo *) NULL)
+          {
+            PUSHs(&sv_undef);
+            goto MethodException;
+          }
+        i=0;
+        for (p=magick_info; p != (MagickInfo *) NULL; p=p->next)
+          i++;
+        EXTEND(sp,i);
+        for (p=magick_info; p != (MagickInfo *) NULL; p=p->next)
+        {
+          if (p->name == (char *) NULL)
+            {
+              PUSHs(&sv_undef);
+              continue;
+            }
+          (void) strcpy(message,p->name);
+          LocaleLower(message);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+        }
+        goto MethodException;
+      }
+    EXTEND(sp,8*items);
+    for (i=1; i < items; i++)
+    {
+      name=(char *) SvPV(ST(i),na);
+      magick_info=GetMagickInfo(name,&exception);
+      if (magick_info == (MagickInfo *) NULL)
+        {
+          PUSHs(&sv_undef);
+          continue;
+        }
+      PUSHs(sv_2mortal(newSVpv(magick_info->adjoin ? "1" : "0",0)));
+      PUSHs(sv_2mortal(newSVpv(magick_info->blob_support ? "1" : "0",0)));
+      PUSHs(sv_2mortal(newSVpv(magick_info->raw ? "1" : "0",0)));
+      PUSHs(sv_2mortal(newSVpv(magick_info->decoder ? "1" : "0",0)));
+      PUSHs(sv_2mortal(newSVpv(magick_info->encoder ? "1" : "0",0)));
+      if (magick_info->description == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(magick_info->description,0)));
+      if (magick_info->module == (char *) NULL)
+        PUSHs(&sv_undef);
+      else
+        PUSHs(sv_2mortal(newSVpv(magick_info->module,0)));
+    }
 
   MethodException:
     SvREFCNT_dec(error_list);
@@ -6813,7 +7074,6 @@ Remote(ref,...)
     struct PackageInfo
       *info;
 
-    EXTEND(sp,items-1);
     error_list=newSVpv("",0);
     reference=SvRV(ST(0));
     av=(AV *) reference;
@@ -6987,7 +7247,7 @@ Transform(ref,...)
         case 'c':
         case 'C':
         {
-          if (strEQcase(attribute,"crop"))
+          if (LocaleCompare(attribute,"crop") == 0)
             {
               crop_geometry=SvPV(ST(i),na);
               break;
@@ -6998,7 +7258,7 @@ Transform(ref,...)
         case 'G':
         default:
         {
-          if (strEQcase(attribute,"geometry"))
+          if (LocaleCompare(attribute,"geometry") == 0)
             {
               geometry=SvPV(ST(i),na);
               break;

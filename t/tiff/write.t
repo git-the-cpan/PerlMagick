@@ -19,10 +19,9 @@ chdir 't/tiff' || die 'Cd failed';
 #
 print("PsuedoColor image ...\n");
 testReadWrite( 'input_256.tiff',
-	       'output_256.tiff',
-	       q/quality=>54/,
-	       '6c73bcb104e206db81ea91208753f4a7',
-               'f90f998ebc41c7c9833ea2a454791d70');
+  'output_256.tiff',
+  q/quality=>54/,
+  'e62f8aa77283eaf46c0bdcc8feb34d16bf200b2f964ff6cff725b573f1a6b039');
 
 #
 # 2) Test truecolor image
@@ -30,10 +29,9 @@ testReadWrite( 'input_256.tiff',
 ++$test;
 print("TrueColor image ...\n");
 testReadWrite( 'input_truecolor.tiff',
-	       'output_truecolor.tiff',
-	       q/quality=>55/,
-	       '8023e6a23a15ab1240b48ec6c085ed40',
-               '4d3c3e472ace236f15b27c7af6e3d464' );
+  'output_truecolor.tiff',
+  q/quality=>55/,
+  'c754de02d6e61cb9859fda13603b97fb51213aa56ea72beaf0cb553f31a1c5e2' );
 
 #
 # 3) Test monochrome image
@@ -41,7 +39,6 @@ testReadWrite( 'input_truecolor.tiff',
 ++$test;
 print("Monochrome image ...\n");
 testReadWrite(  'input_mono.tiff',
-		'output_mono.tiff',
-		q//,
-		'782b370d660dff407e883221b20ffbcc',
-		'b2cc6cad5c66aae9140c96b74437c591' );
+  'output_mono.tiff',
+  q//,
+  'e09c8eb1ccbf32e3a4062bad04b96dbc9209bc7897b0a63ac8dc2c8e0ccc3d92' );

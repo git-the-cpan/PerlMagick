@@ -2,7 +2,9 @@
 #
 # Test read image method on TrueType font
 #
-# Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
+# Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us
+#
+# Signatures computed using freetype 2.0.4
 #
 
 BEGIN { $| = 1; $test=1; print "1..3\n"; }
@@ -19,8 +21,8 @@ chdir 't/ttf' || die 'Cd failed';
 #
 print("Default ImageMagick read ...\n");
 testRead( 'input.ttf',
-  'ce147e690d9852430de71eaa6e05623056613f62249c441d0174e18d772554f7',
-  '90578100ca9729646a3efe0777eefd993c20f454ae8d70548b4e97e3882f2577' );
+  '848d2eb1da7ed49e68c716be7864651808336d52d3ba932213a9ebd4b1f19a9a',
+  '3e1ef1784abeb249711cdbfbdea4109ac1c1db3516438121ec4200f7d60bfeda' );
 
 #
 # 2) Test drawing text using font
@@ -28,8 +30,8 @@ testRead( 'input.ttf',
 ++$test;
 print("Draw text using font ...\n");
 $infile = 'input.ttf';
-$md5    = '078de7259b6ddd4dd527112cecb7b7ac3c8be62db79f85d02efbbc26b0412b54';
-$md5_16 = '27b7dc3d2e67a4afbd0703cfef1119f221b0c72bfb706664531f3f7edae263e9';
+$md5    = '32f372365ac83207d836239628a5e57202be86bef3119eca3bf5488cc3b53cf9';
+$md5_16 = 'b9d931ffbdc6e1ec38cb1377f0f84bcebd47b1975a05301c4ee359496c9c7bb0';
 
 $image=Image::Magick->new;
 $status=$image->Set(font=>"\@$infile", pen=>'#0000FF', pointsize=>14);
@@ -65,8 +67,8 @@ undef $image;
 ++$test;
 print("Draw text using annotate ...\n");
 $infile = 'input.ttf';
-$md5    = 'c7872f73dba3023230416f34af159cc4a5613215ce99a48e66d6777d1a354b1d';
-$md5_16 = '5797f93bae76a958b0dff174c99d4894eca2e5eda806cf6ed8e2448123dde248';
+$md5    = '3aa0c3a2d6cc1d8720220afd1f3749db25749dad84cb882d23c3440579aeeb12';
+$md5_16 = 'f22ecd1982bbb60a49359eccec6476ac05866a22d6393267b244e459aede19a0';
 
 $image=Image::Magick->new;
 $status = $image->Set(size=>'330x30');

@@ -74,9 +74,6 @@ extern "C" {
 #include "XSUB.h"
 #include <math.h>
 #include <magick/api.h>
-#define DegreesToRadians(x) ((x)*3.14159265358979323846/180.0)
-#define False 0
-#define True 1
 #undef tainted
 #if !defined(WIN32)
 #include <setjmp.h>
@@ -94,24 +91,23 @@ extern "C" {
   Define declarations.
 */
 #define ArrayReference  (char **) 4
+#define DegreesToRadians(x) ((x)*3.14159265358979323846/180.0)
 #define DoubleReference  (char **) 2
 #define EndOf(array)  (&array[NumberOf(array)])
+#define False  0
 #define ImageReference  (char **) 3
 #define IntegerReference  (char **) 1
 #define MaxArguments  20
-#define NumberOf(array)  (sizeof(array)/sizeof(*array))
-#define PackageName   "Image::Magick"
-#define StringReference  (char **) 0
-
-/*
-  Perl 5.006 no longer defines na and sv_undef.
-*/
 #ifndef na
 #define na  PL_na
 #endif
+#define NumberOf(array)  (sizeof(array)/sizeof(*array))
+#define PackageName   "Image::Magick"
+#define StringReference  (char **) 0
 #ifndef sv_undef
 #define sv_undef  PL_sv_undef
 #endif
+#define True  1
 
 /*
   Typedef and structure declarations.
@@ -119,12 +115,6 @@ extern "C" {
 typedef void
   *Image__Magick;  /* data type for the Image::Magick package */
 
-/*
-  The data type for remembering options set by the user, which basically
-  correspond to ImageMagick's command line options.  Each AV* type of
-  Image__Magick has a special variable created for it (see GetPackageInfo) that
-  holds one.
-*/
 struct PackageInfo
 {
   ImageInfo
@@ -134,12 +124,9 @@ struct PackageInfo
     *quantize_info;
 };
 
-/*
-  The different types of arguments that can be passed as arguments from Perl.
-*/
 union ArgumentList
 {
-  int
+  long
     int_reference;
 
   double
@@ -158,11 +145,6 @@ union ArgumentList
 /*
   Static declarations.
 */
-/*
-  These arrays match the ImageMagick enums.  The positions must match between
-  both.  The names are the minimum length to match, e.g., in NoiseTypes
-  AddNoise("laplacian") and AddNoise("LaplacianNoise") both work.
-*/
 static char
   *BooleanTypes[] =
   {
@@ -170,7 +152,8 @@ static char
   },
   *ChannelTypes[] =
   {
-    "Undefined", "Red", "Green", "Blue", "Matte", (char *) NULL
+    "Undefined", "Red", "Cyan", "Green", "Magenta", "Blue", "Yellow",
+    "Opacity", "Black", "Matte", (char *) NULL
   },
   *ClassTypes[] =
   {
@@ -208,7 +191,7 @@ static char
   {
     "Undefined", "Bilevel", "Grayscale", "GrayscaleMatte" "Palette",
     "PaletteMatte", "TrueColor", "TrueColorMatte", "ColorSeparation",
-    "ColorSeparationMatte", (char *) NULL
+    "ColorSeparationMatte", "Optimize", (char *) NULL
   },
   *IntentTypes[] =
   {
@@ -252,26 +235,21 @@ static char
     "Undefined", "PixelsPerInch", "PixelsPerCentimeter", (char *) NULL
   };
 
-/*
-  The list of ImageMagick methods and their parameters currently
-  supported by this interface (except for Read, Write, and new).  I did
-  it this way to avoid a lot of duplicated code, and to use the neato
-  ALIASes that XS provides.  Parameter names are matched up to the
-  name's length so that e.g. the parameter name "comment" matches
-  "commentstuff".
-*/
+typedef struct _Arguments
+{
+  char
+    *method,
+    **type;
+} Arguments;
+
 static struct
   Methods
   {
     char
       *name;
 
-    struct arguments
-    {
-      char
-        *method,
-        **type;
-    } arguments[MaxArguments];
+    Arguments
+      arguments[MaxArguments];
   } Methods[] =
   {
     { "comment", { {"comment", StringReference} } },
@@ -320,7 +298,7 @@ static struct
       {"sigma", DoubleReference} } },
     { "Shear", { {"geom", StringReference}, {"x", DoubleReference},
       {"y", DoubleReference}, {"color", StringReference} } },
-    { "Spread", { {"amount", IntegerReference} } },
+    { "Spread", { {"radius", IntegerReference} } },
     { "Swirl", { {"degree", DoubleReference} } },
     { "Resize", { {"geom", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference}, {"filter", FilterTypess},
@@ -336,7 +314,7 @@ static struct
       {"y", IntegerReference}, {"grav", GravityTypes},
       {"translate", StringReference}, {"scale", StringReference},
       {"rotate", DoubleReference}, {"skewX", DoubleReference},
-      {"skewY", DoubleReference}, {"stroke_width", IntegerReference},
+      {"skewY", DoubleReference}, {"strokewidth", IntegerReference},
       {"antialias", BooleanTypes} } },
     { "ColorFloodfill", { {"geom", StringReference}, {"x", IntegerReference},
       {"y", IntegerReference}, {"fill", StringReference},
@@ -350,7 +328,7 @@ static struct
     { "CycleColormap", { {"display", IntegerReference} } },
     { "Draw", { {"prim", PrimitiveTypes}, {"points", StringReference},
       {"meth", MethodTypes}, {"stroke", StringReference},
-      {"fill", StringReference}, {"stroke_width", DoubleReference},
+      {"fill", StringReference}, {"strokewidth", DoubleReference},
       {"font", StringReference}, {"borderc", StringReference},
       {"x", DoubleReference}, {"y", DoubleReference},
       {"translate", StringReference}, {"scale", StringReference},
@@ -394,7 +372,7 @@ static struct
     { "Trim", { {"fuzz", DoubleReference} } },
     { "Wave", { {"geom", StringReference}, {"ampli", DoubleReference},
       {"wave", DoubleReference} } },
-    { "Channel", { {"radius", ChannelTypes} } },
+    { "Channel", { {"channel", ChannelTypes} } },
     { "Condense", },
     { "Stereo", { {"image", ImageReference} } },
     { "Stegano", { {"image", ImageReference}, {"offset", IntegerReference} } },
@@ -402,7 +380,8 @@ static struct
     { "GaussianBlur", { {"geom", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference} } },
     { "Convolve", { {"coefficients", ArrayReference} } },
-    { "Profile", { {"profile", StringReference}, {"filename", StringReference} } },
+    { "Profile", { {"profile", StringReference},
+      {"filename", StringReference} } },
     { "UnsharpMask", { {"geom", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference}, {"amount", DoubleReference},
       {"threshold", DoubleReference} } },
@@ -411,6 +390,8 @@ static struct
     { "OrderedDither", },
     { "Shave", { {"geom", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference} } },
+    { "Level", { {"level", StringReference}, {"black-point", DoubleReference},
+      {"mid-point", DoubleReference}, {"white-point", DoubleReference} } },
   };
 
 /*
@@ -419,14 +400,11 @@ static struct
 char
   *client_name = "PerlMagick";
 
-int
-  warning_flag = False;  /* if != 0: error messages call Perl warn */
+static jmp_buf
+  *error_jump;  /* long jump return for FATAL errors */
 
 SV
   *error_list;  /* Perl variable for storing messages */
-
-static jmp_buf
-  *error_jump;  /* long jump return for FATAL errors */
 
 /*
   Forward declarations.
@@ -453,7 +431,7 @@ static int
 %
 %  The format of the ClonePackageInfo routine is:
 %
-%      cloned_info=ClonePackageInfo(info)
+%      struct PackageInfo *ClonePackageInfo(struct PackageInfo *info)
 %
 %  A description of each parameter follows:
 %
@@ -498,7 +476,7 @@ static struct PackageInfo *ClonePackageInfo(struct PackageInfo *info)
 %
 %  The format of the constant routine is:
 %
-%      value=constant(name,sans)
+%      double constant(char *name,int sans)
 %
 %  A description of each parameter follows:
 %
@@ -633,7 +611,7 @@ static double constant(char *name,int sans)
 %
 %  The format of the DestroyPackageInfo routine is:
 %
-%      DestroyPackageInfo(info)
+%      DestroyPackageInfo(struct PackageInfo *info)
 %
 %  A description of each parameter follows:
 %
@@ -646,72 +624,6 @@ static void DestroyPackageInfo(struct PackageInfo *info)
   DestroyImageInfo(info->image_info);
   DestroyQuantizeInfo(info->quantize_info);
   LiberateMemory((void **) &info);
-}
-
-/*
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                                                                             %
-%                                                                             %
-%                                                                             %
-%   e r r o r h a n d l e r                                                   %
-%                                                                             %
-%                                                                             %
-%                                                                             %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%  Method errorhandler replaces ImageMagick's fatal error handler.  This
-%  stores the message in a Perl variable,and longjmp's to return the error to
-%  Perl.  If the error_flag variable is set, it also calls the Perl warn
-%  routine.  Note that this doesn't exit but returns control to Perl; the
-%  Image::Magick handle may be left in a bad state.
-%
-%  The format of the errorhandler routine is:
-%
-%      errorhandler(error,message,qualifier)
-%
-%  A description of each parameter follows:
-%
-%    o error: Specifies the numeric error category.
-%
-%    o message: Specifies the message to display before terminating the
-%      program.
-%
-%    o qualifier: Specifies any qualifier to the message.
-%
-%
-*/
-static void errorhandler(const ExceptionType error,const char *message,
-  const char *qualifier)
-{
-  char
-    text[MaxTextExtent];
-
-  int
-    error_number;
-
-  error_number=errno;
-  errno=0;
-  FormatString(text,"Exception %d: %.1024s%s%.1024s%s%s%.64s%s",error,
-    (message ? message : "ERROR"),
-    qualifier ? " (" : "",qualifier ? qualifier : "",qualifier ? ")" : "",
-    error_number ? " [" : "",error_number ? strerror(error_number) : "",
-    error_number? "]" : "");
-  if ((error_list == NULL) || (error_jump == NULL) || warning_flag)
-    {
-      /*
-        Set up message buffer.
-      */
-      warn("%s",text);
-      if (error_jump == NULL)
-        exit((int) error % 100);
-    }
-  if (error_list)
-    {
-      if (SvCUR(error_list))
-        sv_catpv(error_list,"\n");
-      sv_catpv(error_list,text);
-    }
-  longjmp(*error_jump,(int) error);
 }
 
 /*
@@ -832,8 +744,8 @@ static Image *GetList(SV *reference,SV ***reference_vector,int *current,
       return(image);
     }
   }
-  (void) fprintf(stderr,"GetList: Invalid reference type %ld\n",
-    SvTYPE(reference));
+  (void) fprintf(stderr,"GetList: Invalid reference type %d\n",
+    (int) SvTYPE(reference));
   return((Image *) NULL);
 }
 
@@ -854,7 +766,8 @@ static Image *GetList(SV *reference,SV ***reference_vector,int *current,
 %
 %  The format of the GetPackageInfo routine is:
 %
-%      GetPackageInfo(info)
+%      struct PackageInfo *GetPackageInfo(void *reference,
+%        struct PackageInfo *oldinfo)
 %
 %  A description of each parameter follows:
 %
@@ -907,7 +820,7 @@ static struct PackageInfo *GetPackageInfo(void *reference,
 %
 %  The format of the LookupStr routine is:
 %
-%      status=LookupStr(list,string)
+%      int LookupStr(char **list,const char *string)
 %
 %  A description of each parameter follows:
 %
@@ -945,6 +858,135 @@ static int LookupStr(char **list,const char *string)
 %                                                                             %
 %                                                                             %
 %                                                                             %
+%   M a g i c k E r r o r H a n d l e r                                       %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  Method MagickErrorHandler replaces ImageMagick's fatal error handler.  This
+%  stores the message in a Perl variable,and longjmp's to return the error to
+%  Perl.  If the error_flag variable is set, it also calls the Perl warn
+%  routine.  Note that this doesn't exit but returns control to Perl; the
+%  Image::Magick handle may be left in a bad state.
+%
+%  The format of the MagickErrorHandler routine is:
+%
+%      MagickErrorHandler(const ExceptionType error,const char *message,
+%        const char *qualifier)
+%
+%  A description of each parameter follows:
+%
+%    o error: Specifies the numeric error category.
+%
+%    o message: Specifies the message to display before terminating the
+%      program.
+%
+%    o qualifier: Specifies any qualifier to the message.
+%
+%
+*/
+static void MagickErrorHandler(const ExceptionType error,const char *message,
+  const char *qualifier)
+{
+  char
+    text[MaxTextExtent];
+
+  int
+    error_number;
+
+  error_number=errno;
+  errno=0;
+  FormatString(text,"Exception %d: %.1024s%s%.1024s%s%s%.64s%s",error,
+    (message ? message : "ERROR"),
+    qualifier ? " (" : "",qualifier ? qualifier : "",qualifier ? ")" : "",
+    error_number ? " [" : "",error_number ? strerror(error_number) : "",
+    error_number? "]" : "");
+  if ((error_list == NULL) || (error_jump == NULL))
+    {
+      /*
+        Set up message buffer.
+      */
+      warn("%s",text);
+      if (error_jump == NULL)
+        exit((int) error % 100);
+    }
+  if (error_list)
+    {
+      if (SvCUR(error_list))
+        sv_catpv(error_list,"\n");
+      sv_catpv(error_list,text);
+    }
+  longjmp(*error_jump,(int) error);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%   M a g i c k W a r n i n g H a n d l e r                                   %
+%                                                                             %
+%                                                                             %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  Method MagickWarningHandler replaces the ImageMagick warning handler.  This
+%  stores the (possibly multiple) messages in a Perl variable for later
+%  returning.
+%
+%  The format of the MagickWarningHandler routine is:
+%
+%      MagickWarningHandler(const ExceptionType warning,const char *message,
+%        const char *qualifier)
+%
+%  A description of each parameter follows:
+%
+%    o warning: Specifies the numeric warning category.
+%
+%    o message: Specifies the message to display before terminating the
+%      program.
+%
+%    o qualifier: Specifies any qualifier to the message.
+%
+%
+*/
+static void MagickWarningHandler(const ExceptionType warning,
+  const char *message,const char *qualifier)
+{
+  char
+    text[MaxTextExtent];
+
+  int
+    error_number;
+
+  error_number=errno;
+  errno=0;
+  if (!message)
+    return;
+  FormatString(text,"Warning %d: %.1024s%s%.1024s%s%s%.64s%s",warning,
+    message,qualifier ? " (" : "",qualifier ? qualifier : "",
+    qualifier? ")" : "",error_number ? " [" : "",
+    error_number ? strerror(error_number) : "",error_number ? "]" : "");
+  if (error_list == NULL)
+    {
+      /*
+        Set up message buffer.
+      */
+      warn("%s",text);
+      if (error_list == NULL)
+        return;
+    }
+  if (SvCUR(error_list))
+    sv_catpv(error_list,"\n");  /* add \n separator between messages */
+  sv_catpv(error_list,text);
+}
+
+/*
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%                                                                             %
+%                                                                             %
 %   S e t A t t r i b u t e                                                   %
 %                                                                             %
 %                                                                             %
@@ -956,7 +998,8 @@ static int LookupStr(char **list,const char *string)
 %
 %  The format of the SetAttribute routine is:
 %
-%      status=SetAttribute(list,string)
+%      SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
+%        SV *sval)
 %
 %  A description of each parameter follows:
 %
@@ -984,6 +1027,10 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
   int
     sp;
 
+  long
+    x,
+    y;
+
   PixelPacket
     *color,
     target_color;
@@ -1003,7 +1050,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               return;
             }
           if (info)
-            info->image_info->adjoin=sp;
+            info->image_info->adjoin=sp != 0;
           return;
         }
       if (LocaleCompare(attribute,"antialias") == 0)
@@ -1016,7 +1063,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               return;
             }
           if (info)
-            info->image_info->antialias=sp;
+            info->image_info->antialias=sp != 0;
           return;
         }
       break;
@@ -1036,14 +1083,9 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (LocaleCompare(attribute,"blue-primary") == 0)
         {
           for ( ; image; image=image->next)
-          {
-            (void) sscanf(SvPV(sval,na),"%lf %lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
               &image->chromaticity.blue_primary.x,
               &image->chromaticity.blue_primary.y);
-            (void) sscanf(SvPV(sval,na),"%lf,%lf",
-              &image->chromaticity.blue_primary.x,
-              &image->chromaticity.blue_primary.y);
-          }
           return;
         }
       if (LocaleCompare(attribute,"bordercolor") == 0)
@@ -1086,7 +1128,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               continue;
             i=0;
             (void) sscanf(attribute,"%*[^[][%d",&i);
-            if (i > image->colors)
+            if (i > (int) image->colors)
               i%=image->colors;
             if (strchr(SvPV(sval,na),',') == 0)
               QueryColorDatabase(SvPV(sval,na),image->colormap+i);
@@ -1096,8 +1138,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
                 red=color->red;
                 green=color->green;
                 blue=color->blue;
-                (void) sscanf(SvPV(sval,na),"%lf %lf %lf",&red,&green,&blue);
-                (void) sscanf(SvPV(sval,na),"%lf,%lf,%lf",&red,&green,&blue);
+                (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf%*[, ]%lf",&red,
+                  &green,&blue);
                 color->red=(Quantum)
                   ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red+0.5);
                 color->green=(Quantum)
@@ -1154,7 +1196,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               return;
             }
           if (info)
-            info->image_info->debug=sp;
+            info->image_info->debug=sp != 0;
           return;
         }
       if (LocaleCompare(attribute,"delay") == 0)
@@ -1211,7 +1253,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
                     SvPV(sval,na));
                   return;
                 }
-              info->image_info->dither=sp;
+              info->image_info->dither=sp != 0;
             }
           return;
         }
@@ -1264,14 +1306,9 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (LocaleCompare(attribute,"green-primary") == 0)
         {
           for ( ; image; image=image->next)
-          {
-            (void) sscanf(SvPV(sval,na),"%lf %lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
               &image->chromaticity.green_primary.x,
               &image->chromaticity.green_primary.y);
-            (void) sscanf(SvPV(sval,na),"%lf,%lf",
-              &image->chromaticity.green_primary.x,
-              &image->chromaticity.green_primary.y);
-          }
           return;
         }
       break;
@@ -1281,10 +1318,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
     {
       if (LocaleNCompare(attribute,"index",5) == 0)
         {
-          int
-            index,
-            x,
-            y;
+          long
+            index;
 
           IndexPacket
             *indexes;
@@ -1298,15 +1333,14 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               continue;
             x=0;
             y=0;
-            (void) sscanf(attribute,"%*[^[][%d %d",&x,&y);
-            (void) sscanf(attribute,"%*[^[][%d,%d",&x,&y);
+            (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
             pixel=GetImagePixels(image,x % image->columns,y % image->rows,1,1);
             if (pixel == (PixelPacket *) NULL)
               break;
             indexes=GetIndexes(image);
-            (void) sscanf(SvPV(sval,na),"%d",&index);
-            if ((index >= 0) && (index < image->colors))
-              *indexes=index;
+            (void) sscanf(SvPV(sval,na),"%ld",&index);
+            if ((index >= 0) && (index < (int) image->colors))
+              *indexes=(IndexPacket) index;
             (void) SyncImagePixels(image);
           }
           return;
@@ -1356,7 +1390,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
                   info->image_info->filename);
               else
                 for ( ; image; image=image->next)
-                  (void) strcpy(image->magick,info->image_info->magick);
+                  (void) strncpy(image->magick,info->image_info->magick,
+                    MaxTextExtent-1);
             }
           return;
         }
@@ -1378,7 +1413,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               return;
             }
           for ( ; image; image=image->next)
-            image->matte=sp;
+            image->matte=sp != 0;
           return;
         }
       if (LocaleCompare(attribute,"monochrome") == 0)
@@ -1391,7 +1426,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               return;
             }
           if (info)
-            info->image_info->monochrome=sp;
+            info->image_info->monochrome=sp != 0;
           return;
         }
       break;
@@ -1421,10 +1456,6 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
         }
       if (LocaleNCompare(attribute,"pixel",5) == 0)
         {
-          int
-            x,
-            y;
-
           PixelPacket
             *pixel;
 
@@ -1432,12 +1463,11 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
           {
             x=0;
             y=0;
-            (void) sscanf(attribute,"%*[^[][%d %d",&x,&y);
-            (void) sscanf(attribute,"%*[^[][%d,%d",&x,&y);
+            (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
             pixel=GetImagePixels(image,x % image->columns,y % image->rows,1,1);
             if (pixel == (PixelPacket *) NULL)
               break;
-            image->storage_class=DirectClass;
+            SetImageType(image,TrueColorType);
             if (strchr(SvPV(sval,na),',') == 0)
               QueryColorDatabase(SvPV(sval,na),pixel);
             else
@@ -1446,18 +1476,16 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
                 green=pixel->green;
                 blue=pixel->blue;
                 opacity=pixel->opacity;
-                (void) sscanf(SvPV(sval,na),"%lf %lf %lf %lf",&red,&green,&blue,
-                  &opacity);
-                (void) sscanf(SvPV(sval,na),"%lf,%lf,%lf,%lf",&red,&green,&blue,
-                  &opacity);
+                (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf",
+                  &red,&green,&blue,&opacity);
                 pixel->red=(Quantum)
                   ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red+0.5);
                 pixel->green=(Quantum)
                   ((green < 0) ? 0 : (green > MaxRGB) ? MaxRGB : green+0.5);
                 pixel->blue=(Quantum)
                   ((blue < 0) ? 0 : (blue > MaxRGB) ? MaxRGB : blue+0.5);
-                pixel->opacity=(Quantum)
-                  ((opacity < 0) ? 0 : (opacity > MaxRGB) ? MaxRGB : opacity+0.5);
+                pixel->opacity=(Quantum) ((opacity < 0) ? 0 :
+                  (opacity > MaxRGB) ? MaxRGB : opacity+0.5);
               }
             (void) SyncImagePixels(image);
           }
@@ -1488,8 +1516,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
     {
       if (LocaleCompare(attribute,"quality") == 0)
         {
-          if (info && (info->image_info->quality=SvIV(sval)) <= 0)
-            info->image_info->quality=75;
+          if (info)
+            info->image_info->quality=SvIV(sval);
           return;
         }
       break;
@@ -1500,14 +1528,9 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (LocaleCompare(attribute,"red-primary") == 0)
         {
           for ( ; image; image=image->next)
-          {
-            (void) sscanf(SvPV(sval,na),"%lf %lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
               &image->chromaticity.red_primary.x,
               &image->chromaticity.red_primary.y);
-            (void) sscanf(SvPV(sval,na),"%lf,%lf",
-              &image->chromaticity.red_primary.x,
-              &image->chromaticity.red_primary.y);
-          }
           return;
         }
       if (LocaleCompare(attribute,"render") == 0)
@@ -1587,6 +1610,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               MagickWarning(OptionWarning,"Invalid image type",SvPV(sval,na));
               return;
             }
+          if (info)
+            info->image_info->type=(ImageType) sp;
           for ( ; image; image=image->next)
             SetImageType(image,(ImageType) sp);
           return;
@@ -1627,7 +1652,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
               return;
             }
           if (info)
-            info->image_info->verbose=sp;
+            info->image_info->verbose=sp != 0;
           return;
         }
       if (LocaleCompare(attribute,"view") == 0)
@@ -1644,14 +1669,9 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (LocaleCompare(attribute,"white-primary") == 0)
         {
           for ( ; image; image=image->next)
-          {
-            (void) sscanf(SvPV(sval,na),"%lf %lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
               &image->chromaticity.white_point.x,
               &image->chromaticity.white_point.y);
-            (void) sscanf(SvPV(sval,na),"%lf,%lf",
-              &image->chromaticity.white_point.x,
-              &image->chromaticity.white_point.y);
-          }
           return;
         }
       break;
@@ -1685,7 +1705,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
 %
 %  The format of the SetupList routine is:
 %
-%      status=SetupList(list,string)
+%      Image *SetupList(SV *reference,struct PackageInfo **info,
+%        SV ***reference_vector)
 %
 %  A description of each parameter follows:
 %
@@ -1737,7 +1758,7 @@ static Image *SetupList(SV *reference,struct PackageInfo **info,
 %
 %  The format of the strEQcase routine is:
 %
-%      status=strEQcase(p,q)
+%      int strEQcase(const char *p,const char *q)
 %
 %  A description of each parameter follows:
 %
@@ -1758,7 +1779,7 @@ static int strEQcase(const char *p,const char *q)
   register int
     i;
 
-  for (i=0 ; (c=(*q)); i++)
+  for (i=0 ; (c=(*q)) != 0; i++)
   {
     if ((isUPPER(c) ? toLOWER(c) : c) != (isUPPER(*p) ? toLOWER(*p) : *p))
       return(0);
@@ -1766,67 +1787,6 @@ static int strEQcase(const char *p,const char *q)
     q++;
   }
   return(i);
-}
-
-/*
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                                                                             %
-%                                                                             %
-%                                                                             %
-%   w a r n i n g h a n d l e r                                               %
-%                                                                             %
-%                                                                             %
-%                                                                             %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%  Method warninghandler replaces the ImageMagick warning handler.  This stores
-%  the (possibly multiple) messages in a Perl variable for later returning.  If
-%  the warning_flag variable is set, it also calls the Perl warn routine.
-%
-%  The format of the warninghandler routine is:
-%
-%      warninghandler(warning,message,qualifier)
-%
-%  A description of each parameter follows:
-%
-%    o warning: Specifies the numeric warning category.
-%
-%    o message: Specifies the message to display before terminating the
-%      program.
-%
-%    o qualifier: Specifies any qualifier to the message.
-%
-%
-*/
-static void warninghandler(const ExceptionType warning,const char *message,
-  const char *qualifier)
-{
-  char
-    text[MaxTextExtent];
-
-  int
-    error_number;
-
-  error_number=errno;
-  errno=0;
-  if (!message)
-    return;
-  FormatString(text,"Warning %d: %.1024s%s%.1024s%s%s%.64s%s",warning,
-    message,qualifier ? " (" : "",qualifier ? qualifier : "",
-    qualifier? ")" : "",error_number ? " [" : "",
-    error_number ? strerror(error_number) : "",error_number ? "]" : "");
-  if ((error_list == NULL) || warning_flag)
-    {
-      /*
-        Set up message buffer.
-      */
-      warn("%s",text);
-      if (error_list == NULL)
-        return;
-    }
-  if (SvCUR(error_list))
-    sv_catpv(error_list,"\n");  /* add \n separator between messages */
-  sv_catpv(error_list,text);
 }
 
 /*
@@ -1847,8 +1807,8 @@ MODULE = Image::Magick PACKAGE = Image::Magick
 PROTOTYPES: ENABLE
 
 BOOT:
-  SetWarningHandler(warninghandler);
-  SetErrorHandler(errorhandler);
+  SetWarningHandler(MagickWarningHandler);
+  SetErrorHandler(MagickErrorHandler);
 
 double
 constant(name,argument)
@@ -1960,8 +1920,7 @@ Append(ref,...)
       *av;
 
     char
-      *attribute,
-      *p;
+      *attribute;
 
     HV
       *hv;
@@ -2163,7 +2122,7 @@ Average(ref)
     info=GetPackageInfo((void *) av,info);
     FormatString(info->image_info->filename,"average-%.*s",MaxTextExtent-9,
       ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
-    (void) strcpy(image->filename,info->image_info->filename);
+    (void) strncpy(image->filename,info->image_info->filename,MaxTextExtent-1);
     SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
@@ -2356,19 +2315,23 @@ Coalesce(ref)
       error_jmp;
 
     Image
-      *image;
+      *image,
+      *next;
 
     struct PackageInfo
       *info;
 
     SV
+      *av_reference,
       *reference,
       *rv,
+      **reference_vector,
       *sv;
 
     volatile int
       status;
 
+    reference_vector=NULL;
     status=0;
     error_list=newSVpv("",0);
     if (!sv_isobject(ST(0)))
@@ -2378,6 +2341,9 @@ Coalesce(ref)
       }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
+    av=newAV();
+    av_reference=sv_2mortal(sv_bless(newRV((SV *) av),hv));
+    SvREFCNT_dec(av);
     error_jump=(&error_jmp);
     status=setjmp(error_jmp);
     if (status)
@@ -2392,31 +2358,26 @@ Coalesce(ref)
     image=CoalesceImages(image,&exception);
     if (!image)
       {
-        MagickWarning(exception.severity,exception.reason,exception.description);
+        MagickWarning(exception.severity,exception.reason,
+          exception.description);
         goto MethodException;
       }
-    /*
-      Create blessed Perl array for the returned image.
-    */
-    av=newAV();
-    ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
-    SvREFCNT_dec(av);
-    sv=newSViv((IV) image);
-    rv=newRV(sv);
-    av_push(av,sv_bless(rv,hv));
-    SvREFCNT_dec(sv);
-    info=GetPackageInfo((void *) av,info);
-    FormatString(info->image_info->filename,"average-%.*s",MaxTextExtent-9,
-      ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
-    (void) strcpy(image->filename,info->image_info->filename);
-    SetImageInfo(info->image_info,False,&image->exception);
-    SvREFCNT_dec(error_list);
+    for (next=image; next; next=next->next)
+    {
+      sv=newSViv((IV) next);
+      rv=newRV(sv);
+      av_push(av,sv_bless(rv,hv));
+      SvREFCNT_dec(sv);
+    }
+    ST(0)=av_reference;
     error_jump=NULL;
+    SvREFCNT_dec(error_list);
+    error_list=NULL;
     XSRETURN(1);
 
   MethodException:
     sv_setiv(error_list,(IV) (status ? status : SvCUR(error_list) != 0));
-    SvPOK_on(error_list);  /* return messages in string context */
+    SvPOK_on(error_list);
     ST(0)=sv_2mortal(error_list);
     error_list=NULL;
     error_jump=NULL;
@@ -2767,7 +2728,7 @@ Flatten(ref)
     info=GetPackageInfo((void *) av,info);
     FormatString(info->image_info->filename,"average-%.*s",MaxTextExtent-9,
       ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
-    (void) strcpy(image->filename,info->image_info->filename);
+    (void) strncpy(image->filename,info->image_info->filename,MaxTextExtent-1);
     SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
@@ -2809,14 +2770,14 @@ Get(ref,...)
       *attribute,
       color[MaxTextExtent];
 
+    const ImageAttribute
+      *image_attribute;
+
     ExceptionInfo
       exception;
 
     Image
       *image;
-
-    ImageAttribute
-      *image_attribute;
 
     int
       j;
@@ -2947,7 +2908,7 @@ Get(ref,...)
         {
           if (LocaleCompare(attribute,"comment") == 0)
             {
-              ImageAttribute
+              const ImageAttribute
                 *attribute;
 
               attribute=GetImageAttribute(image,"comment");
@@ -2966,7 +2927,7 @@ Get(ref,...)
               j=image->storage_class;
 #endif
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(ClassTypes)-1))
+              if ((j >= 0) && (j < (int) NumberOf(ClassTypes)-1))
                 {
                   (void) sv_setpv(s,ClassTypes[j]);
                   SvIOK_on(s);
@@ -2981,7 +2942,7 @@ Get(ref,...)
                 if (info->image_info->compression == UndefinedCompression)
                   j=image->compression;
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(CompressionTypes)-1))
+              if ((j >= 0) && (j < (int) NumberOf(CompressionTypes)-1))
                 {
                   (void) sv_setpv(s,CompressionTypes[j]);
                   SvIOK_on(s);
@@ -2993,7 +2954,7 @@ Get(ref,...)
             {
               j=image ? image->colorspace : RGBColorspace;
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(ColorspaceTypes)-1))
+              if ((j >= 0) && (j < (int) NumberOf(ColorspaceTypes)-1))
                 {
                   (void) sv_setpv(s,ColorspaceTypes[j]);
                   SvIOK_on(s);
@@ -3003,9 +2964,8 @@ Get(ref,...)
             }
           if (LocaleCompare(attribute,"colors") == 0)
             {
-              (void) GetNumberColors(image,(FILE *) NULL);
               if (image)
-                s=newSViv(image->total_colors);
+                s=newSViv(GetNumberColors(image,(FILE *) NULL,&exception));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3015,7 +2975,7 @@ Get(ref,...)
                 break;
               j=0;
               (void) sscanf(attribute,"%*[^[][%d",&j);
-              if (j > image->colors)
+              if (j > (int) image->colors)
                 j%=image->colors;
               FormatString(color,"%u,%u,%u,%u",image->colormap[j].red,
                 image->colormap[j].green,image->colormap[j].blue,
@@ -3062,7 +3022,7 @@ Get(ref,...)
               if (info)
                 s=newSViv(info->image_info->depth);
               if (image)
-                s=newSViv(GetImageDepth(image));
+                s=newSViv(GetImageDepth(image,&image->exception));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3126,7 +3086,7 @@ Get(ref,...)
             {
               j=image->filter;
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(FilterTypess)-1))
+              if ((j >= 0) && (j < (int) NumberOf(FilterTypess)-1))
                 {
                   (void) sv_setpv(s,FilterTypess[j]);
                   SvIOK_on(s);
@@ -3143,18 +3103,16 @@ Get(ref,...)
             }
           if (LocaleCompare(attribute,"format") == 0)
             {
-              MagickInfo
+              const MagickInfo
                 *magick_info;
 
-              magick_info=(MagickInfo *) NULL;
+              magick_info=(const MagickInfo *) NULL;
               if (info && (*info->image_info->magick != '\0'))
-                magick_info=(MagickInfo *)
-                  GetMagickInfo(info->image_info->magick,&exception);
+                magick_info=GetMagickInfo(info->image_info->magick,&exception);
               else
                 if (image)
-                  magick_info=(MagickInfo *)
-                    GetMagickInfo(image->magick,&image->exception);
-                if ((magick_info != (MagickInfo *) NULL) &&
+                  magick_info=GetMagickInfo(image->magick,&image->exception);
+                if ((magick_info != (const MagickInfo *) NULL) &&
                     (*magick_info->description != '\0'))
                   s=newSVpv((char *) magick_info->description,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
@@ -3221,15 +3179,12 @@ Get(ref,...)
               char
                 name[MaxTextExtent];
 
-              int
-                x,
-                y;
-
               IndexPacket
                 *indexes;
 
-              PixelPacket
-                pixel;
+              long
+                x,
+                y;
 
               if (!image)
                 break;
@@ -3237,9 +3192,8 @@ Get(ref,...)
                 break;
               x=0;
               y=0;
-              (void) sscanf(attribute,"%*[^[][%d %d",&x,&y);
-              (void) sscanf(attribute,"%*[^[][%d,%d",&x,&y);
-              pixel=GetOnePixel(image,x % image->columns,y % image->rows);
+              (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
+              (void) GetOnePixel(image,x % image->columns,y % image->rows);
               indexes=GetIndexes(image);
               FormatString(name,"%u",*indexes);
               s=newSVpv(name,0);
@@ -3257,7 +3211,7 @@ Get(ref,...)
             {
               j=info ? info->image_info->interlace : image->interlace;
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(InterlaceTypes)-1))
+              if ((j >= 0) && (j < (int) NumberOf(InterlaceTypes)-1))
                 {
                   (void) sv_setpv(s,InterlaceTypes[j]);
                   SvIOK_on(s);
@@ -3272,7 +3226,7 @@ Get(ref,...)
         {
           if (LocaleCompare(attribute,"label") == 0)
             {
-              ImageAttribute
+              const ImageAttribute
                 *attribute;
 
               if (!image)
@@ -3321,7 +3275,8 @@ Get(ref,...)
             }
           if (LocaleCompare(attribute,"monochrome") == 0)
             {
-              j=info ? info->image_info->monochrome : IsMonochromeImage(image);
+              j=info ? info->image_info->monochrome :
+                IsMonochromeImage(image,&image->exception);
               s=newSViv(j);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
@@ -3378,7 +3333,7 @@ Get(ref,...)
               char
                 name[MaxTextExtent];
 
-              int
+              long
                 x,
                 y;
 
@@ -3389,8 +3344,7 @@ Get(ref,...)
                 break;
               x=0;
               y=0;
-              (void) sscanf(attribute,"%*[^[][%d %d",&x,&y);
-              (void) sscanf(attribute,"%*[^[][%d,%d",&x,&y);
+              (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
               pixel=GetOnePixel(image,x % image->columns,y % image->rows);
               FormatString(name,"%u,%u,%u,%u",pixel.red,pixel.green,pixel.blue,
                 pixel.opacity);
@@ -3409,7 +3363,7 @@ Get(ref,...)
             {
               s=newSViv(info->image_info->preview_type);
               if ((info->image_info->preview_type >= 0) &&
-                  (info->image_info->preview_type < NumberOf(PreviewTypes)-1))
+                  (info->image_info->preview_type < (int) NumberOf(PreviewTypes)-1))
                 {
                   (void) sv_setpv(s,
                     PreviewTypes[info->image_info->preview_type]);
@@ -3439,7 +3393,7 @@ Get(ref,...)
             {
               j=image->rendering_intent;
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(IntentTypes)-1))
+              if ((j >= 0) && (j < (int) NumberOf(IntentTypes)-1))
                 {
                   (void) sv_setpv(s,IntentTypes[j]);
                   SvIOK_on(s);
@@ -3506,7 +3460,7 @@ Get(ref,...)
             }
           if (LocaleCompare(attribute,"signature") == 0)
             {
-              ImageAttribute
+              const ImageAttribute
                 *attribute;
 
               if (!image)
@@ -3526,7 +3480,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"taint") == 0)
             {
               if (image)
-                s=newSViv(IsImageTainted(image));
+                s=newSViv(IsTaintImage(image));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3555,9 +3509,9 @@ Get(ref,...)
             {
               if (!image)
                 break;
-              j=(int) GetImageType(image);
+              j=(int) GetImageType(image,&image->exception);
               s=newSViv(j);
-              if ((j >= 0) && (j < NumberOf(ImageTypes)-1))
+              if ((j >= 0) && (j < (int) NumberOf(ImageTypes)-1))
                 {
                   (void) sv_setpv(s,ImageTypes[j]);
                   SvIOK_on(s);
@@ -3746,16 +3700,16 @@ ImageToBlob(ref,...)
     package_info=ClonePackageInfo(info);
     for (i=2; i < items; i+=2)
       SetAttribute(package_info,image,SvPV(ST(i-1),na),ST(i));
-    (void) strcpy(filename,package_info->image_info->filename);
+    (void) strncpy(filename,package_info->image_info->filename,MaxTextExtent-1);
     scene=0;
     for (next=image; next; next=next->next)
     {
-      (void) strcpy(next->filename,filename);
+      (void) strncpy(next->filename,filename,MaxTextExtent-1);
       next->scene=scene++;
     }
     SetImageInfo(package_info->image_info,True,&image->exception);
     GetExceptionInfo(&exception);
-    EXTEND(sp,GetNumberScenes(image));
+    EXTEND(sp,(int) GetNumberScenes(image));
     for (next=image; next; next=next->next)
     {
       length=0;
@@ -3765,7 +3719,7 @@ ImageToBlob(ref,...)
           exception.description);
       if (blob != (char *) NULL)
         {
-          PUSHs(sv_2mortal(newSVpv(blob,length)));
+          PUSHs(sv_2mortal(newSVpv((const char *) blob,length)));
           LiberateMemory((void **) &blob);
         }
       if (package_info->image_info->adjoin)
@@ -3937,6 +3891,8 @@ Mogrify(ref,...)
     OrderedDitherImage = 142
     Shave              = 143
     ShaveImage         = 144
+    Level              = 145
+    LevelImage         = 146
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -3947,7 +3903,6 @@ Mogrify(ref,...)
     char
       *attribute,
       attribute_flag[MaxArguments],
-      *commands[10],
       message[MaxTextExtent],
       *value;
 
@@ -4068,7 +4023,7 @@ Mogrify(ref,...)
       int
         longest;
 
-      struct arguments
+      Arguments
         *pp,
         *qq;
 
@@ -4557,7 +4512,7 @@ Mogrify(ref,...)
         case 29:  /* Spread */
         {
           if (!attribute_flag[0])
-            argument_list[0].int_reference=3;
+            argument_list[0].int_reference=1;
           image=SpreadImage(image,argument_list[0].int_reference,&exception);
           break;
         }
@@ -4645,9 +4600,7 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%lf",&affine.tx,&affine.ty);
-                if (k == 1)
-                  k=sscanf(value,"%lf,%lf",&affine.tx,&affine.ty);
+                k=sscanf(value,"%lf%*[, ]%lf",&affine.tx,&affine.ty);
                 if (k == 1)
                   affine.ty=affine.tx;
                 break;
@@ -4657,9 +4610,7 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%lf",&affine.sx,&affine.sy);
-                if (k == 1)
-                  k=sscanf(value,"%lf,%lf",&affine.sx,&affine.sy);
+                k=sscanf(value,"%lf%*[, ]%lf",&affine.sx,&affine.sy);
                 if (k == 1)
                   affine.sy=affine.sx;
                 break;
@@ -4706,7 +4657,7 @@ Mogrify(ref,...)
           if (attribute_flag[17])
             draw_info->stroke_width=argument_list[17].int_reference;
           if (attribute_flag[18])
-            draw_info->text_antialias=argument_list[18].int_reference;
+            draw_info->text_antialias=argument_list[18].int_reference != 0;
           AnnotateImage(image,draw_info);
           DestroyDrawInfo(draw_info);
           break;
@@ -4762,11 +4713,13 @@ Mogrify(ref,...)
             *rotate_image;
 
           int
-            status,
+            status;
+
+          long
             x,
             y;
 
-          unsigned int
+          unsigned long
             height,
             width;
 
@@ -4784,24 +4737,24 @@ Mogrify(ref,...)
           if (attribute_flag[6])
             opacity=argument_list[6].double_reference;
           if (opacity != OpaqueOpacity)
-            SetImageOpacity(composite_image,opacity);
+            SetImageOpacity(composite_image,(unsigned int) opacity);
           if (compose == DissolveCompositeOp)
             {
               register PixelPacket
                 *q;
 
-              for (y=0; y < (int) composite_image->rows; y++)
+              for (y=0; y < (long) composite_image->rows; y++)
               {
                 q=GetImagePixels(composite_image,0,y,
                   composite_image->columns,1);
                 if (q == (PixelPacket *) NULL)
                   break;
-                for (x=0; x < (int) composite_image->columns; x++)
+                for (x=0; x < (long) composite_image->columns; x++)
                 {
                   if (composite_image->matte)
-                    q->opacity=((MaxRGB-q->opacity)*opacity)/100;
+                    q->opacity=(Quantum) ((MaxRGB-q->opacity)*opacity)/100;
                   else
-                    q->opacity=(MaxRGB*opacity)/100;
+                    q->opacity=(Quantum) (MaxRGB*opacity)/100;
                   q++;
                 }
                 if (!SyncImagePixels(composite_image))
@@ -4824,15 +4777,14 @@ Mogrify(ref,...)
               /*
                 Tile image on background.
               */
-              for (y=0; y < (int) image->rows; y+=composite_image->rows)
-                for (x=0; x < (int) image->columns; x+=composite_image->columns)
+              for (y=0; y < (long) image->rows; y+=composite_image->rows)
+                for (x=0; x < (long) image->columns; x+=composite_image->columns)
                 {
                   if (attribute_flag[8])
                     status=CompositeImage(image,compose,rotate_image,x,y);
                   else
                     status=CompositeImage(image,compose,composite_image,x,y);
-                  if (status == False)
-                    CatchImageException(image);
+                  CatchImageException(image);
                 }
               if (attribute_flag[8])
                 DestroyImage(rotate_image);
@@ -4851,16 +4803,17 @@ Mogrify(ref,...)
             y=argument_list[4].int_reference;
           FormatString(geometry,"%+d%+d\n",x,y);
           if (attribute_flag[2])
-            (void) strcpy(geometry,argument_list[2].string_reference);
+            (void) strncpy(geometry,argument_list[2].string_reference,
+              MaxTextExtent-1);
           flags=ParseGeometry(geometry,&x,&y,&width,&height);
           if ((flags & XNegative) != 0)
             x+=image->columns;
           if ((flags & WidthValue) == 0)
-            width-=2*x > width ? width : 2*x;
+            width-=2*x > (int) width ? width : 2*x;
           if ((flags & YNegative) != 0)
             y+=image->rows;
           if ((flags & HeightValue) == 0)
-            height-=2*y > height ? height : 2*y;
+            height-=2*y > (int) height ? height : 2*y;
           if (attribute_flag[5])
             switch (argument_list[5].int_reference)
             {
@@ -4868,7 +4821,7 @@ Mogrify(ref,...)
                 break;
               case NorthGravity:
               {
-                x+=0.5*width-composite_image->columns/2;
+                x+=(int) (0.5*width-composite_image->columns/2);
                 break;
               }
               case NorthEastGravity:
@@ -4878,7 +4831,7 @@ Mogrify(ref,...)
               }
               case WestGravity:
               {
-                y+=0.5*height-composite_image->rows/2;
+                y+=(int) (0.5*height-composite_image->rows/2);
                 break;
               }
               case ForgetGravity:
@@ -4886,14 +4839,14 @@ Mogrify(ref,...)
               case CenterGravity:
               default:
               {
-                x+=0.5*width-composite_image->columns/2;
-                y+=0.5*height-composite_image->rows/2;
+                x+=(int) (0.5*width-composite_image->columns/2);
+                y+=(int) (0.5*height-composite_image->rows/2);
                 break;
               }
               case EastGravity:
               {
                 x+=width-composite_image->columns;
-                y+=0.5*height-composite_image->rows/2;
+                y+=(int) (0.5*height-composite_image->rows/2);
                 break;
               }
               case SouthWestGravity:
@@ -4903,7 +4856,7 @@ Mogrify(ref,...)
               }
               case SouthGravity:
               {
-                x+=0.5*width-composite_image->columns/2;
+                x+=(int) (0.5*width-composite_image->columns/2);
                 y+=height-composite_image->rows;
                 break;
               }
@@ -4934,7 +4887,7 @@ Mogrify(ref,...)
         case 36:  /* Contrast */
         {
           if (!attribute_flag[0])
-            argument_list[0].int_reference=0.0;
+            argument_list[0].int_reference=0;
           ContrastImage(image,argument_list[0].int_reference);
           break;
         }
@@ -5001,9 +4954,7 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%lf",&affine.tx,&affine.ty);
-                if (k == 1)
-                  k=sscanf(value,"%lf,%lf",&affine.tx,&affine.ty);
+                k=sscanf(value,"%lf%*[, ]%lf",&affine.tx,&affine.ty);
                 if (k == 1)
                   affine.ty=affine.tx;
                 break;
@@ -5013,9 +4964,7 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%lf",&affine.sx,&affine.sy);
-                if (k == 1)
-                  k=sscanf(value,"%lf,%lf",&affine.sx,&affine.sy);
+                k=sscanf(value,"%lf%*[, ]%lf",&affine.sx,&affine.sy);
                 if (k == 1)
                   affine.sy=affine.sx;
                 break;
@@ -5066,8 +5015,8 @@ Mogrify(ref,...)
             draw_info->pointsize=argument_list[16].double_reference;
           if (attribute_flag[17])
             {
-              draw_info->stroke_antialias=argument_list[17].int_reference;
-              draw_info->text_antialias=argument_list[17].int_reference;
+              draw_info->stroke_antialias=argument_list[17].int_reference != 0;
+              draw_info->text_antialias=argument_list[17].int_reference != 0;
             }
           if (attribute_flag[18])
             (void) CloneString(&draw_info->density,
@@ -5093,7 +5042,7 @@ Mogrify(ref,...)
                 argument_list[3].double_reference=1.0;
               if (!attribute_flag[0])
                 {
-                  FormatString(message,"%lf/%lf/%lf",
+                  FormatString(message,"%g,%g,%g",
                     argument_list[1].double_reference,
                     argument_list[2].double_reference,
                     argument_list[3].double_reference);
@@ -5166,7 +5115,7 @@ Mogrify(ref,...)
                 argument_list[2].double_reference=100.0;
               if (!attribute_flag[3])
                 argument_list[3].double_reference=100.0;
-              FormatString(message,"%lf/%lf/%lf",
+              FormatString(message,"%g,%g,%g",
                 argument_list[1].double_reference,
                 argument_list[2].double_reference,
                 argument_list[3].double_reference);
@@ -5291,7 +5240,7 @@ Mogrify(ref,...)
           if (attribute_flag[3])
             colorspace=(ColorspaceType) argument_list[3].int_reference;
           if (attribute_flag[4])
-            verbose=argument_list[4].int_reference;
+            verbose=argument_list[4].int_reference != 0;
           (void) SegmentImage(image,colorspace,verbose,cluster_threshold,
             smoothing_threshold);
           break;
@@ -5351,9 +5300,6 @@ Mogrify(ref,...)
         }
         case 58:  /* Charcoal */
         {
-          char
-            geometry[MaxTextExtent];
-
           double
             radius,
             sigma;
@@ -5367,13 +5313,7 @@ Mogrify(ref,...)
           if (attribute_flag[0])
             (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
               &radius,&sigma);
-          FormatString(geometry,"%gx%g",radius,sigma);
-          commands[0]=client_name;
-          commands[1]="-charcoal";
-          commands[2]=geometry;
-          MogrifyImage(info->image_info,3,commands,&image);
-          if (next != image)
-            next=NULL;  /* 'cause it's been blown away */
+          image=CharcoalImage(image,radius,sigma,&exception);
           break;
         }
         case 60:  /* Wave */
@@ -5461,11 +5401,11 @@ Mogrify(ref,...)
           if (!attribute_flag[0])
             break;
           av=(AV*) argument_list[0].array_reference;
-          radius=sqrt(av_len(av)+1);
+          radius=(unsigned int) sqrt(av_len(av)+1);
           kernel=(double *) AcquireMemory(radius*radius*sizeof(double));
           for (j=0; j < (av_len(av)+1); j++)
             kernel[j]=(double) SvNV(*(av_fetch(av,j,0)));
-          for ( ; j < (radius*radius); j++)
+          for ( ; j < (int) (radius*radius); j++)
             kernel[j]=0.0;
           image=ConvolveImage(image,radius,kernel,&exception);
           LiberateMemory((void **) &kernel);
@@ -5479,6 +5419,7 @@ Mogrify(ref,...)
             argument_list[1].string_reference=(char *) NULL;
           (void) ProfileImage(image,argument_list[0].string_reference,
             argument_list[1].string_reference);
+          break;
         }
         case 69:  /* UnsharpMask */
         {
@@ -5554,6 +5495,28 @@ Mogrify(ref,...)
           image=ShaveImage(image,&rectangle_info,&exception);
           break;
         }
+        case 73:  /* Level */
+        {
+          if (first)
+            {
+              if (!attribute_flag[1])
+                argument_list[1].double_reference=0.0;
+              if (!attribute_flag[2])
+                argument_list[2].double_reference=1.0;
+              if (!attribute_flag[3])
+                argument_list[3].double_reference=MaxRGB;
+              if (!attribute_flag[0])
+                {
+                  FormatString(message,"%g,%g,%g",
+                    argument_list[1].double_reference,
+                    argument_list[2].double_reference,
+                    argument_list[3].double_reference);
+                  argument_list[0].string_reference=AllocateString(message);
+                }
+            }
+          LevelImage(image,argument_list[0].string_reference);
+          break;
+        }
       }
       if (image == (Image *) NULL)
         MagickWarning(exception.severity,exception.reason,exception.description);
@@ -5570,8 +5533,7 @@ Mogrify(ref,...)
           */
           status=CompositeImage(region_image,CopyCompositeOp,image,
             region_info.x,region_info.y);
-          if (status == False)
-            CatchImageException(region_image);
+          CatchImageException(region_image);
           image->orphan=True;
           DestroyImage(image);
           image=region_image;
@@ -5641,7 +5603,6 @@ Montage(ref,...)
       *next;
 
     int
-      concatenate,
       sp;
 
     jmp_buf
@@ -5698,7 +5659,6 @@ Montage(ref,...)
     */
     info=GetPackageInfo((void *) av,info);
     montage_info=CloneMontageInfo(info->image_info,(MontageInfo *) NULL);
-    concatenate=0;
     (void) QueryColorDatabase("none",&transparent_color);
     for (i=2; i < items; i+=2)
     {
@@ -5867,7 +5827,6 @@ Montage(ref,...)
                   montage_info->shadow=False;
                   (void) CloneString(&montage_info->geometry,"+0+0");
                   montage_info->border_width=0;
-                  concatenate=True;
                 }
               }
               break;
@@ -5897,7 +5856,7 @@ Montage(ref,...)
                     SvPV(ST(i),na));
                   break;
                 }
-             montage_info->shadow=sp;
+             montage_info->shadow=sp != 0;
              break;
             }
           if (LocaleCompare(attribute,"stroke") == 0)
@@ -5943,6 +5902,8 @@ Montage(ref,...)
             }
           break;
         }
+        default:
+          MagickWarning(OptionWarning,"Invalid attribute",attribute);
       }
       MagickWarning(OptionWarning,"Invalid attribute",attribute);
     }
@@ -6201,7 +6162,7 @@ Mosaic(ref)
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
     info=GetPackageInfo((void *) av,info);
-    (void) strcpy(image->filename,info->image_info->filename);
+    (void) strncpy(image->filename,info->image_info->filename,MaxTextExtent-1);
     SetImageInfo(info->image_info,False,&image->exception);
     SvREFCNT_dec(error_list);
     error_jump=NULL;
@@ -6262,8 +6223,7 @@ Ping(ref,...)
       *info;
 
     SV
-      *reference,  /* reference is the SV* of ref=SvIV(reference) */
-      *s;
+      *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
     error_list=newSVpv("",0);
     reference=SvRV(ST(0));
@@ -6272,7 +6232,8 @@ Ping(ref,...)
     count=0;
     for (i=1; i < items; i++)
     {
-      (void) strcpy(info->image_info->filename,(char *) SvPV(ST(i),na));
+      (void) strncpy(info->image_info->filename,(char *) SvPV(ST(i),na),
+        MaxTextExtent-1);
       if ((items >= 3) && strEQcase(info->image_info->filename,"filename"))
         continue;
       if ((items >= 3) && strEQcase(info->image_info->filename,"file"))
@@ -6336,24 +6297,21 @@ QueryColor(ref,...)
     register int
       i;
 
-    SV
-      *s;
-
     error_list=newSVpv("",0);
     if (items == 1)
       {
-        ColorInfo
+        const ColorInfo
           *color_info;
 
-        ExceptionInfo 
+        ExceptionInfo
           exception;
 
-        register ColorInfo
+        register const ColorInfo
           *p;
 
         GetExceptionInfo(&exception);
         color_info=GetColorInfo("*",&exception);
-        if (color_info == (ColorInfo *) NULL)
+        if (color_info == (const ColorInfo *) NULL)
           {
             PUSHs(&sv_undef);
             goto MethodException;
@@ -6446,7 +6404,8 @@ QueryColorname(ref,...)
     for (i=1; i < items; i++)
     {
       (void) QueryColorDatabase(SvPV(ST(i),na),&target_color);
-      (void) QueryColorname(image,&target_color,AllCompliance,message);
+      (void) QueryColorname(image,&target_color,AllCompliance,message,
+        &image->exception);
       PUSHs(sv_2mortal(newSVpv(message,0)));
     }
     SvREFCNT_dec(error_list);
@@ -6475,27 +6434,24 @@ QueryFont(ref,...)
     char
       *name;
 
-    ExceptionInfo 
+    const TypeInfo
+      *type_info;
+
+    ExceptionInfo
       exception;
 
     register int
       i;
 
-    SV
-      *s;
-
-    TypeInfo
-      *type_info;
-
     error_list=newSVpv("",0);
     GetExceptionInfo(&exception);
     if (items == 1)
       {
-        register TypeInfo
+        register const TypeInfo
           *p;
 
         type_info=GetTypeInfo("*",&exception);
-        if (type_info == (TypeInfo *) NULL)
+        if (type_info == (const TypeInfo *) NULL)
           {
             PUSHs(&sv_undef);
             goto MethodException;
@@ -6692,8 +6648,8 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"rotate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf %lf",&affine.rx,&affine.ry);
-              (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&affine.rx,&affine.ry);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.rx,
+                &affine.ry);
               break;
             }
           break;
@@ -6703,8 +6659,8 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"scale") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf %lf",&affine.sx,&affine.sy);
-              (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&affine.sx,&affine.sy);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.sx,
+                &affine.sy);
               break;
             }
           if (LocaleCompare(attribute,"skew") == 0)
@@ -6715,8 +6671,7 @@ QueryFontMetrics(ref,...)
 
               x_angle=0.0;
               y_angle=0.0;
-              (void) sscanf(SvPV(ST(i),na),"%lf %lf",&x_angle,&y_angle);
-              (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&x_angle,&y_angle);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&x_angle,&y_angle);
               affine.ry=tan(DegreesToRadians(fmod(x_angle,360.0)));
               affine.rx=tan(DegreesToRadians(fmod(y_angle,360.0)));
               break;
@@ -6733,8 +6688,8 @@ QueryFontMetrics(ref,...)
             }
           if (LocaleCompare(attribute,"translate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf %lf",&affine.tx,&affine.ty);
-              (void) sscanf(SvPV(ST(i),na),"%lf,%lf",&affine.tx,&affine.ty);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.tx,
+                &affine.ty);
               break;
             }
           break;
@@ -6771,7 +6726,7 @@ QueryFontMetrics(ref,...)
     if (draw_info->geometry == (char *) NULL)
       {
         draw_info->geometry=AllocateString((char *) NULL);
-        FormatString(draw_info->geometry,"%f,%f",x,y);
+        FormatString(draw_info->geometry,"%g,%g",x,y);
       }
     status=GetTypeMetrics(image,draw_info,&metrics);
     if (status == False)
@@ -6823,27 +6778,24 @@ QueryFormat(ref,...)
       message[MaxTextExtent],
       *name;
 
-    ExceptionInfo 
-      exception;
-
-    MagickInfo
+    const MagickInfo
       *magick_info;
+
+    ExceptionInfo
+      exception;
 
     register int
       i;
-
-    SV
-      *s;
 
     error_list=newSVpv("",0);
     GetExceptionInfo(&exception);
     if (items == 1)
       {
-        register MagickInfo
+        register const MagickInfo
           *p;
 
         magick_info=GetMagickInfo("*",&exception);
-        if (magick_info == (MagickInfo *) NULL)
+        if (magick_info == (const MagickInfo *) NULL)
           {
             PUSHs(&sv_undef);
             goto MethodException;
@@ -6854,12 +6806,14 @@ QueryFormat(ref,...)
         EXTEND(sp,i);
         for (p=magick_info; p != (MagickInfo *) NULL; p=p->next)
         {
+          if (p->stealth)
+            continue;
           if (p->name == (char *) NULL)
             {
               PUSHs(&sv_undef);
               continue;
             }
-          (void) strcpy(message,p->name);
+          (void) strncpy(message,p->name,MaxTextExtent-1);
           LocaleLower(message);
           PUSHs(sv_2mortal(newSVpv(message,0)));
         }
@@ -6870,7 +6824,7 @@ QueryFormat(ref,...)
     {
       name=(char *) SvPV(ST(i),na);
       magick_info=GetMagickInfo(name,&exception);
-      if (magick_info == (MagickInfo *) NULL)
+      if (magick_info == (const MagickInfo *) NULL)
         {
           PUSHs(&sv_undef);
           continue;
@@ -6979,7 +6933,7 @@ Read(ref,...)
     info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
     n=1;
     if (items <= 1)
-      *list=
+      *list=(char *)
         (*info->image_info->filename ? info->image_info->filename : "XC:black");
     else
       for (n=0, i=0; i < ac; i++)
@@ -7379,19 +7333,18 @@ Write(ref,...)
       if (items > 2)
         for (i=2; i < items; i+=2)
           SetAttribute(package_info,image,SvPV(ST(i-1),na),ST(i));
-    (void) strcpy(filename,package_info->image_info->filename);
+    (void) strncpy(filename,package_info->image_info->filename,MaxTextExtent-1);
     scene=0;
     for (next=image; next; next=next->next)
     {
-      (void) strcpy(next->filename,filename);
+      (void) strncpy(next->filename,filename,MaxTextExtent-1);
       next->scene=scene++;
     }
     SetImageInfo(package_info->image_info,True,&image->exception);
     for (next=image; next; next=next->next)
     {
       status=WriteImage(package_info->image_info,next);
-      if (status == False)
-        CatchImageException(next);
+      CatchImageException(next);
       number_images++;
       if (package_info->image_info->adjoin)
         break;

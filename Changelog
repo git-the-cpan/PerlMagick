@@ -1,5 +1,7 @@
 Revision history for Perl extension Image::Magick.
 
+1.23  Thu Nov 6 1997
+	- Added geometry to method Composite.
 1.22  Thu Oct 30 1997
 	- Changed error status from external int to method SetErrorStatus.
 	- Added a call to SetClientname.

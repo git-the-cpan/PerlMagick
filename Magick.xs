@@ -162,7 +162,7 @@ static char *p_colorspaces[] = {
     "YIQ", "YPbPr", "YUV", "CMYK", 0 };
 
 static char *p_classes[] = {
-    "Undefined", "Direct", "Pseudo", 0 };
+    "Undefined", "DirectClass", "PseudoClass", 0 };
 
 /* types for struct routines.args.type */
 #define P_STR	(char **)0	/* arg is a string */
@@ -234,7 +234,7 @@ static struct routines {
 		    {"align", p_alignments} } },
     {	"ColorFloodfill", },
     {	"Composite", { {"compos", p_composites}, {"image", P_IMG},
-		    {"x", P_INT}, {"y", P_INT} } },
+		    {"geom", P_STR}, {"x", P_INT}, {"y", P_INT} } },
     {	"Contrast", { {"sharp", p_boolean} } },
     {	"CycleColormap", { {"amount", P_INT} } },
     {	"Draw", { {"prim", p_primitives}, {"points", P_STR},
@@ -251,8 +251,8 @@ static struct routines {
     {	"Normalize", },
     {	"NumberColors", },
     {	"Opaque", { {"color", P_STR}, {"pen", P_STR} } },
-    {	"Quantize", { {"colors", P_INT}, {"tree", P_INT}, {"dither", p_boolean},
-		    {"colorsp", p_colorspaces} } },
+    {	"Quantize", { {"colorsp", p_colorspaces}, {"tree", P_INT},
+		    {"dither", p_boolean}, {"colors", P_INT} } },
     {	"Raise", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT},
 		    {"x", P_INT}, {"y", P_INT}, {"raise", p_boolean} } },
     {	"Segment", { {"colorsp", p_colorspaces}, {"verbose", p_boolean},
@@ -264,7 +264,7 @@ static struct routines {
     {	"Transform", { {"crop", P_STR}, {"geom", P_STR} } },
     {	"Transparent", { {"color", P_STR} } },
     {   "Threshold", { {"threshold", P_DBL} } },
-    {   "Charcoal", { {"factor", P_DBL} } },
+    {   "Charcoal", { {"factor", P_STR} } },
     {	"Trim", },
     {	"Wave", { {"geom", P_STR}, {"ampli", P_DBL}, {"wave", P_DBL} } },
 };
@@ -296,7 +296,7 @@ LookupStr(list, str)
 
     for (p = list; *p; p++)
 	if (strEQcase(str, *p))
-	    return p - list;
+    	    return p - list;
 
     return -1;
 }
@@ -818,6 +818,19 @@ SetAttribute(info, image, attr, sval)
 	{
 	    if (info && (info->info.pointsize = SvIV(sval)) <= 0)
 		info->info.pointsize = atoi(DefaultPointSize);
+	    return;
+	}
+	if (strEQcase(attr, "preview"))
+	{
+	    int sp = SvPOK(sval) ? LookupStr(p_previews, SvPV(sval, na))
+			: SvIV(sval);
+	    if (sp < 0)
+	    {
+		warning(OptionWarning, "Unknown preview type", SvPV(sval, na));
+		return;
+	    }
+	    if (info)
+		info->info.preview_type = sp;
 	    return;
 	}
 	break;
@@ -1841,9 +1854,6 @@ Write(ref, ...)
 		if (WriteImage((ImageInfo *) &temp->info, im))
 		    ++nimg;
 
-		strcpy(im->magick, magick);
-		strcpy(im->filename, fn);
-
 		if (temp->info.adjoin)
 		    break;
 	    }
@@ -2451,18 +2461,27 @@ Mogrify(ref, ...)
 		case 35:	/* Composite */
 		    if (!aflag[0])
 			alist[0].t_int = 2;
-		    if (!aflag[2])
-			alist[2].t_int = 1;
 		    if (!aflag[3])
 			alist[3].t_int = 1;
+		    if (!aflag[4])
+			alist[4].t_int = 1;
 
+		    br.x = alist[3].t_int;
+		    br.y = alist[4].t_int;
+		    if (aflag[2])
+		    {
+		        int f = XParseGeometry(alist[2].t_str, &br.x, &br.y,
+							&br.width, &br.height);
+		        if (!(f & HeightValue))
+			   br.height = br.width;
+		    }
 		    if (!aflag[1])
 		    {
 			warning(OptionWarning, "Missing image in Composite", NULV);
 			goto return_it;
 		    }
 		    CompositeImage(image, alist[0].t_int, alist[1].t_img,
-					  alist[2].t_int, alist[3].t_int);
+					  br.x, br.y);
 		    break;
 		case 36:	/* Contrast */
 		    if (aflag[0])
@@ -2578,14 +2597,14 @@ Mogrify(ref, ...)
 		case 48:	/* Quantize */
 		    {
 			QuantizeInfo quan;
-			quan.number_colors = aflag[0] ? alist[0].t_int :
-				(info? info->quant.number_colors : MaxRGB + 1);
+			quan.colorspace = aflag[0] ? alist[0].t_int :
+				(info? info->quant.colorspace : RGBColorspace);
 			quan.tree_depth = aflag[1] ? alist[1].t_int :
 				(info? info->quant.tree_depth : 8);
 			quan.dither = aflag[2] ? alist[2].t_int :
 				(info? info->quant.dither : False);
-			quan.colorspace = aflag[3] ? alist[3].t_int :
-				(info? info->quant.colorspace : RGBColorspace);
+			quan.number_colors = aflag[3] ? alist[3].t_int :
+				(info? info->quant.number_colors : MaxRGB + 1);
 			QuantizeImages(&quan, image);
 			goto return_it;
 		    }
@@ -3004,10 +3023,11 @@ Get(ref, ...)
 		    }
 		    else if (strEQcase(arg, "file"))
 		    {
-			if (info && info->info.filename && *info->info.filename)
-			    s = newSVpv(info->info.filename, 0);
-			else if (image)
+			if (image)
 			    s = newSVpv(image->filename, 0);
+			else if (info && info->info.filename &&
+				 *info->info.filename)
+			    s = newSVpv(info->info.filename, 0);
 		    }
 		    else if (strEQcase(arg, "font"))
 		    {
@@ -3193,6 +3213,16 @@ Get(ref, ...)
 			if (info)
 			    s = newSViv(info->info.pointsize);
 		    }
+		    else if (strEQcase(arg, "preview"))
+		    {
+			s = newSViv(info->info.preview_type);
+			if (info->info.preview_type >= 0 &&
+			     info->info.preview_type < NUMBEROF(p_previews) - 1)
+			{
+			    sv_setpv(s, p_previews[info->info.preview_type]);
+			    SvIOK_on(s);
+			}
+		    }
 		    break;
 		case 'Q': case 'q':
 		    if (strEQcase(arg, "quality"))
@@ -3246,7 +3276,7 @@ Get(ref, ...)
 		    }
 		    else if (strEQcase(arg, "sign"))
 		    {
-			if (image)
+			if (image && image->signature)
 			    s = newSVpv(image->signature, 0);
 		    }
 		    break;

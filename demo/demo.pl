@@ -69,7 +69,8 @@ $example->Despeckle();
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Draw');
-$example->Draw(pen=>'gold',primitive=>'circle',points=>'60,90 60,120');
+$example->Draw(pen=>'gold',primitive=>'circle',points=>'60,90 60,120',
+  linewidth=>2);
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Emboss');
@@ -183,7 +184,7 @@ $example->Swirl(90);
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Wave');
-$example->Wave(10);
+$example->Wave('25x150');
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Zoom');
@@ -218,6 +219,6 @@ $montage->Annotate(text=>'Every thing you see on this page was created ' .
   font=>'@Generic.ttf',pointsize=>11,pen=>'#600');
 print "Write image...\n";
 $montage->Set(matte=>'false');
-$montage->Write('demo.gif') if "$x";  # may not have the JPEG plug-in
+$montage->Write('demo.jpg');
 print "Display image...\n";
 $montage->display();

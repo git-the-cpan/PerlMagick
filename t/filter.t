@@ -4,7 +4,7 @@
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
-BEGIN { $| = 1; $test=1, print "1..40\n"; }
+BEGIN { $| = 1; $test=1, print "1..44\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -58,6 +58,11 @@ testFilter('input.miff', 'Colorize',
   '6dc34477296f85d8584e655b3a429945');
 
 ++$test;
+testFilter('input.miff', 'Contrast',
+  q/1/,
+  '60e07b732b6cd84177e0ba22a8aa4106');
+
+++$test;
 testFilter('input.miff', 'Despeckle',
   q/ /,
   '9166d0fff05dc5805eef1275863ec244');
@@ -71,6 +76,11 @@ testFilter('input.miff', 'Edge',
 testFilter('input.miff', 'Emboss',
   q/ /,
   '28cddc797457c25ce339610cd1a8a374');
+
+++$test;
+testFilter('input.miff', 'Equalize',
+  q/ /,
+  'c484e3f1b74e35e911f514ad465451df');
 
 ++$test;
 testFilter('input.miff', 'Flip',
@@ -91,6 +101,11 @@ testFilter('input.miff', 'Frame',
 testFilter('input.miff', 'Gamma',
   q/2.2/,
   'b5f821615ecb6f3856fef4a6939d9ad1');
+
+++$test;
+testFilter('input.miff', 'Implode',
+  q/60/,
+  'e0ccb026dd63abb1da662219e76980aa');
 
 ++$test;
 testFilter('input.miff', 'Layer',
@@ -128,6 +143,11 @@ testFilter('input.miff', 'Normalize',
   '352b86fce0e86dd83c326d257820be9c');
 
 ++$test;
+testFilter('input.miff', 'OilPaint',
+  q/3/,
+  '8a103428f762f6e96c03fb52c78b90aa');
+
+++$test;
 testFilter('input.miff', 'Opaque',
   q/#fefefd/,
   '6444b7dae412d1d441b3ff8278e874d3');
@@ -135,7 +155,7 @@ testFilter('input.miff', 'Opaque',
 ++$test;
 testFilter('input.miff', 'Quantize',
   q/128/,
-  '352b0481cecacb8bcbe1eaf46eea8126');
+  'f4696fd19e5c100a50381235c86689cc');
 
 ++$test;
 testFilter('input.miff', 'Raise',
@@ -165,7 +185,7 @@ testFilter('input.miff', 'Scale',
 ++$test;
 testFilter('input.miff', 'Segment',
   q/1/,
-  'b159206bc65c655d6760b137025b8bd8');
+  '492cfb48dd301a0dad2cbf79afea916c');
 
 ++$test;
 testFilter('input.miff', 'Shade',
@@ -204,8 +224,8 @@ testFilter('input.miff', 'Trim',
 
 ++$test;
 testFilter('input.miff', 'Wave',
-  q/30x30/,
-  '695deb01cfb8b81523f1cfbb0a52b09f');
+  q/25x157/,
+  '7b245cb58da477c1e4cce2a9626681cc');
 
 ++$test;
 testFilter('input.miff', 'Zoom',

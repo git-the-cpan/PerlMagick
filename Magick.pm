@@ -25,7 +25,7 @@ require AutoLoader;
 	Transparent Opaque
     );
 
-$VERSION = '1.55';
+$VERSION = '4.18';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -92,7 +92,7 @@ developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.wizards.dupont.com/magick/www/perl.html
+	http://www.wizards.dupont.com/cristy/www/perl.html
 
 =head1 AUTHOR
 

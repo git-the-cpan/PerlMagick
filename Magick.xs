@@ -1239,6 +1239,83 @@ Copy(ref)
 	}
 
 void
+Display(ref, ...)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    DisplayImage	= 1
+	    display		= 2
+	    displayimage	= 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    Image *image, *im;
+	    struct info *info;
+	    volatile struct info *temp = NULL;
+	    XResourceInfo resource;
+	    XrmDatabase resource_database;
+	    unsigned long state;
+	    Display *display;
+	    char *resource_value;
+	    int n;
+	    jmp_buf error_jmp;
+	    volatile int retval = 0;
+
+	    im_er_mes = newSVpv("", 0);
+	    if (!sv_isobject(ST(0)))
+	    {
+		warninghandler(complain, IM_packname);
+		goto badreturn;
+	    }
+	    rref = SvRV(ST(0));
+
+	    im_er_jmp = &error_jmp;
+	    if (setjmp(error_jmp))
+		goto badreturn;
+
+	    if (!(image = setup_list(rref, &info, NULV)))
+	    {
+		warninghandler("No images to Display", NULV);
+		goto badreturn;
+	    }
+
+	    temp = copy_info(info);
+	    *temp->info.filename = '\0';
+
+	    if (items == 2)
+		SetAttribute(temp, NULL, "server", ST(1));
+	    else if (items > 2)
+		for (n = 2; n < items; n += 2)
+		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
+
+	    display = XOpenDisplay(info->info.server_name);
+	    if (display != (Display *) NULL) {
+		XSetErrorHandler(XError);
+		resource_database = XGetResourceDatabase(display, client_name);
+		XGetResourceInfo(resource_database, client_name, &resource);
+		resource.immutable = True;
+
+	        for (im = image ; im; im = im->next)
+	        {
+		    state=DefaultState;
+		    (void) XDisplayImage(display, &resource, (char **) NULL, 0,
+			&im, &state);
+	        }
+
+		SetMonitorHandler((MonitorHandler) NULL);
+		XCloseDisplay(display);
+	    }
+
+	badreturn:
+	    if (temp)
+		destroy_info(temp);
+	    sv_setiv(im_er_mes, (IV)retval);
+	    SvPOK_on(im_er_mes);
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
+	    XSRETURN(1);
+	}
+
+void
 Montage(ref, ...)
 	Image::Magick	ref = NO_INIT
 	ALIAS:
@@ -1645,10 +1722,6 @@ Write(ref, ...)
 	    WriteImage		= 1
 	    write		= 2
 	    writeimage		= 3
-	    Display		= 4
-	    DisplayImage	= 5
-	    display		= 6
-	    displayimage	= 7
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */

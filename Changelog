@@ -1,5 +1,9 @@
 Revision history for Perl extension Image::Magick.
 
+1.12  Tue June 03 1997
+	- Changed $q->DisplayMethod() to be more robust.
+1.11  Tue June 03 1997
+	- Added $q->animate() method
 1.10  Tue May 20 1997
 	- Access individual pixels of an image; Set('pixel[4,4]'=>'255,255,255')
 1.07  Tue May 06 1997

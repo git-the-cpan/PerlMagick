@@ -7002,7 +7002,7 @@ QueryColorname(ref,...)
     {
       (void) QueryColorDatabase(SvPV(ST(i),na),&target_color,&exception);
       (void) QueryColorname(image,&target_color,SVGCompliance,message,
-        &image->exception);
+        &exception);
       PUSHs(sv_2mortal(newSVpv(message,0)));
     }
     DestroyExceptionInfo(&exception);

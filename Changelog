@@ -1,6 +1,8 @@
 Revision history for Perl extension Image::Magick.
 
-1.29 Fri Dec 24 1997
+1.30 Fri Dec 24 1997
+	- removed resource->immutable to complete NT port.
+1.29 Fri Dec 20 1997
 	- Fixed a couple of casts to get rid of compiler warnings.
 1.28 Fri Dec 15 1997
 	- AnnotateInfo structure has changed again to fix a memory leak.

@@ -1174,7 +1174,6 @@ Animate(ref, ...)
 		XGetResourceInfo(resource_database, client_name, &resource);
 		resource.image_info = info->info;
 		resource.quantize_info = info->quant;
-		resource.immutable = True;
 
 		(void) XAnimateImages(display, &resource, (char **) NULL, 0,
 		    image);
@@ -1393,7 +1392,6 @@ Display(ref, ...)
 		XGetResourceInfo(resource_database, client_name, &resource);
 		resource.image_info = temp->info;
 		resource.quantize_info = temp->quant;
-		resource.immutable = True;
 
 		for (im = image; im; im = im->next)
 		{

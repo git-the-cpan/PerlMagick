@@ -51,7 +51,7 @@
 %                                                                             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% PerlMagick, version 4.26, is an objected-oriented Perl interface to
+% PerlMagick, version 4.28, is an objected-oriented Perl interface to
 % ImageMagick.  Use the module to read,manipulate,or write an image or
 % image sequence from within a Perl script.  This makes it very suitable
 % for Web CGI scripts.  You must have ImageMagick 4.1.5 or above and Perl
@@ -74,6 +74,7 @@ extern "C" {
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
+#undef tainted
 #include <magick/magick.h>
 #include <magick/defines.h>
 #include <setjmp.h>
@@ -951,7 +952,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"blue_p"))
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%f,%f",
+            (void) sscanf(SvPV(sval,na),"%lf,%lf",
               &image->chromaticity.blue_primary.x,
               &image->chromaticity.blue_primary.y);
           return;
@@ -1154,7 +1155,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"green_p"))
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%f,%f",
+            (void) sscanf(SvPV(sval,na),"%lf,%lf",
               &image->chromaticity.green_primary.x,
               &image->chromaticity.green_primary.y);
           return;
@@ -1178,8 +1179,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
         }
       if (strEQcase(attribute,"interla"))
         {
-          sp=SvPOK(sval) ? LookupStr(InterlaceTypes,SvPV(sval,na)) :
-            SvIV(sval);
+          sp=SvPOK(sval) ? LookupStr(InterlaceTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
               MagickWarning(OptionWarning,"Invalid interlace value",
@@ -1214,7 +1214,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
         {
           if (info)
             {
-              FormatString(info->image_info->filename,"%.1024s:",SvPV(sval,na));
+              FormatString(info->image_info->filename,"%.1024s:",
+                SvPV(sval,na));
               SetImageInfo(info->image_info,True);
               if (*info->image_info->magick == '\0')
                 MagickWarning(OptionWarning,"Unrecognized image format",
@@ -1379,7 +1380,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"red_p"))
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%f,%f",
+            (void) sscanf(SvPV(sval,na),"%lf,%lf",
               &image->chromaticity.red_primary.x,
               &image->chromaticity.red_primary.y);
           return;
@@ -1481,8 +1482,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
     {
       if (strEQcase(attribute,"verbose"))
         {
-          sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) :
-            SvIV(sval);
+          sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
               MagickWarning(OptionWarning,"Invalid verbose type",
@@ -1507,7 +1507,7 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
       if (strEQcase(attribute,"white_p"))
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%f,%f",
+            (void) sscanf(SvPV(sval,na),"%lf,%lf",
               &image->chromaticity.white_point.x,
               &image->chromaticity.white_point.y);
           return;
@@ -2035,113 +2035,134 @@ Average(ref)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   B l o b                                                                   #
+#   B l o b T o I m a g e                                                     #
 #                                                                             #
 #                                                                             #
 #                                                                             #
 ###############################################################################
 #
-#  Blobs are not very interesting until ImageMagick implements direct to memory
-#  image formats (via memory-mapped I/O).
 #
 void
-Blob(ref,...)
+BlobToImage(ref,...)
   Image::Magick ref=NO_INIT
   ALIAS:
-    BlobImage    = 1
-    blob         = 2
-    blobimage    = 3
+    BlobToImage  = 1
+    blobtoimage  = 2
+    blobto       = 3
   PPCODE:
   {
+    AV
+      *av;
+
     char
-      *data,
-      filename[MaxTextExtent];
+      **keep,
+      **list;
+
+    HV
+      *hv;
 
     Image
-      *clone,
-      *image,
-      *next;
+      *image;
 
     int
-      scene;
-
-    register int
-      i;
+      ac,
+      n;
 
     jmp_buf
       error_jmp;
 
+    register char
+      **p;
+
+    register int
+      i;
+
     struct PackageInfo
-      *info,
-      *package_info;
+      *info;
+
+    STRLEN
+      *length;
 
     SV
-      *reference;
+      *reference,
+      *rv,
+      *sv;
 
-    package_info=(struct PackageInfo *) NULL;
+    volatile int
+      number_images;
+
+    number_images=0;
     error_list=newSVpv("",0);
+    ac=(items < 2) ? 1 : items-1;
+    list=(char **) safemalloc((ac+1)*sizeof(*list));
+    length=(STRLEN *) safemalloc((ac+1)*sizeof(length));
     if (!sv_isobject(ST(0)))
       {
         MagickWarning(OptionWarning,"Reference is not my type",PackageName);
-        goto MethodError;
+        goto ReturnIt;
       }
     reference=SvRV(ST(0));
+    hv=SvSTASH(reference);
+    if (SvTYPE(reference) != SVt_PVAV)
+      {
+        MagickWarning(OptionWarning,"Unable to read into a single image",NULL);
+        goto ReturnIt;
+      }
+    av=(AV *) reference;
+    info=GetPackageInfo((void *) av,(struct PackageInfo *) NULL);
+    n=1;
+    if (items <= 1)
+      {
+        MagickWarning(OptionWarning,"no blobs to convert",NULL);
+        goto ReturnIt;
+      }
+    for (n=0, i=0; i < ac; i++)
+    {
+      list[n]=(char *) (SvPV(ST(i+1),length[n]));
+      if ((items >= 3) && strEQcase((char *) SvPV(ST(i+1),na),"blob"))
+        {
+          list[n]=(char *) (SvPV(ST(i+2),length[n]));
+          continue;
+        }
+      n++;
+    }
+    list[n]=(char *) NULL;
+    keep=list;
     error_jump=(&error_jmp);
     if (setjmp(error_jmp))
-      goto MethodError;
-    image=SetupList(reference,&info,(SV ***) NULL);
-    if (!image)
-      {
-        MagickWarning(OptionWarning,"No images to blob",NULL);
-        goto MethodError;
-      }
-    package_info=ClonePackageInfo(info);
-    for (i=2; i < items; i+=2)
-      SetAttribute(package_info,NULL,SvPV(ST(i-1),na),ST(i));
-    (void) strcpy(filename,package_info->image_info->unique);
-    scene=0;
-    for (next=image; next; next=next->next)
+      goto ReturnIt;
+    for (i=number_images=0; i < n; i++)
     {
-      next->orphan=True;
-      clone=CloneImage(next,next->columns,next->rows,True);
-      next->orphan=False;
-      if (clone == (Image *) NULL)
-        {
-          PUSHs(&sv_undef);
-          continue;
-        }
-      FormatString(clone->filename,"%.1024s:%.1024s",clone->magick,filename);
-      clone->scene=scene++;
-      if (!WriteImage(package_info->image_info,clone))
-        {
-          DestroyImage(clone);
-          PUSHs(&sv_undef);
-          continue;
-        }
-      clone->file=fopen(filename,"rb");
-      remove(filename);
-      if (clone->file == (FILE *) NULL)
-        {
-          DestroyImage(clone);
-          PUSHs(&sv_undef);
-          continue;
-        }
-      (void) fseek(clone->file,0L,SEEK_END);
-      clone->filesize=ftell(clone->file);
-      (void) fseek(clone->file,0L,SEEK_SET);
-      data=(char *) safemalloc(clone->filesize);
-      ReadData(data,1,clone->filesize,clone->file);
-      (void) fclose(clone->file);
-      PUSHs(sv_2mortal(newSVpv(data,clone->filesize)));
-      safefree((char *) data);
-      DestroyImage(clone);
+      for (image=BlobToImage(info->image_info,list[i],length[i]); image;
+           image=image->next)
+      {
+        sv=newSViv((IV) image);
+        rv=newRV(sv);
+        av_push(av,sv_bless(rv,hv));
+        SvREFCNT_dec(sv);
+        number_images++;
+      }
     }
+    /*
+      Free resources.
+    */
+    for (i=0; i < n; i++)
+      if (list[i])
+        for (p=keep; list[i] != *p++; )
+          if (*p == NULL)
+            {
+              free(list[i]);
+              break;
+            }
 
-  MethodError:
-    if (package_info)
-      DestroyPackageInfo(package_info);
-    SvREFCNT_dec(error_list);  /* throw away all errors */
+  ReturnIt:
+    safefree((char *) list);
+    sv_setiv(error_list,(IV) number_images);
+    SvPOK_on(error_list);
+    ST(0)=sv_2mortal(error_list);
     error_list=NULL;
+    error_jump=NULL;
+    XSRETURN(1);
   }
 
 #
@@ -3085,7 +3106,7 @@ Get(ref,...)
           if (strEQcase(attribute,"taint"))
             {
               if (image)
-                s=newSViv(image->tainted);
+                s=newSViv(IsTainted(image));
               break;
             }
           if (strEQcase(attribute,"temporary"))
@@ -3212,6 +3233,107 @@ Get(ref,...)
       }
       PUSHs(s ? sv_2mortal(s) : &sv_undef);
     }
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   I m a g e T o B l o b                                                     #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#  Blobs are not very interesting until ImageMagick implements direct to memory
+#  image formats (via memory-mapped I/O).
+#
+void
+ImageToBlob(ref,...)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    ImageToBlob  = 1
+    imagetoblob  = 2
+    toblob       = 3
+    blob         = 4
+  PPCODE:
+  {
+    char
+      filename[MaxTextExtent];
+
+    Image
+      *image,
+      *next;
+
+    int
+      scene;
+
+    register int
+      i;
+
+    jmp_buf
+      error_jmp;
+
+    struct PackageInfo
+      *info,
+      *package_info;
+
+    SV
+      *reference;
+
+    unsigned long
+      length;
+
+    void
+      *blob;
+
+    package_info=(struct PackageInfo *) NULL;
+    error_list=newSVpv("",0);
+    if (!sv_isobject(ST(0)))
+      {
+        MagickWarning(OptionWarning,"Reference is not my type",PackageName);
+        goto MethodError;
+      }
+    reference=SvRV(ST(0));
+    error_jump=(&error_jmp);
+    if (setjmp(error_jmp))
+      goto MethodError;
+    image=SetupList(reference,&info,(SV ***) NULL);
+    if (!image)
+      {
+        MagickWarning(OptionWarning,"No images to blob",NULL);
+        goto MethodError;
+      }
+    package_info=ClonePackageInfo(info);
+    for (i=2; i < items; i+=2)
+      SetAttribute(package_info,NULL,SvPV(ST(i-1),na),ST(i));
+    (void) strcpy(filename,package_info->image_info->filename);
+    scene=0;
+    for (next=image; next; next=next->next)
+    {
+      (void) strcpy(next->filename,filename);
+      next->scene=scene++;
+    }
+    SetImageInfo(package_info->image_info,True);
+    for (next=image; next; next=next->next)
+    {
+      length=0;
+      blob=ImageToBlob(package_info->image_info,next,&length);
+      if (blob != (char *) NULL)
+        {
+          PUSHs(sv_2mortal(newSVpv(blob,length)));
+          FreeMemory(blob);
+        }
+      if (package_info->image_info->adjoin)
+        break;
+    }
+
+  MethodError:
+    if (package_info)
+      DestroyPackageInfo(package_info);
+    SvREFCNT_dec(error_list);  /* throw away all errors */
+    error_list=NULL;
   }
 
 #
@@ -3862,7 +3984,7 @@ Mogrify(ref,...)
         }
         case 26:  /* Shade */
         {
-          float
+          double
             azimuth,
             elevation;
 
@@ -3873,7 +3995,7 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             elevation=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%fx%f",&azimuth,
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&azimuth,
               &elevation);
           image=ShadeImage(image,argument_list[3].int_reference,azimuth,
             elevation);
@@ -3888,7 +4010,7 @@ Mogrify(ref,...)
         }
         case 28:  /* Shear */
         {
-          float
+          double
             x_shear,
             y_shear;
 
@@ -3899,7 +4021,7 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             y_shear=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%fx%f",&x_shear,
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",&x_shear,
               &y_shear);
           image=ShearImage(image,x_shear,y_shear,
             argument_list[3].int_reference);
@@ -4030,9 +4152,9 @@ Mogrify(ref,...)
           if (!attribute_flag[0])
             argument_list[0].int_reference=2;
           if (!attribute_flag[3])
-            argument_list[3].int_reference=1;
+            argument_list[3].int_reference=0;
           if (!attribute_flag[4])
-            argument_list[4].int_reference=1;
+            argument_list[4].int_reference=0;
           rectangle_info.x=argument_list[3].int_reference;
           rectangle_info.y=argument_list[4].int_reference;
           if (attribute_flag[2])
@@ -4057,70 +4179,70 @@ Mogrify(ref,...)
                 rectangle_info.y=0;
                 break;
               }
-            case NorthGravity:
-            {
-              rectangle_info.x=(image->columns-
-                argument_list[1].image_reference->columns) >> 1;
-              rectangle_info.y=0;
-              break;
+              case NorthGravity:
+              {
+                rectangle_info.x=(image->columns-
+                  argument_list[1].image_reference->columns) >> 1;
+                rectangle_info.y=0;
+                break;
+              }
+              case NorthEastGravity:
+              {
+                rectangle_info.x=image->columns-
+                  argument_list[1].image_reference->columns;
+                rectangle_info.y=0;
+                break;
+              }
+              case WestGravity:
+              {
+                rectangle_info.x=0;
+                rectangle_info.y=(image->rows-
+                  argument_list[1].image_reference->rows) >> 1;
+                break;
+              }
+              case ForgetGravity:
+              case StaticGravity:
+              case CenterGravity:
+              default:
+              {
+                rectangle_info.x=(image->columns-
+                  argument_list[1].image_reference->columns) >> 1;
+                rectangle_info.y=(image->rows-
+                  argument_list[1].image_reference->rows) >> 1;
+                break;
+              }
+              case EastGravity:
+              {
+                rectangle_info.x=image->columns-
+                  argument_list[1].image_reference->columns;
+                rectangle_info.y=(image->rows-
+                  argument_list[1].image_reference->rows) >> 1;
+                break;
+              }
+              case SouthWestGravity:
+              {
+                rectangle_info.x=0;
+                rectangle_info.y=image->rows-
+                  argument_list[1].image_reference->rows;
+                break;
+              }
+              case SouthGravity:
+              {
+                rectangle_info.x=(image->columns-
+                  argument_list[1].image_reference->columns) >> 1;
+                rectangle_info.y=image->rows-
+                  argument_list[1].image_reference->rows;
+                break;
+              }
+              case SouthEastGravity:
+              {
+                rectangle_info.x=image->columns-
+                  argument_list[1].image_reference->columns;
+                rectangle_info.y=image->rows-
+                  argument_list[1].image_reference->rows;
+                break;
+              }
             }
-            case NorthEastGravity:
-            {
-              rectangle_info.x=image->columns-
-                argument_list[1].image_reference->columns;
-              rectangle_info.y=0;
-              break;
-            }
-            case WestGravity:
-            {
-              rectangle_info.x=0;
-              rectangle_info.y=(image->rows-
-                argument_list[1].image_reference->rows) >> 1;
-              break;
-            }
-            case ForgetGravity:
-            case StaticGravity:
-            case CenterGravity:
-            default:
-            {
-              rectangle_info.x=(image->columns-
-                argument_list[1].image_reference->columns) >> 1;
-              rectangle_info.y=(image->rows-
-                argument_list[1].image_reference->rows) >> 1;
-              break;
-            }
-            case EastGravity:
-            {
-              rectangle_info.x=image->columns-
-                argument_list[1].image_reference->columns;
-              rectangle_info.y=(image->rows-
-                argument_list[1].image_reference->rows) >> 1;
-              break;
-            }
-            case SouthWestGravity:
-            {
-              rectangle_info.x=0;
-              rectangle_info.y=image->rows-
-                argument_list[1].image_reference->rows;
-              break;
-            }
-            case SouthGravity:
-            {
-              rectangle_info.x=(image->columns-
-                argument_list[1].image_reference->columns) >> 1;
-              rectangle_info.y=image->rows-
-                argument_list[1].image_reference->rows;
-              break;
-            }
-            case SouthEastGravity:
-            {
-              rectangle_info.x=image->columns-
-                argument_list[1].image_reference->columns;
-              rectangle_info.y=image->rows-
-                argument_list[1].image_reference->rows;
-              break;
-            }
-          }
           CompositeImage(image,(CompositeOperator)
             argument_list[0].int_reference,argument_list[1].image_reference,
             rectangle_info.x,rectangle_info.y);
@@ -4195,7 +4317,7 @@ Mogrify(ref,...)
                 argument_list[3].double_reference=1.0;
               if (!attribute_flag[0])
                 {
-                  FormatString(message,"%f/%f/%f",
+                  FormatString(message,"%lf/%lf/%lf",
                     argument_list[1].double_reference,
                     argument_list[2].double_reference,
                     argument_list[3].double_reference);
@@ -4283,7 +4405,8 @@ Mogrify(ref,...)
                 argument_list[2].double_reference=1.0;
               if (!attribute_flag[3])
                 argument_list[3].double_reference=1.0;
-              FormatString(message,"%f/%f/%f",argument_list[1].double_reference,
+              FormatString(message,"%lf/%lf/%lf",
+                argument_list[1].double_reference,
                 argument_list[2].double_reference,
                 argument_list[3].double_reference);
               if (!attribute_flag[0])
@@ -4462,7 +4585,7 @@ Mogrify(ref,...)
         }
         case 60:  /* Wave */
         {
-          float
+          double
             amplitude,
             wavelength;
 
@@ -4473,8 +4596,8 @@ Mogrify(ref,...)
           if (attribute_flag[2])
             wavelength=argument_list[2].double_reference;
           if (attribute_flag[0])
-            (void) sscanf(argument_list[0].string_reference,"%fx%f",&amplitude,
-              &wavelength);
+            (void) sscanf(argument_list[0].string_reference,"%lfx%lf",
+              &amplitude,&wavelength);
           image=WaveImage(image,amplitude,wavelength);
           break;
         }
@@ -4516,11 +4639,13 @@ Mogrify(ref,...)
         case 65:  /* Coalesce */
         {
           CoalesceImages(image);
+          goto ReturnIt;
           break;
         }
         case 66:  /* Deconstruct */
         {
           DeconstructImages(image);
+          goto ReturnIt;
           break;
         }
       }
@@ -4672,7 +4797,8 @@ Montage(ref,...)
         {
           if (strEQcase(attribute,"background"))
             {
-              (void) CloneString(&montage_info.background_color,SvPV(ST(i),na));
+              (void) CloneString(&montage_info.background_color,SvPV(ST(i),
+                na));
               continue;
             }
           if (strEQcase(attribute,"bordercolor"))
@@ -5258,7 +5384,7 @@ Read(ref,...)
       *sv;
 
     volatile int
-       number_images;
+      number_images;
 
     number_images=0;
     error_list=newSVpv("",0);

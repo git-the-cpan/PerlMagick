@@ -23,7 +23,7 @@ chdir 't' || die 'Cd failed';
 testReadWrite( 'AVS:input.avs',
                'AVS:output.avs',
                q//,
-               'f3e5ab88e328da3044c1fc177a7e2978' );
+               'e9b162b8431709942886f79b7b7c11bb' );
 
 #
 # Microsoft Windows bitmap image file
@@ -249,7 +249,7 @@ testReadWrite( 'TGA:input.tga',
 testReadWrite( 'VIFF:input.viff',
                'VIFF:output.viff',
                q//,
-               'e9b162b8431709942886f79b7b7c11bb' );
+               'bba2e7661b8dd0b8006442bebcdf285d' );
 #
 # X Windows system bitmap (black and white only)
 #

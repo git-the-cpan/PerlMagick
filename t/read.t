@@ -17,7 +17,7 @@ chdir 't' || die 'Cd failed';
 #
 # AVS X image file
 #
-testRead( 'input.avs', 'f3e5ab88e328da3044c1fc177a7e2978' );
+testRead( 'input.avs', 'e9b162b8431709942886f79b7b7c11bb' );
 
 #
 # Microsoft Windows bitmap image file
@@ -217,7 +217,7 @@ testRead( 'input.tim', '5f53f9f45afef1060449dd4f09c3706c' );
 # Khoros Visualization image file
 #
 ++$test;
-testRead( 'input.viff', 'e9b162b8431709942886f79b7b7c11bb' );
+testRead( 'input.viff', '703151c1beed89a570ae56f1670a486a' );
 
 #
 # X Windows system bitmap (black and white only)
@@ -281,4 +281,4 @@ testReadSized( 'input_70x46.cmyk', '70x46', '70b0c3d7fcc7a617481285a1e27345d5' )
 # UYVY format
 #
 ++$test;
-testReadSized( 'input_70x46.uyvy', '70x46', '81990d39685ec85b67d606a4bd35fc9c' );
+testReadSized( 'input_70x46.uyvy', '70x46', '2ca4b6f0599c21f3e9811a8a98fe511c' );

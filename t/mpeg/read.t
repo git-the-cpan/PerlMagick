@@ -18,13 +18,13 @@ chdir 't/mpeg' || die 'Cd failed';
 # Motion Picture Experts Group file interchange format (version 2)
 #
 testRead( 'input.m2v',
-  '9310d39e4960ba9a15deda5bc22d25fa820636272f9aecadd010042c59d1e02e' );
+  'c4dfe51bf6b67c0eee12d216cef7cb4899db171f29a3f55b71f071d9ec466f65' );
 
 #
 # Motion Picture Experts Group file interchange format
 #
 ++$test;
 testRead( 'input.mpg',
-  '80fb37d218a2383d0c93092625dc5a648d41d05c9c6cb4fdff9d9e7a7df411aa' );
+  'ac97219d26e9584c06e1e0e3129863f493070cddb512b473c8df332d79d8e8bc' );
 
 1;

@@ -19,7 +19,7 @@ chdir 't/png' || die 'Cd failed';
 # 
 print( "1-bit grayscale PNG ...\n" );
 testReadWrite( 'input_bw.png', 'output_bw.png', q/quality=>95/,
-  'ebab9db9d3310e1d98b3403596724094b349fbb631f38deb9139f6b38242c85a');
+  '552ee0b3b9159ceedc4ce30125e9db38d2045d53b941844a72ac5f5f38335454');
 
 #
 # 2) Test monochrome image
@@ -28,7 +28,7 @@ testReadWrite( 'input_bw.png', 'output_bw.png', q/quality=>95/,
 print( "8-bit grayscale PNG ...\n" );
 testReadWrite( 'input_mono.png',
   'output_mono.png', '',
-  'f10cb256abcf1042d51d4738c2362faafef13a99008d5051bff76da5ac1a91b2');
+  '19da3123692c66d023074dd1e272119ab2357b9a34855a393ad18c88af01ae86');
 #
 # 3) Test 16-bit Portable Network Graphics
 # 
@@ -37,8 +37,8 @@ print( "16-bit grayscale PNG ...\n" );
 testReadWrite( 'input_16.png',
   'output_16.png',
   q/quality=>55/,
-  '21b59be11e5dd15dbe5ff4a127eb90c2e7fb1bd687e3a3b6d3b829414e5d928b',
-  '4eeef86b727f91d7f4bddfe8edbd7264ab835208c1b4edb199fdb40c1cdcba9f' );
+  'a6c3f3ce8772cd6aa973ae1f3ebd94ee65292112d3f1e8e86171bf4d931bd181',
+  'c87cc12715f3e0619d6fe871bd8132f88facffb3d38dd8869cb262ec6b9c4cef' );
 #
 # 4) Test pseudocolor image
 #
@@ -47,7 +47,7 @@ print( "8-bit indexed-color PNG ...\n" );
 testReadWrite( 'input_256.png',
   'output_256.png',
   q/quality=>54/,
-  'bab21ad121ab95cb8db2df82ee400e992cc79861cce679c50bf533814b59b840' );
+  'd1340caccc7351834f1ca9693489ee780ac326a0d6bb660cd550c5c28711b2fe' );
 #
 # 5) Test truecolor image
 #
@@ -56,7 +56,7 @@ print( "24-bit Truecolor PNG ...\n" );
 testReadWrite( 'input_truecolor.png',
   'output_truecolor.png',
   q/quality=>55/,
-  '86754b683ab208cd9cb596bbf5db8cdbb8806bbee0503a5ab287be475c345492' );
+  'b84c31bbe78d84d0432c7414b25c58599484aa2c7174af8332509966d07f265b' );
 #
 # 6) Test Multiple-image Network Graphics
 #
@@ -65,4 +65,4 @@ print( "MNG with 24-bit Truecolor PNGs ...\n" );
 testReadWrite( 'input.mng',
   'output.mng',
   q/quality=>55/,
-  'e3224a33eb05532dd5be635a45976a760c6e0f7501bda47bab18e25b36179f6b' );
+  'eb089161ebc5ab3964cdec1b72628c4d1c29ebd78f333a3d4a0d47c614fb3897' );

@@ -777,6 +777,19 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	    }
 	    return;
 	}
+	if (strEQcase(attr, "matte"))
+	{
+	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
+				 : SvIV(sval);
+	    if (sp < 0)
+	    {
+		warning(OptionWarning, "Unknown verbose type", SvPV(sval, na));
+		return;
+	    }
+	    if (image)
+		image->matte = sp;
+	    return;
+	}
 	if (strEQcase(attr, "monoch"))
 	{
 	    int sp = SvPOK(sval) ? LookupStr(p_boolean, SvPV(sval, na))
@@ -855,8 +868,8 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		    (void) sscanf(SvPV(sval, na), "%d,%d,%d,%d",
 						&red, &green, &blue, &index);
 		    cp->red = red;
-		    cp->blue = green;
-		    cp->green = blue;
+		    cp->green = green;
+		    cp->blue = blue;
 		    cp->index = index;
 		}
 	    }
@@ -2684,12 +2697,11 @@ Mogrify(ref, ...)
 		    n = MaxTextExtent;
 		    if (aflag[1])
 			n += Extent(alist[1].t_str);
-    		    if (alist[0].t_int > 0)
+    		    if (aflag[0] && (alist[0].t_int > 0))
 			annotate.primitive =
 			    strcpy(safemalloc(n), p_primitives[alist[0].t_int]);
 		    else
-			annotate.primitive =
-			    strcpy(safemalloc(n), alist[0].t_str);
+			annotate.primitive = strcpy(safemalloc(n), " ");
 		    if (aflag[1])
 		    {
 			strcat(annotate.primitive, " ");
@@ -2873,11 +2885,10 @@ Mogrify(ref, ...)
 			commands[4] = alist[0].t_str;
 			commands[5] = "-normalize";
 			commands[6] = "-negate";
-			commands[7] = "-grayscale";
 		    }
 		    QuantizeImage(&temp->quant, image);
 		    SyncImage(image);
-		    MogrifyImage(&info->info, 8, commands, &image);
+		    MogrifyImage(&info->info, 7, commands, &image);
 		    if (next != image)
 			next = NULL;  /* 'cause it's been blown away */
 		    break;

@@ -370,10 +370,10 @@ copy_info(struct info *info)
 
 /*  Get rid of a previously created info structure. */
 static void
-destroy_info(volatile struct info *info)
+destroy_info(struct info *info)
 {
     if (info->info.filename)
-      safefree(info->info.filename);
+	safefree(info->info.filename);
     if (info->info.server_name)
 	safefree(info->info.server_name);
     if (info->info.font)
@@ -480,7 +480,7 @@ errorhandler(const char *message, const char *qual)
  *  that are malloc'd strings.
  */
 static void
-newval(char * volatile *dest, char *src)
+newval(char **dest, char *src)
 {
     char *m = (char *) safemalloc(Extent(src) + 1);
     if (*dest)
@@ -521,7 +521,7 @@ getinfo(void *rref, struct info *oldinfo)
  *  either or both of image or info.
  */
 static void
-SetAttribute(volatile struct info *info, Image *image, char *attr, SV *sval)
+SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 {
     /* switch on first letter of attribute.  'break' will go */
     /* to "unknown" error; use 'return' for known options */
@@ -820,7 +820,7 @@ SetAttribute(volatile struct info *info, Image *image, char *attr, SV *sval)
 
 	    for ( ; image; image = image->next)
 	    {
-		if (!UncompressImage(image))
+		if (!UncondenseImage(image))
 		    continue;
 		x = 0;
 		y = 0;
@@ -1129,7 +1129,7 @@ Animate(ref, ...)
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
 	    Image *image;
 	    struct info *info;
-	    volatile struct info *temp = NULL;
+	    struct info *temp = NULL;
 	    XResourceInfo resource;
 	    XrmDatabase resource_database;
 	    Display *display;
@@ -1348,7 +1348,7 @@ Display(ref, ...)
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
 	    Image *image, *im;
 	    struct info *info;
-	    volatile struct info *temp = NULL;
+	    struct info *temp = NULL;
 	    XResourceInfo resource;
 	    XrmDatabase resource_database;
 	    unsigned long state;
@@ -1849,7 +1849,7 @@ Write(ref, ...)
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
 	    Image *image, *im;
 	    struct info *info;
-	    volatile struct info *temp = NULL;
+	    struct info *temp = NULL;
 	    int n;
 	    jmp_buf error_jmp;
 	    volatile int nimg = 0;
@@ -2054,7 +2054,7 @@ Mogrify(ref, ...)
 	    XColor xc;
 	    char *arg;
 	    Image *image, *next, *region_image = NULL;
-	    struct info *info, *local_info = NULL;
+	    struct info *info, *temp = NULL;
 	    char b[80];
 	    SV **svarr = NULL, **pv;
 	    char *commands[10];
@@ -2500,18 +2500,18 @@ Mogrify(ref, ...)
 		    if (first)
 		    {
 			GetAnnotateInfo(&annotate);
-			local_info = copy_info(info);
-			annotate.image_info = &local_info->info;
+			temp = copy_info(info);
+			annotate.image_info = &temp->info;
 			if (aflag[0])
-			    annotate.image_info->server_name = alist[0].t_str;
+			    newval(&temp->info.server_name, alist[0].t_str);
 			if (aflag[1])
-			    annotate.image_info->font = alist[1].t_str;
+			    newval(&temp->info.font, alist[1].t_str);
 			if (aflag[2])
-			    annotate.image_info->pointsize = alist[2].t_int;
+			    temp->info.pointsize = alist[2].t_int;
 			if (aflag[3])
-			    annotate.image_info->box = alist[3].t_str;
+			    newval(&temp->info.box, alist[3].t_str);
 			if (aflag[4])
-			    annotate.image_info->pen = alist[4].t_str;
+			    newval(&temp->info.pen, alist[4].t_str);
 			if (aflag[5])
 			    annotate.geometry = alist[5].t_str;
 			if (aflag[6])
@@ -2639,14 +2639,15 @@ Mogrify(ref, ...)
 		    if (first)
 		    {
 			GetAnnotateInfo(&annotate);
-			local_info = copy_info(info);
-			annotate.image_info = &local_info->info;
+			temp = copy_info(info);
+			annotate.image_info = &temp->info;
 			if (aflag[3])
-			    annotate.image_info->pen = alist[3].t_str;
+			    newval(&temp->info.pen, alist[3].t_str);
 			if (aflag[4])
 			    annotate.linewidth = alist[4].t_int;
 			if (aflag[5])
-			    annotate.image_info->server_name = alist[5].t_str;
+			    newval(&temp->info.server_name,
+				alist[5].t_str);
 		    }
 		    n = MaxTextExtent;
 		    if (aflag[1])
@@ -2826,13 +2827,13 @@ Mogrify(ref, ...)
 		case 58:	/* Charcoal */
 		    if (first)
 		    {
-			local_info = copy_info(info);
+			temp = copy_info(info);
 			if (!aflag[0])
 			    alist[0].t_str = "50";
-			GetQuantizeInfo(&local_info->quant);
+			GetQuantizeInfo(&temp->quant);
 			if (info)
-			    local_info->quant.dither = info->quant.dither;
-			local_info->quant.colorspace = GRAYColorspace;
+			    temp->quant.dither = info->quant.dither;
+			temp->quant.colorspace = GRAYColorspace;
 			commands[0] = client_name;
 			commands[1] = "-edge";
 			commands[2] = alist[0].t_str;
@@ -2842,7 +2843,7 @@ Mogrify(ref, ...)
 			commands[6] = "-negate";
 			commands[7] = "-grayscale";
 		    }
-		    QuantizeImage(&local_info->quant, image);
+		    QuantizeImage(&temp->quant, image);
 		    SyncImage(image);
 		    MogrifyImage(&info->info, 8, commands, &image);
 		    if (next != image)
@@ -2894,8 +2895,8 @@ Mogrify(ref, ...)
 		    ++pv;
 	    }
 
-	    if (local_info)
-		destroy_info(local_info);
+	    if (temp)
+		destroy_info(temp);
 
 	return_it:
 	    if (svarr)
@@ -3343,7 +3344,7 @@ Get(ref, ...)
 
 			if (!image || !image->pixels)
 			    break;
-			if (!UncompressImage(image))
+			if (!UncondenseImage(image))
 			    break;
 			x = 0;
 			y = 0;

@@ -37,12 +37,17 @@
 %  The above copyright notice and this permission notice shall be included in %
 %  all copies or substantial portions of ImageMagick.                         %
 %                                                                             %
-%  The software is provided "as is", without warranty of any kind, express or %
+%  Licensor ("ImageMagick Studio LLC") warrants that the copyright in and to  %
+%  the Software ("ImageMagick") is owned by ImageMagick Studio LLC or that    %
+%  ImageMagick is distributed by ImageMagick Studio LLC under a valid current %
+%  license.  Except as expressly stated in the immediately preceding          %
+%  sentence, ImageMagick is provided by ImageMagick Studio LLC, contributors, %
+%  and copyright owners "AS IS", without warranty of any kind, express or     %
 %  implied, including but not limited to the warranties of merchantability,   %
-%  fitness for a particular purpose and noninfringement.  In no event shall   %
-%  ImageMagick Studio be liable for any claim, damages or other liability,    %
-%  whether in an action of contract, tort or otherwise, arising from, out of  %
-%  or in connection with ImageMagick or the use or other dealings in          %
+%  fitness for a particular purpose and non-infringement.  In no event shall  %
+%  ImageMagick Studio LLC, contributors or copyright owners be liable for     %
+%  any claim, damages, or other liability, whether in an action of contract,  %
+%  tort or otherwise, arising from, out of or in connection with              %
 %  ImageMagick.                                                               %
 %                                                                             %
 %  Except as contained in this notice, the name of the ImageMagick Studio     %
@@ -215,6 +220,10 @@ static char
     "Undefined", "None", "BZip", "Fax", "Group4", "JPEG", "LosslessJPEG",
     "LZW", "RLE", "Zip", (char *) NULL
   },
+  *DisposeTypes[] =
+  {
+    "Undefined", "None", "Background", "Previous", (char *) NULL
+  },
   *EndianTypes[] =
   {
     "Undefined", "LSB", "MSB", (char *) NULL
@@ -244,6 +253,11 @@ static char
   *InterlaceTypes[] =
   {
     "Undefined", "None", "Line", "Plane", "Partition", (char *) NULL
+  },
+  *LogEventTypes[] =
+  {
+    "No", "Configure", "Annotate", "Render", "Locale", "Coder",
+    "X11", "Cache", "Blob", "All", (char *) NULL
   },
   *MethodTypes[] =
   {
@@ -286,6 +300,11 @@ static char
   *StyleTypes[] =
   {
     "Normal", "Italic", "Oblique", "Any", (char *) NULL
+  },
+  *VirtualPixelMethods[] =
+  {
+    "Undefined", "", "Constant", "Edge", "Mirror", "Tile",
+    (char *) NULL
   };
 
 static struct
@@ -339,7 +358,7 @@ static struct
     { "Scale", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference} } },
     { "Shade", { {"geometry", StringReference}, {"azimuth", DoubleReference},
-      {"elevatation", DoubleReference}, {"color", BooleanTypes} } },
+      {"elevatation", DoubleReference}, {"gray", BooleanTypes} } },
     { "Sharpen", { {"geometry", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference} } },
     { "Shear", { {"geometry", StringReference}, {"x", IntegerReference},
@@ -419,7 +438,7 @@ static struct
       {"filter", FilterTypess} } },
     { "Transparent", { {"color", StringReference},
       {"opacity", IntegerReference}, {"fuzz", DoubleReference} } },
-    { "Threshold", { {"threshold", DoubleReference} } },
+    { "Threshold", { {"threshold", StringReference} } },
     { "Charcoal", { {"geometry", StringReference}, {"radius", DoubleReference},
       {"sigma", DoubleReference} } },
     { "Trim", { {"fuzz", DoubleReference} } },
@@ -504,7 +523,6 @@ static struct PackageInfo *ClonePackageInfo(struct PackageInfo *info)
   clone_info=(struct PackageInfo *) AcquireMemory(sizeof(struct PackageInfo));
   if (!info)
     {
-      InitializeMagick(PackageName);
       clone_info->image_info=CloneImageInfo((ImageInfo *) NULL);
       clone_info->draw_info=
         CloneDrawInfo(clone_info->image_info,(DrawInfo *) NULL);
@@ -1171,7 +1189,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"blue-primary") == 0)
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf",
               &image->chromaticity.blue_primary.x,
               &image->chromaticity.blue_primary.y);
           return;
@@ -1197,7 +1215,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"cache-threshold") == 0)
         {
-          SetCacheThreshold(SvIV(sval));
+          SetMagickResourceLimit(MemoryResource,SvIV(sval));
+          SetMagickResourceLimit(MapResource,2*SvIV(sval));
           return;
         }
       if (LocaleCompare(attribute,"clip-mask") == 0)
@@ -1232,7 +1251,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
                 red=color->red;
                 green=color->green;
                 blue=color->blue;
-                (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf%*[, ]%lf",&red,
+                (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf",&red,
                   &green,&blue);
                 color->red=(Quantum)
                   ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red+0.5);
@@ -1282,23 +1301,18 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"debug") == 0)
         {
-          sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
-          if (sp < 0)
-            {
-              MagickError(OptionError,"Invalid debug type",SvPV(sval,na));
-              return;
-            }
-          if (info)
-            {
-              info->image_info->debug=sp != 0;
-              info->draw_info->debug=sp != 0;
-            }
+          SetLogEventMask(SvPV(sval,na));
           return;
         }
       if (LocaleCompare(attribute,"delay") == 0)
         {
           for ( ; image; image=image->next)
             image->delay=SvIV(sval);
+          return;
+        }
+      if (LocaleCompare(attribute,"disk-limit") == 0)
+        {
+          SetMagickResourceLimit(DiskResource,SvIV(sval));
           return;
         }
       if (LocaleCompare(attribute,"density") == 0)
@@ -1336,8 +1350,16 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"dispose") == 0)
         {
-          for (; image; image=image->next)
-            image->dispose=SvIV(sval);
+          sp=SvPOK(sval) ? LookupStr(DisposeTypes,SvPV(sval,na)) : SvIV(sval);
+          if (sp < 0)
+            sp=SvIV(sval);
+          if (sp < 0)
+            {
+              MagickError(OptionError,"Invalid disposal type",SvPV(sval,na));
+              return;
+            }
+          for ( ; image; image=image->next)
+            image->dispose=(DisposeType) sp;
           return;
         }
       if (LocaleCompare(attribute,"dither") == 0)
@@ -1440,6 +1462,12 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     case 'G':
     case 'g':
     {
+      if (LocaleCompare(attribute,"gamma") == 0)
+        {
+          for ( ; image; image=image->next)
+            image->gamma=SvNV(sval);
+          return;
+        }
       if (LocaleCompare(attribute,"gravity") == 0)
         {
           sp=SvPOK(sval) ? LookupStr(GravityTypes,SvPV(sval,na)) :
@@ -1456,7 +1484,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"green-primary") == 0)
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf",
               &image->chromaticity.green_primary.x,
               &image->chromaticity.green_primary.y);
           return;
@@ -1484,7 +1512,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               continue;
             x=0;
             y=0;
-            (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
+            (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
             pixel=GetImagePixels(image,(long) (x % image->columns),
               (long) (y % image->rows),1,1);
             if (pixel == (PixelPacket *) NULL)
@@ -1553,6 +1581,11 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             }
           return;
         }
+      if (LocaleCompare(attribute,"map-limit") == 0)
+        {
+          SetMagickResourceLimit(MapResource,SvIV(sval));
+          return;
+        }
       if (LocaleCompare(attribute,"mattecolor") == 0)
         {
           (void) QueryColorDatabase(SvPV(sval,na),&target_color,
@@ -1573,6 +1606,11 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             }
           for ( ; image; image=image->next)
             image->matte=sp != 0;
+          return;
+        }
+      if (LocaleCompare(attribute,"memory-limit") == 0)
+        {
+          SetMagickResourceLimit(MemoryResource,SvIV(sval));
           return;
         }
       if (LocaleCompare(attribute,"monochrome") == 0)
@@ -1622,7 +1660,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           {
             x=0;
             y=0;
-            (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
+            (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
             pixel=GetImagePixels(image,(long) (x % image->columns),
               (long) (y % image->rows),1,1);
             if (pixel == (PixelPacket *) NULL)
@@ -1637,7 +1675,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
                 green=pixel->green;
                 blue=pixel->blue;
                 opacity=pixel->opacity;
-                (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf%*[, ]%lf%*[, ]%lf",
+                (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf%*[,/]%lf%*[,/]%lf",
                   &red,&green,&blue,&opacity);
                 pixel->red=(Quantum)
                   ((red < 0) ? 0 : (red > MaxRGB) ? MaxRGB : red+0.5);
@@ -1694,7 +1732,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"red-primary") == 0)
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf",
               &image->chromaticity.red_primary.x,
               &image->chromaticity.red_primary.y);
           return;
@@ -1848,16 +1886,30 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             (void) CloneString(&info->image_info->view,SvPV(sval,na));
           return;
         }
+      if (LocaleCompare(attribute,"virtual-pixel") == 0)
+        {
+          sp=SvPOK(sval) ? LookupStr(VirtualPixelMethods,SvPV(sval,na)) :
+            SvIV(sval);
+          if (sp < 0)
+            {
+              MagickError(OptionError,"Invalid virtual pixel method",
+                SvPV(sval,na));
+              return;
+            }
+          for ( ; image; image=image->next)
+            SetImageVirtualPixelMethod(image,(VirtualPixelMethod) sp);
+          return;
+        }
       MagickError(OptionError,"Invalid attribute",attribute);
       break;
     }
     case 'W':
     case 'w':
     {
-      if (LocaleCompare(attribute,"white-primary") == 0)
+      if (LocaleCompare(attribute,"white-point") == 0)
         {
           for ( ; image; image=image->next)
-            (void) sscanf(SvPV(sval,na),"%lf%*[, ]%lf",
+            (void) sscanf(SvPV(sval,na),"%lf%*[,/]%lf",
               &image->chromaticity.white_point.x,
               &image->chromaticity.white_point.y);
           return;
@@ -2000,6 +2052,7 @@ MODULE = Image::Magick PACKAGE = Image::Magick
 PROTOTYPES: ENABLE
 
 BOOT:
+  InitializeMagick(PackageName);
   SetWarningHandler(MagickWarningHandler);
   SetErrorHandler(MagickErrorHandler);
   { MY_CXT_INIT; }
@@ -3236,8 +3289,16 @@ Get(ref,...)
             }
           if (LocaleCompare(attribute,"dispose") == 0)
             {
-              if (image)
-                s=newSViv((long) image->dispose);
+              if (!image)
+                break;
+
+              j=image->dispose;
+              s=newSViv(j);
+              if ((j >= 0) && (j < (long) NumberOf(DisposeTypes)-1))
+                {
+                  (void) sv_setpv(s,DisposeTypes[j]);
+                  SvIOK_on(s);
+                }
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3476,7 +3537,7 @@ Get(ref,...)
                 break;
               x=0;
               y=0;
-              (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
+              (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               (void) AcquireOnePixel(image,(long) (x % image->columns),
                 (long) (y % image->rows),&image->exception);
               indexes=GetIndexes(image);
@@ -3642,7 +3703,7 @@ Get(ref,...)
                 break;
               x=0;
               y=0;
-              (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
+              (void) sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               pixel=AcquireOnePixel(image,(long) (x % image->columns),
                 (long) (y % image->rows),&image->exception);
               FormatString(name,"%u,%u,%u,%u",pixel.red,pixel.green,pixel.blue,
@@ -3861,6 +3922,20 @@ Get(ref,...)
             {
               if (info && info->image_info->view)
                 s=newSVpv(info->image_info->view,0);
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
+          if (LocaleCompare(attribute,"virtual-pixel") == 0)
+            {
+              if (!image)
+                break;
+              j=(long) GetImageVirtualPixelMethod(image);
+              s=newSViv(j);
+              if ((j >= 0) && (j < (long) NumberOf(VirtualPixelMethods)-1))
+                {
+                  (void) sv_setpv(s,VirtualPixelMethods[j]);
+                  SvIOK_on(s);
+                }
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -4894,7 +4969,7 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%*[, ]%lf",&affine.tx,&affine.ty);
+                k=sscanf(value,"%lf%*[,/]%lf",&affine.tx,&affine.ty);
                 if (k == 1)
                   affine.ty=affine.tx;
                 break;
@@ -4904,7 +4979,7 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%*[, ]%lf",&affine.sx,&affine.sy);
+                k=sscanf(value,"%lf%*[,/]%lf",&affine.sx,&affine.sy);
                 if (k == 1)
                   affine.sy=affine.sx;
                 break;
@@ -5235,7 +5310,7 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%*[, ]%lf",&affine.tx,&affine.ty);
+                k=sscanf(value,"%lf%*[,/]%lf",&affine.tx,&affine.ty);
                 if (k == 1)
                   affine.ty=affine.tx;
                 break;
@@ -5245,7 +5320,7 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%*[, ]%lf",&affine.sx,&affine.sy);
+                k=sscanf(value,"%lf%*[,/]%lf",&affine.sx,&affine.sy);
                 if (k == 1)
                   affine.sy=affine.sx;
                 break;
@@ -5556,8 +5631,8 @@ Mogrify(ref,...)
         case 57:  /* Threshold */
         {
           if (!attribute_flag[0])
-            argument_list[0].double_reference=(MaxRGB+1)/2.0;
-          ThresholdImage(image,argument_list[0].double_reference);
+            argument_list[0].string_reference="50%";
+          ChannelThresholdImage(image,argument_list[0].string_reference);
           break;
         }
         case 58:  /* Charcoal */
@@ -5824,7 +5899,7 @@ Mogrify(ref,...)
                 /*
                   Translate.
                 */
-                k=sscanf(value,"%lf%*[, ]%lf",&affine.tx,&affine.ty);
+                k=sscanf(value,"%lf%*[,/]%lf",&affine.tx,&affine.ty);
                 if (k == 1)
                   affine.ty=affine.tx;
                 break;
@@ -5834,7 +5909,7 @@ Mogrify(ref,...)
                 /*
                   Scale.
                 */
-                k=sscanf(value,"%lf%*[, ]%lf",&affine.sx,&affine.sy);
+                k=sscanf(value,"%lf%*[,/]%lf",&affine.sx,&affine.sy);
                 if (k == 1)
                   affine.sy=affine.sx;
                 break;
@@ -6758,39 +6833,26 @@ QueryColor(ref,...)
 
     dMY_CXT;
     MY_CXT.error_list=newSVpv("",0);
-    GetExceptionInfo(&exception);
     if (items == 1)
       {
-        const ColorInfo
-          *color_info;
+        char
+          **colorlist;
 
-        register const ColorInfo
-          *p;
+        unsigned long
+          colors;
 
-        color_info=GetColorInfo("*",&exception);
-        if (color_info == (const ColorInfo *) NULL)
-          {
-            PUSHs(&sv_undef);
-            goto MethodException;
-          }
-        i=0;
-        for (p=color_info; p != (ColorInfo *) NULL; p=p->next)
-          i++;
-        EXTEND(sp,i);
-        for (p=color_info; p != (ColorInfo *) NULL; p=p->next)
+        colorlist=GetColorList("*",&colors);
+        EXTEND(sp,colors);
+        for (i=0; i < colors; i++)
         {
-          if (p->stealth)
-            continue;
-          if (p->name == (char *) NULL)
-            {
-              PUSHs(&sv_undef);
-              continue;
-            }
-          PUSHs(sv_2mortal(newSVpv(p->name,0)));
+          PUSHs(sv_2mortal(newSVpv(colorlist[i],0)));
+          LiberateMemory((void **) &colorlist[i]);
         }
+        LiberateMemory((void **) &colorlist);
         goto MethodException;
       }
     EXTEND(sp,4*items);
+    GetExceptionInfo(&exception);
     for (i=1; i < items; i++)
     {
       name=(char *) SvPV(ST(i),na);
@@ -6901,47 +6963,37 @@ QueryFont(ref,...)
       *name,
       message[MaxTextExtent];
 
-    const TypeInfo
-      *type_info;
-
     ExceptionInfo
       exception;
 
     register int
       i;
 
+    volatile const TypeInfo
+      *type_info;
+
     dMY_CXT;
     MY_CXT.error_list=newSVpv("",0);
-    GetExceptionInfo(&exception);
     if (items == 1)
       {
-        register const TypeInfo
-          *p;
+        char
+          **typelist;
 
-        type_info=GetTypeInfo("*",&exception);
-        if (type_info == (const TypeInfo *) NULL)
-          {
-            PUSHs(&sv_undef);
-            goto MethodException;
-          }
-        i=0;
-        for (p=type_info; p != (TypeInfo *) NULL; p=p->next)
-          i++;
-        EXTEND(sp,i);
-        for (p=type_info; p != (TypeInfo *) NULL; p=p->next)
+        unsigned long
+          types;
+
+        typelist=GetTypeList("*",&types);
+        EXTEND(sp,types);
+        for (i=0; i < types; i++)
         {
-          if (p->stealth)
-            continue;
-          if (p->name == (char *) NULL)
-            {
-              PUSHs(&sv_undef);
-              continue;
-            }
-          PUSHs(sv_2mortal(newSVpv(p->name,0)));
+          PUSHs(sv_2mortal(newSVpv(typelist[i],0)));
+          LiberateMemory((void **) &typelist[i]);
         }
+        LiberateMemory((void **) &typelist);
         goto MethodException;
       }
     EXTEND(sp,10*items);
+    GetExceptionInfo(&exception);
     for (i=1; i < items; i++)
     {
       name=(char *) SvPV(ST(i),na);
@@ -7141,7 +7193,7 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"rotate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.rx,
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.rx,
                 &affine.ry);
               break;
             }
@@ -7153,7 +7205,7 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"scale") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.sx,
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.sx,
                 &affine.sy);
               break;
             }
@@ -7165,7 +7217,7 @@ QueryFontMetrics(ref,...)
 
               x_angle=0.0;
               y_angle=0.0;
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&x_angle,&y_angle);
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&x_angle,&y_angle);
               affine.ry=tan(DegreesToRadians(fmod(x_angle,360.0)));
               affine.rx=tan(DegreesToRadians(fmod(y_angle,360.0)));
               break;
@@ -7183,7 +7235,7 @@ QueryFontMetrics(ref,...)
             }
           if (LocaleCompare(attribute,"translate") == 0)
             {
-              (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.tx,
+              (void) sscanf(SvPV(ST(i),na),"%lf%*[,/]%lf",&affine.tx,
                 &affine.ty);
               break;
             }
@@ -7281,21 +7333,21 @@ QueryFormat(ref,...)
       message[MaxTextExtent],
       *name;
 
-    const MagickInfo
-      *magick_info;
-
     ExceptionInfo
       exception;
 
     register int
       i;
 
+    volatile const MagickInfo
+      *magick_info;
+
     dMY_CXT;
     MY_CXT.error_list=newSVpv("",0);
     GetExceptionInfo(&exception);
     if (items == 1)
       {
-        register const MagickInfo
+        register volatile const MagickInfo
           *p;
 
         magick_info=GetMagickInfo("*",&exception);

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001 ImageMagick Studio, a non-profit organization dedicated
+# Copyright (C) 2002 ImageMagick Studio, a non-profit organization dedicated
 # to making software imaging solutions freely available.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -12,12 +12,17 @@
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of ImageMagick.
 
-# The software is provided "as is", without warranty of any kind, express or
+# Licensor ("ImageMagick Studio LLC") warrants that the copyright in and to
+# the Software ("ImageMagick") is owned by ImageMagick Studio LLC or is
+# distributed by ImageMagick Studio LLC under a valid current license.
+# Except as expressly stated in the immediately preceding sentence,
+# ImageMagick is provided by ImageMagick Studio LLC, distributors, and
+# copyright owners "AS IS", without warranty of any kind, express or
 # implied, including but not limited to the warranties of merchantability,
-# fitness for a particular purpose and noninfringement.  In no event shall
-# ImageMagick Studio be liable for any claim, damages or other liability,
-# whether in an action of contract, tort or otherwise, arising from, out of
-# or in connection with ImageMagick or the use or other dealings in
+# fitness for a particular purpose and non-infringement.  In no event shall
+# ImageMagick Studio LLC, contributors or copyright owners be liable for
+# any claim, damages, or other liability, whether in an action of contract,
+# tort or otherwise, arising from, out of or in connection with
 # ImageMagick.
 #
 # Except as contained in this notice, the name of the ImageMagick Studio
@@ -32,7 +37,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib fpx jp2 jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
+foreach $delegate (qw/ bzlib jp2 jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -61,7 +66,7 @@ WriteMakefile
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/X11R6/lib -L/usr/lib -L/usr/lib -L/home/cristy/ImageMagick/magick -lMagick -llcms -ltiff -lfreetype -ljasper -ljpeg -lpng -lfpx -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm'],
+   'LIBS'	=> ['-L/usr/X11R6/lib -L/usr/lib -L/usr/lib -L/usr/local/lib -lMagick -llcms -lfreetype -lXext -lXt -lSM -lICE -lX11 -lz -lpthread -lm'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -73,7 +78,7 @@ WriteMakefile
    # 'OPTIMIZE'	=> '',
 
    # Use same compiler as ImageMagick
-   # 'PERLMAINCC'	=> 'gcc -L/home/cristy/ImageMagick-5.4.9/ttf/objs',
+   # 'PERLMAINCC'	=> 'gcc -L/home/cristy/ImageMagick-5.5.1/ttf/objs',
 
    # Set Perl installation prefix to ImageMagick installation prefix
 #   'PREFIX'	=> '/usr/local',

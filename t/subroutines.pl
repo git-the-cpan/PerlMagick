@@ -5,6 +5,35 @@
 #
 
 #
+# Retrieve quantum depth
+#
+sub quantumDepth ( ) {
+  my($depth,$image);
+  $image=Image::Magick->new;
+  $depth=$image->Get('depth');
+  undef $image;
+  return $depth;
+}
+
+#
+# Establish some global constants (MaxRGB, OpaqueOpacity, & QuantumDepth)
+#
+$QuantumDepth=quantumDepth();
+$OpaqueOpacity=0;
+if ($QuantumDepth == 8)
+  {
+    $MaxRGB=255;
+  }
+elsif ($QuantumDepth == 16)
+  {
+    $MaxRGB=65535;
+  }
+elsif ($QuantumDepth == 32)
+  {
+    $MaxRGB=4294967295;
+  }
+
+#
 # Test reading a 16-bit file in which two signatures are possible,
 # depending on whether 16-bit pixels data has been enabled
 #
@@ -41,6 +70,97 @@ sub testRead {
       print "ok $test\n";
     }
   }
+}
+
+#
+# Test reading a file, and compare with a reference file
+#
+sub testReadCompare {
+  my( $srcimage_name,$refimage_name, $read_options,
+      $normalized_mean_error_max, $normalized_maximum_error_max) = @_;
+  my($srcimage, $refimage, $normalized_mean_error, $normalized_maximum_error);
+
+  if ( !defined( $md5_16 ) )
+    {
+      $md5_16 = $md5;
+    }
+
+  $errorinfo='';
+
+  # Create images
+  $srcimage=Image::Magick->new;
+  $refimage=Image::Magick->new;  
+
+  eval "\$status=\$srcimage->Set($read_options);";
+  if ("$status")
+    {
+      $errorinfo = "Set($read_options): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $status=$srcimage->ReadImage($srcimage_name);
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($srcimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+#  $status=$srcimage->write(filename=>"$refimage_name", compression=>'None');
+#  warn "$status" if $status;
+
+  $status=$refimage->ReadImage("$refimage_name");
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $srcimage->set(depth=>8);
+
+  # FIXME: The following statement should not be needed.
+#  $status=$refimage->Set(type=>'TrueColor');
+#  if ("$status")
+#    {
+#      $errorinfo = "Set(type=>'TrueColor'): $status";
+#      goto COMPARE_RUNTIME_ERROR;
+#    }
+
+  $status=$srcimage->Compare($refimage);
+  if ("$status")
+    {
+      $errorinfo = "Compare($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $normalized_mean_error=0;
+  $normalized_mean_error=$srcimage->GetAttribute('mean-error');
+  if ( !defined($normalized_mean_error) )
+    {
+      $errorinfo = "GetAttribute('mean-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  $normalized_maximum_error=0;
+  $normalized_maximum_error=$srcimage->GetAttribute('maximum-error');
+  if ( ! defined($normalized_maximum_error) )
+    {
+      $errorinfo = "GetAttribute('maximum-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  if ( ($normalized_mean_error > $normalized_mean_error_max) ||
+       ($normalized_maximum_error > $normalized_maximum_error_max) )
+    {
+      print("mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
+      print "not ok $test\n";
+      return 1
+    }
+
+  print "ok $test\n";
+  return 0;
+
+ COMPARE_RUNTIME_ERROR:
+  warn("$errorinfo");
+  print "not ok $test\n";
+  return 1
 }
 
 #
@@ -159,6 +279,145 @@ sub testReadWrite {
       }
     }
   }
+}
+
+#
+# Test reading a file, and compare with a reference file
+#
+sub testReadWriteCompare {
+  my( $srcimage_name, $outimage_name, $refimage_name,
+      $read_options, $write_options,
+      $normalized_mean_error_max, $normalized_maximum_error_max) = @_;
+  my($srcimage, $refimage, $normalized_mean_error,
+    $normalized_maximum_error);
+
+  if ( !defined( $md5_16 ) )
+    {
+      $md5_16 = $md5;
+    }
+
+  $errorinfo='';
+
+  $image=Image::Magick->new;
+  $refimage=Image::Magick->new;  
+
+  #
+  # Read the initial image
+  #
+  $status=$image->ReadImage($srcimage_name);
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($srcimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  #
+  # Write image to output file
+  #
+  eval "\$status=\$image->Set($write_options);";
+  if ("$status")
+    {
+      $errorinfo = "Set($write_options): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  $image->Set(filename=>"$outimage_name");
+
+  $status=$image->WriteImage( );
+  if ("$status")
+    {
+      $errorinfo = "WriteImage ($outimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  undef $image;
+  $image=Image::Magick->new;
+
+  #
+  # Read image from output file
+  #
+  eval "\$status=\$image->Set($read_options);";
+  if ("$status")
+    {
+      $errorinfo = "Set($read_options): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $image->ReadImage("$outimage_name");
+  if ("$status")
+    {
+      $errorinfo = "WriteImage ($outimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+# eval "\$status=\$image->Set($write_options);";
+# $status=$image->write(filename=>"$refimage_name", compression=>'None');
+# warn "$status" if $status;
+
+  #
+  # Read reference image
+  #
+  $status=$refimage->ReadImage("$refimage_name");
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  #
+  # Compare output file with reference image
+  #
+
+  $image->set(depth=>8);
+
+  # FIXME: The following statement should not be needed.
+#  $status=$refimage->Set(type=>'TrueColor');
+#  if ("$status")
+#    {
+#      $errorinfo = "Set(type=>'TrueColor'): $status";
+#      goto COMPARE_RUNTIME_ERROR;
+#    }
+
+  $status=$image->Compare($refimage);
+  if ("$status")
+    {
+      $errorinfo = "Compare($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $normalized_mean_error=0;
+  $normalized_mean_error=$image->GetAttribute('mean-error');
+  if ( !defined($normalized_mean_error) )
+    {
+      $errorinfo = "GetAttribute('mean-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  $normalized_maximum_error=0;
+  $normalized_maximum_error=$image->GetAttribute('maximum-error');
+  if ( ! defined($normalized_maximum_error) )
+    {
+      $errorinfo = "GetAttribute('maximum-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  if ( ($normalized_mean_error > $normalized_mean_error_max) ||
+       ($normalized_maximum_error > $normalized_maximum_error_max) )
+    {
+      print("mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
+      print "not ok $test\n";
+      return 1
+    }
+
+  print "ok $test\n";
+  undef $image;
+  undef $refimage;
+  return 0;
+
+ COMPARE_RUNTIME_ERROR:
+  warn("$errorinfo");
+  print "not ok $test\n";
+  undef $image;
+  undef $refimage;
+  return 1
 }
 
 #
@@ -495,13 +754,13 @@ sub testMontage {
 }
 
 #
-# Test filter method
+# Test filter method using signature compare
 #
-# Usage: testFilter( input image attributes, filter, options expected MD5
+# Usage: testFilterSignature( input image attributes, filter, options, expected MD5
 #      [, expected MD5_16] );
 #
-sub testFilter {
-  my( $srcimage, $filter, $options, $md5, $md5_16 ) = @_;
+sub testFilterSignature {
+  my( $srcimage, $filter, $filter_options, $md5, $md5_16 ) = @_;
 
   my($image);
 
@@ -513,7 +772,8 @@ sub testFilter {
   $status=$image->ReadImage("$srcimage");
   warn "Readimage: $status" if "$status";
 
-  $image->$filter($options);
+  $image->$filter($filter_options);
+#$image->write(filename=>"reference/filter/$filter.miff", compression=>'None');
 
   $signature=$image->GetAttribute('signature');
   if ( defined( $signature ) ) {
@@ -535,4 +795,104 @@ sub testFilter {
   }
 }
 
+#
+# Test filter method using comparison with reference image
+#
+# Usage: testFilterCompare( input image, input image options, reference image, filter, filter options,
+#                           normalized_mean_error,
+#                           normalized_maximum_error );
+sub testFilterCompare {
+  my ($srcimage_name, $src_read_options, $refimage_name, $filter,
+      $filter_options, $normalized_mean_error_max,
+      $normalized_maximum_error_max) = @_;
+  my($srcimage, $refimage, $normalized_mean_error,
+    $normalized_maximum_error);
+  my($status,$errorinfo);
+
+  $errorinfo='';
+  $status='';
+
+  print( $filter, " ...\n" );
+
+  # Create images
+  $srcimage=Image::Magick->new;
+  $refimage=Image::Magick->new;
+
+  eval "\$status=\$srcimage->Set($src_read_options);";
+  if ("$status")
+    {
+      $errorinfo = "Set($src_read_options): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $status=$srcimage->ReadImage($srcimage_name);
+  #eval "\$status=\$srcimage->ReadImage($srcimage_name);";
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($srcimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  eval "\$status=\$srcimage->$filter($filter_options);";
+  if ("$status")
+    {
+      $errorinfo = "$filter ($filter_options): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $srcimage->set(depth=>8);
+#  $srcimage->write(filename=>"$refimage_name", compression=>'None');
+
+  $status=$refimage->ReadImage("$refimage_name");
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  # FIXME: The following statement should not be needed.
+#  $status=$refimage->Set(type=>'TrueColor');
+#  if ("$status")
+#    {
+#      $errorinfo = "Set(type=>'TrueColor'): $status";
+#      goto COMPARE_RUNTIME_ERROR;
+#    }
+
+  $status=$srcimage->Compare($refimage);
+  if ("$status")
+    {
+      $errorinfo = "Compare($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $normalized_mean_error=0;
+  $normalized_mean_error=$srcimage->GetAttribute('mean-error');
+  if ( !defined($normalized_mean_error) )
+    {
+      $errorinfo = "GetAttribute('mean-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  $normalized_maximum_error=0;
+  $normalized_maximum_error=$srcimage->GetAttribute('maximum-error');
+  if ( ! defined($normalized_maximum_error) )
+    {
+      $errorinfo = "GetAttribute('maximum-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  if ( ($normalized_mean_error > $normalized_mean_error_max) ||
+       ($normalized_maximum_error > $normalized_maximum_error_max) )
+    {
+      print("mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
+      print "not ok $test\n";
+      return 1
+    }
+
+  print "ok $test\n";
+  return 0;
+
+ COMPARE_RUNTIME_ERROR:
+  warn("$errorinfo");
+  print "not ok $test\n";
+  return 1
+}
 1;

@@ -82,9 +82,8 @@ testRead( 'input.mtv',
 
 print("Xv's visual schnauzer format. ...\n");
 ++$test;
-testRead( 'input_p7.p7',
-  'e3a4a0d2f67e4d43ec001ddbf533d0e6da9b8c3e050bded12196c1450fe3f3ca',
-  'cccd0a40da9b1ecf506dfb9ddb1921a73f54361a3743d980a6bf131c7d24dfb3' );
+testReadCompare('input_p7.p7', 'reference/read/input_p7.miff', q//,
+                0.000005, 0.00005);
 
 print("NULL (white image) ...\n");
 ++$test;
@@ -159,7 +158,7 @@ testRead( 'input.sgi',
 print("SUN 1-bit Rasterfile ...\n");
 ++$test;
 testRead( 'input.im1',
-  '86cf46ab9d620aa85eba722d777cc97e30df51916b2380df3cbc2685614d1222');
+  '615fa1d8bae486118b3733c1dba4e2a225fc1f4f8ff9441bcb7c3293753e4da1');
 
 print("SUN 8-bit Rasterfile ...\n");
 ++$test;
@@ -194,7 +193,7 @@ testRead( 'input.wbmp',
 print("X Windows system bitmap (black and white only) ...\n");
 ++$test;
 testRead( 'input.xbm',
-  '86cf46ab9d620aa85eba722d777cc97e30df51916b2380df3cbc2685614d1222');
+  '615fa1d8bae486118b3733c1dba4e2a225fc1f4f8ff9441bcb7c3293753e4da1');
 
 print("XC: Constant image of X server color ...\n");
 ++$test;
@@ -256,5 +255,5 @@ print("UYVY format ...\n");
 testReadSized( 'input_70x46.uyvy',
    '70x46',
    0,
-   '088c606a61cb7f51728d8409d061d2c19d9ded3346e1d9ee6799e0cdd8a115b3',
+   'd88b2fcee63384f58ad68eb114b10dab96957f9a56a09738cc90e85ecd028c16',
    '03d13172c954470b8da3c817afb2b4f1c1c365dafefb86227d44d40240f95393' );

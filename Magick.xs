@@ -232,7 +232,7 @@ static char
   },
   *ImageTypes[] =
   {
-    "Undefined", "Bilevel", "Grayscale", "GrayscaleMatte" "Palette",
+    "Undefined", "Bilevel", "Grayscale", "GrayscaleMatte", "Palette",
     "PaletteMatte", "TrueColor", "TrueColorMatte", "ColorSeparation",
     "ColorSeparationMatte", "Optimize", (char *) NULL
   },
@@ -364,8 +364,7 @@ static struct
       {"antialias", BooleanTypes}, {"family", StringReference},
       {"style", StyleTypes}, {"stretch", StretchTypes},
       {"weight", IntegerReference}, {"align", AlignTypes},
-      {"encoding", StringReference}, {"unicode", BooleanTypes },
-      {"affine", ArrayReference}, {"box", StringReference} } },
+      {"encoding", StringReference}, {"affine", ArrayReference} } },
     { "ColorFloodfill", { {"geometry", StringReference},
       {"x", IntegerReference}, {"y", IntegerReference},
       {"fill", StringReference}, {"bordercolor", StringReference},
@@ -451,6 +450,7 @@ static struct
       {"translate", StringReference}, {"scale", StringReference},
       {"rotate", DoubleReference}, {"skewX", DoubleReference},
       {"skewY", DoubleReference} } },
+    { "Compare", { {"image", ImageReference} } },
   };
 
 #ifdef START_MY_CXT
@@ -564,10 +564,10 @@ static double constant(char *name,int sans)
         return(CacheError);
       if (strEQ(name,"CacheWarning"))
         return(CacheWarning);
-      if (strEQ(name,"ConfigurationError"))
-        return(ConfigurationError);
-      if (strEQ(name,"ConfigurationWarning"))
-        return(ConfigurationWarning);
+      if (strEQ(name,"ConfigureError"))
+        return(ConfigureError);
+      if (strEQ(name,"ConfigureWarning"))
+        return(ConfigureWarning);
       if (strEQ(name,"CorruptImageError"))
         return(CorruptImageError);
       if (strEQ(name,"CorruptImageWarning"))
@@ -1136,8 +1136,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           sp=SvPOK(sval) ? LookupStr(BooleanTypes,SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
-              MagickError(OptionError,"Invalid antialias type",
-                SvPV(sval,na));
+              MagickError(OptionError,"Invalid antialias type",SvPV(sval,na));
               return;
             }
           if (info)
@@ -1145,6 +1144,12 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
               info->image_info->antialias=sp != 0;
               info->draw_info->text_antialias=sp != 0;
             }
+          return;
+        }
+      if (LocaleCompare(attribute,"authenticate") == 0)
+        {
+          if (info)
+            (void) CloneString(&info->image_info->authenticate,SvPV(sval,na));
           return;
         }
       MagickError(OptionError,"Invalid attribute",attribute);
@@ -3023,6 +3028,13 @@ Get(ref,...)
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
+          if (LocaleCompare(attribute,"authenticate") == 0)
+            {
+              if (info)
+                s=newSVpv(info->image_info->authenticate,0);
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
           MagickError(OptionError,"Invalid attribute",attribute);
           break;
         }
@@ -3287,7 +3299,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"error") == 0)
             {
               if (image)
-                s=newSVnv(image->mean_error_per_pixel);
+                s=newSVnv(image->error.mean_error_per_pixel);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3433,7 +3445,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"icm") == 0)
             {
               if (image)
-                s=newSVpv((void *) image->color_profile.info,
+                s=newSVpv((const char *) image->color_profile.info,
                   image->color_profile.length);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
@@ -3476,7 +3488,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"iptc") == 0)
             {
               if (image)
-                s=newSVpv((void *) image->iptc_profile.info,
+                s=newSVpv((const char *) image->iptc_profile.info,
                   image->iptc_profile.length);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
@@ -3545,14 +3557,14 @@ Get(ref,...)
           if (LocaleCompare(attribute,"maximum-error") == 0)
             {
               if (image)
-                s=newSVnv(image->normalized_maximum_error);
+                s=newSVnv(image->error.normalized_maximum_error);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"mean-error") == 0)
             {
               if (image)
-                s=newSVnv(image->normalized_mean_error);
+                s=newSVnv(image->error.normalized_mean_error);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -4019,7 +4031,7 @@ ImageToBlob(ref,...)
         CatchException(&exception);
       if (blob != (char *) NULL)
         {
-          PUSHs(sv_2mortal(newSVpv(blob,length)));
+          PUSHs(sv_2mortal(newSVpv((const char *) blob,length)));
           LiberateMemory((void **) &blob);
         }
       if (package_info->image_info->adjoin)
@@ -4198,6 +4210,8 @@ Mogrify(ref,...)
     ClipImage          = 148
     AffineTransform    = 149
     AffineTransformImage = 150
+    Compare            = 151
+    CompareImage       = 152
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -4846,12 +4860,12 @@ Mogrify(ref,...)
             }
           if (attribute_flag[11])
             draw_info->gravity=(GravityType) argument_list[11].int_reference;
-          if (attribute_flag[26])
+          if (attribute_flag[25])
             {
               AV
                 *av;
 
-              av=(AV *) argument_list[26].array_reference;
+              av=(AV *) argument_list[25].array_reference;
               if (av_len(av) >= 1)
                 draw_info->affine.sx=(double) SvNV(*(av_fetch(av,0,0)));
               if (av_len(av) >= 2)
@@ -4952,10 +4966,8 @@ Mogrify(ref,...)
           if (attribute_flag[24])
             (void) CloneString(&draw_info->encoding,
               argument_list[24].string_reference);
-          if (attribute_flag[25])
-            draw_info->unicode=argument_list[25].int_reference != 0;
-          if (attribute_flag[27])
-            (void) QueryColorDatabase(argument_list[27].string_reference,
+          if (attribute_flag[26])
+            (void) QueryColorDatabase(argument_list[26].string_reference,
               &draw_info->undercolor,&exception);
           AnnotateImage(image,draw_info);
           DestroyDrawInfo(draw_info);
@@ -5040,7 +5052,8 @@ Mogrify(ref,...)
                 for (x=0; x < (long) composite_image->columns; x++)
                 {
                   if (composite_image->matte)
-                    q->opacity=(Quantum) ((MaxRGB-q->opacity)*opacity)/100;
+                    q->opacity=(Quantum)
+                      ((MaxRGB-q->opacity)*opacity)/100;
                   else
                     q->opacity=(Quantum) (MaxRGB*opacity)/100;
                   q++;
@@ -5446,7 +5459,7 @@ Mogrify(ref,...)
               (quantize_info.colorspace == GRAYColorspace))
             (void) QuantizeImage(&quantize_info,image);
           else
-            CompressColormap(image);
+            CompressImageColormap(image);
           break;
         }
         case 49:  /* Raise */
@@ -5867,6 +5880,16 @@ Mogrify(ref,...)
           }
           image=AffineTransformImage(image,&draw_info->affine,&exception);
           DestroyDrawInfo(draw_info);
+          break;
+        }
+        case 76:  /* Compare */
+        {
+          if (!attribute_flag[0])
+            {
+              MagickError(OptionError,"Missing reference image",NULL);
+              goto ReturnIt;
+            }
+          (void) IsImagesEqual(image,argument_list[0].image_reference);
           break;
         }
       }
@@ -7063,6 +7086,17 @@ QueryFontMetrics(ref,...)
           MagickError(OptionError,"Invalid attribute",attribute);
           break;
         }
+        case 'e':
+        case 'E':
+        {
+          if (LocaleCompare(attribute,"encoding") == 0)
+            {
+              CloneString(&draw_info->encoding,SvPV(ST(i),na));
+              break;
+            }
+          MagickError(OptionError,"Invalid attribute",attribute);
+          break;
+        }
         case 'f':
         case 'F':
         {
@@ -7152,27 +7186,6 @@ QueryFontMetrics(ref,...)
               (void) sscanf(SvPV(ST(i),na),"%lf%*[, ]%lf",&affine.tx,
                 &affine.ty);
               break;
-            }
-          MagickError(OptionError,"Invalid attribute",attribute);
-          break;
-        }
-        case 'U':
-        case 'u':
-        {
-          if (LocaleCompare(attribute,"unicode") == 0)
-            {
-              int
-                sp;
-
-              sp=!SvPOK(ST(i)) ? SvIV(ST(i)) :
-                LookupStr(BooleanTypes,SvPV(ST(i),na));
-              if (sp < 0)
-                {
-                  MagickError(OptionError,"Invalid unicode type",SvPV(ST(i),na));
-                  break;
-                }
-             draw_info->unicode=sp != 0;
-             break;
             }
           MagickError(OptionError,"Invalid attribute",attribute);
           break;

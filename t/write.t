@@ -89,11 +89,8 @@ testReadWrite( 'MTV:input.mtv',
 
 print("Xv's visual schnauzer format ...\n");
 ++$test;
-testReadWrite( 'P7:input_p7.p7',
-  'P7:output_p7.p7',
-  q//,
-  '7991d81cfd8e9674f652a41ef6364d8d55c1bbe49c3d9b8001a7d24a28f365e2',
-  '5d29189d04da3933ec35dd30ada62f3d5c3728b74aa482d865ff0b3a1bd02e59' );
+testReadWriteCompare( 'input.miff', 'P7:output_p7.p7', 'reference/write/output_p7.miff',
+                      q/depth=>8/, q/dither=>0, depth=>8/, 0.000005, 0.00011);
 
 print("Portable bitmap format (black and white), ASCII format ...\n");
 ++$test;
@@ -101,7 +98,6 @@ testReadWrite( 'PBM:input_p1.pbm',
   'PBM:output_p1.pbm',
   q/compression=>'None'/,
   '2b48bcf7d93cc31a8deb3026d872f1bb0a300b0f4e177423e5301adc638179e4');
-
 
 print("Portable bitmap format (black and white), binary format ...\n");
 ++$test;
@@ -171,7 +167,7 @@ print("SUN 1-bit Rasterfile ...\n");
 testReadWrite( 'SUN:input.im1',
   'SUN:output.im1',
   q//,
-  '86cf46ab9d620aa85eba722d777cc97e30df51916b2380df3cbc2685614d1222');
+  '615fa1d8bae486118b3733c1dba4e2a225fc1f4f8ff9441bcb7c3293753e4da1');
 
 print("SUN 8-bit Rasterfile ...\n");
 ++$test;
@@ -213,7 +209,7 @@ print("X Windows system bitmap (black and white only) ...\n");
 testReadWrite( 'XBM:input.xbm',
   'XBM:output.xbm',
   q//,
-  '86cf46ab9d620aa85eba722d777cc97e30df51916b2380df3cbc2685614d1222');
+  '615fa1d8bae486118b3733c1dba4e2a225fc1f4f8ff9441bcb7c3293753e4da1');
 
 print("X Windows system pixmap file (color) ...\n");
 ++$test;

@@ -1334,7 +1334,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
             x=0;
             y=0;
             (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
-            pixel=GetImagePixels(image,x % image->columns,y % image->rows,1,1);
+            pixel=GetImagePixels(image,(long) (x % image->columns),
+              (long) (y % image->rows),1,1);
             if (pixel == (PixelPacket *) NULL)
               break;
             indexes=GetIndexes(image);
@@ -1464,7 +1465,8 @@ static void SetAttribute(struct PackageInfo *info,Image *image,char *attribute,
             x=0;
             y=0;
             (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
-            pixel=GetImagePixels(image,x % image->columns,y % image->rows,1,1);
+            pixel=GetImagePixels(image,(long) (x % image->columns),
+              (long) (y % image->rows),1,1);
             if (pixel == (PixelPacket *) NULL)
               break;
             SetImageType(image,TrueColorType);
@@ -2818,14 +2820,14 @@ Get(ref,...)
           if (LocaleCompare(attribute,"adjoin") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->adjoin);
+                s=newSViv((long) info->image_info->adjoin);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"antialias") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->antialias);
+                s=newSViv((long) info->image_info->antialias);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -2848,7 +2850,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"base-columns") == 0)
             {
               if (image)
-                s=newSViv(image->magick_columns);
+                s=newSViv((long) image->magick_columns);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -2862,21 +2864,21 @@ Get(ref,...)
           if (LocaleCompare(attribute,"base-height") == 0)
             {
               if (image)
-                s=newSViv(image->magick_rows);
+                s=newSViv((long) image->magick_rows);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"base-rows") == 0)
             {
               if (image)
-                s=newSViv(image->magick_rows);
+                s=newSViv((long) image->magick_rows);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"base-width") == 0)
             {
               if (image)
-                s=newSViv(image->magick_columns);
+                s=newSViv((long) image->magick_columns);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -2965,7 +2967,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"colors") == 0)
             {
               if (image)
-                s=newSViv(GetNumberColors(image,(FILE *) NULL,&exception));
+                s=newSViv((long) GetNumberColors(image,(FILE *) NULL,&exception));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -2987,7 +2989,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"columns") == 0)
             {
               if (image)
-                s=newSViv(image->columns);
+                s=newSViv((long) image->columns);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -2998,38 +3000,44 @@ Get(ref,...)
         {
           if (LocaleCompare(attribute,"density") == 0)
             {
-              if (info && info->image_info->density)
-                s=newSVpv(info->image_info->density,0);
+              char
+                geometry[MaxTextExtent];
+
+              if (!image)
+                break;
+              FormatString(geometry,"%gx%g",image->x_resolution,
+                image->y_resolution);
+              s=newSVpv(geometry,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"dispose") == 0)
             {
               if (image)
-                s=newSViv(image->dispose);
+                s=newSViv((long) image->dispose);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"delay") == 0)
             {
               if (image)
-                s=newSViv(image->delay);
+                s=newSViv((long) image->delay);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"depth") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->depth);
+                s=newSViv((long) info->image_info->depth);
               if (image)
-                s=newSViv(GetImageDepth(image,&image->exception));
+                s=newSViv((long) GetImageDepth(image,&image->exception));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"dither") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->dither);
+                s=newSViv((long) info->image_info->dither);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3067,7 +3075,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"filesize") == 0)
             {
               if (image)
-                s=newSViv(SizeBlob(image));
+                s=newSViv((long) SizeBlob(image));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3165,7 +3173,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"height") == 0)
             {
               if (image)
-                s=newSViv(image->rows);
+                s=newSViv((long) image->rows);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3174,6 +3182,13 @@ Get(ref,...)
         case 'I':
         case 'i':
         {
+          if (LocaleCompare(attribute,"id") == 0)
+            {
+              if (image)
+                s=newSViv(SetMagickRegistry(ImageRegistryType,image,0,&image->exception));
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
           if (LocaleNCompare(attribute,"index",5) == 0)
             {
               char
@@ -3193,7 +3208,8 @@ Get(ref,...)
               x=0;
               y=0;
               (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
-              (void) GetOnePixel(image,x % image->columns,y % image->rows);
+              (void) GetOnePixel(image,(long) (x % image->columns),
+                (long) (y % image->rows));
               indexes=GetIndexes(image);
               FormatString(name,"%u",*indexes);
               s=newSVpv(name,0);
@@ -3203,7 +3219,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"iterations") == 0)  /* same as loop */
             {
               if (image)
-                s=newSViv(image->iterations);
+                s=newSViv((long) image->iterations);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3240,7 +3256,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"loop") == 0)  /* same as iterations */
             {
               if (image)
-                s=newSViv(image->iterations);
+                s=newSViv((long) image->iterations);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3295,7 +3311,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"matte") == 0)
             {
               if (image)
-                s=newSViv(image->matte);
+                s=newSViv((long) image->matte);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3345,7 +3361,8 @@ Get(ref,...)
               x=0;
               y=0;
               (void) sscanf(attribute,"%*[^[][%ld%*[, ]%ld",&x,&y);
-              pixel=GetOnePixel(image,x % image->columns,y % image->rows);
+              pixel=GetOnePixel(image,(long) (x % image->columns),
+                (long) (y % image->rows));
               FormatString(name,"%u,%u,%u,%u",pixel.red,pixel.green,pixel.blue,
                 pixel.opacity);
               s=newSVpv(name,0);
@@ -3380,7 +3397,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"quality") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->quality);
+                s=newSViv((long) info->image_info->quality);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3414,7 +3431,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"rows") == 0)
             {
               if (image)
-                s=newSViv(image->rows);
+                s=newSViv((long) image->rows);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3426,14 +3443,14 @@ Get(ref,...)
           if (LocaleCompare(attribute,"subimage") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->subimage);
+                s=newSViv((long) info->image_info->subimage);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"subrange") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->subrange);
+                s=newSViv((long) info->image_info->subrange);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3454,7 +3471,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"scene") == 0)
             {
               if (image)
-                s=newSViv(image->scene);
+                s=newSViv((long) image->scene);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3480,14 +3497,14 @@ Get(ref,...)
           if (LocaleCompare(attribute,"taint") == 0)
             {
               if (image)
-                s=newSViv(IsTaintImage(image));
+                s=newSViv((long) IsTaintImage(image));
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleCompare(attribute,"temporary") == 0)
             {
               if (image)
-                s=newSViv(image->temporary);
+                s=newSViv((long) image->temporary);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3548,7 +3565,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"verbose") == 0)
             {
               if (info)
-                s=newSViv(info->image_info->verbose);
+                s=newSViv((long) info->image_info->verbose);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3577,7 +3594,7 @@ Get(ref,...)
           if (LocaleCompare(attribute,"width") == 0)
             {
               if (image)
-                s=newSViv(image->columns);
+                s=newSViv((long) image->columns);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3719,7 +3736,7 @@ ImageToBlob(ref,...)
           exception.description);
       if (blob != (char *) NULL)
         {
-          PUSHs(sv_2mortal(newSVpv((const char *) blob,length)));
+          PUSHs(sv_2mortal(newSVpv(blob,length)));
           LiberateMemory((void **) &blob);
         }
       if (package_info->image_info->adjoin)
@@ -4330,9 +4347,9 @@ Mogrify(ref,...)
                   if (!(flags & HeightValue))
                     frame_info.height=frame_info.width;
                   if (!(flags & XValue))
-                    frame_info.outer_bevel=(frame_info.width >> 2)+1;
+                    frame_info.outer_bevel=(long) ((frame_info.width >> 2)+1);
                   if (!(flags & YValue))
-                    frame_info.inner_bevel=(frame_info.height >> 2)+1;
+                    frame_info.inner_bevel=(long) ((frame_info.height >> 2)+1);
                 }
               if (attribute_flag[1])
                 frame_info.width=argument_list[1].int_reference;
@@ -4342,8 +4359,8 @@ Mogrify(ref,...)
                 frame_info.inner_bevel=argument_list[3].int_reference;
               if (attribute_flag[4])
                 frame_info.outer_bevel=argument_list[4].int_reference;
-              frame_info.x=frame_info.width;
-              frame_info.y=frame_info.height;
+              frame_info.x=(long) frame_info.width;
+              frame_info.y=(long) frame_info.height;
               if (attribute_flag[5])
                 QueryColorDatabase(argument_list[5].string_reference,
                   &fill_color);
@@ -4419,7 +4436,7 @@ Mogrify(ref,...)
             argument_list[0].double_reference=90.0;
           if (attribute_flag[1])
              QueryColorDatabase(argument_list[1].string_reference,
-               &image->border_color);
+               &image->background_color);
           image=RotateImage(image,argument_list[0].double_reference,&exception);
           break;
         }
@@ -4505,7 +4522,7 @@ Mogrify(ref,...)
               &y_shear);
           if (attribute_flag[3])
              QueryColorDatabase(argument_list[3].string_reference,
-               &image->border_color);
+               &image->background_color);
           image=ShearImage(image,x_shear,y_shear,&exception);
           break;
         }
@@ -4685,8 +4702,8 @@ Mogrify(ref,...)
               &draw_info->fill);
           if (attribute_flag[4])
             QueryColorDatabase(argument_list[4].string_reference,&fill_color);
-          target=GetOnePixel(image,rectangle_info.x % image->columns,
-            rectangle_info.y % image->rows);
+          target=GetOnePixel(image,(long) (rectangle_info.x % image->columns),
+            (long) (rectangle_info.y % image->rows));
           if (attribute_flag[4])
             target=fill_color;
           if (attribute_flag[5])
@@ -4711,9 +4728,6 @@ Mogrify(ref,...)
           Image
             *composite_image,
             *rotate_image;
-
-          int
-            status;
 
           long
             x,
@@ -4781,9 +4795,9 @@ Mogrify(ref,...)
                 for (x=0; x < (long) image->columns; x+=composite_image->columns)
                 {
                   if (attribute_flag[8])
-                    status=CompositeImage(image,compose,rotate_image,x,y);
+                    (void) CompositeImage(image,compose,rotate_image,x,y);
                   else
-                    status=CompositeImage(image,compose,composite_image,x,y);
+                    (void) CompositeImage(image,compose,composite_image,x,y);
                   CatchImageException(image);
                 }
               if (attribute_flag[8])
@@ -5009,7 +5023,7 @@ Mogrify(ref,...)
               current.rx*affine.tx+current.sy*affine.ty+current.ty;
           }
           if (attribute_flag[15])
-            draw_info->tile=
+            draw_info->fill_pattern=
               CloneImage(argument_list[15].image_reference,0,0,True,&exception);
           if (attribute_flag[16])
             draw_info->pointsize=argument_list[16].double_reference;
@@ -5094,8 +5108,8 @@ Mogrify(ref,...)
             opacity=argument_list[3].int_reference;
           if (!image->matte)
             SetImageOpacity(image,OpaqueOpacity);
-          target=GetOnePixel(image,rectangle_info.x % image->columns,
-            rectangle_info.y % image->rows);
+          target=GetOnePixel(image,(long) (rectangle_info.x % image->columns),
+            (long) (rectangle_info.y % image->rows));
           if (attribute_flag[4])
             target=fill_color;
           if (attribute_flag[5])
@@ -6238,8 +6252,20 @@ Ping(ref,...)
         continue;
       if ((items >= 3) && strEQcase(info->image_info->filename,"file"))
         {
+          i++;
           info->image_info->file=(FILE *) IoIFP(sv_2io(ST(i)));
-          continue;
+        }
+      if ((items >= 3) && strEQcase(info->image_info->filename,"blob"))
+        {
+          char
+            *blob;
+
+          STRLEN
+            length;
+
+          i++;
+          blob=(char *) (SvPV(ST(i),length));
+          AttachBlob(info->image_info->blob,blob,length);
         }
       image=PingImage(info->image_info,&exception);
       if (image == (Image *) NULL)
@@ -7302,9 +7328,6 @@ Write(ref,...)
     SV
       *reference;
 
-    unsigned int
-      status;
-
     volatile int
       number_images;
 
@@ -7343,7 +7366,7 @@ Write(ref,...)
     SetImageInfo(package_info->image_info,True,&image->exception);
     for (next=image; next; next=next->next)
     {
-      status=WriteImage(package_info->image_info,next);
+      (void) WriteImage(package_info->image_info,next);
       CatchImageException(next);
       number_images++;
       if (package_info->image_info->adjoin)

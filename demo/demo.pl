@@ -99,8 +99,8 @@ push(@$images,$example);
 
 $example=$model->Clone();
 $example->Label('Draw');
-$example->Draw(stroke=>'gold',primitive=>'circle',points=>'60,90 60,120',
-  strokewidth=>2);
+$example->Draw(fill=>'none',stroke=>'gold',primitive=>'circle',
+  points=>'60,90 60,120',strokewidth=>2);
 push(@$images,$example);
 
 $example=$model->Clone();
@@ -297,7 +297,8 @@ push(@$images,$example);
 print "Montage image...\n";
 $montage=$images->Montage(geometry=>'130x194+10+5>',gravity=>'Center',
   bordercolor=>'green',borderwidth=>1,tile=>'5x1000',compose=>'over',
-  background=>'#ffffff',font=>'Generic.ttf',pointsize=>18,fill=>'#600');
+  background=>'#ffffff',font=>'Generic.ttf',pointsize=>18,fill=>'#600',
+  stroke=>'none');
 
 $logo=Image::Magick->new();
 $logo->Read('logo:');

@@ -83,9 +83,7 @@ extern "C" {
 #define pTHX_
 #define dTHX
 #endif
-#define DegreesToRadians(x) ((x)*3.14159265358979323846/180.0)
 #define EndOf(array)  (&array[NumberOf(array)])
-#define False  0
 #define MaxArguments  28
 #define MY_CXT_KEY  PackageName "::ContextKey_" XS_VERSION
 #ifndef START_MY_CXT
@@ -101,7 +99,6 @@ extern "C" {
 #ifndef sv_undef
 #define sv_undef  PL_sv_undef
 #endif
-#define True  1
 #define ThrowPerlException(severity,tag,reason) \
 { \
   ExceptionInfo \
@@ -240,7 +237,7 @@ static struct
     { "Shade", { {"geometry", StringReference}, {"azimuth", RealReference},
       {"elevation", RealReference}, {"gray", MagickBooleanOptions} } },
     { "Sharpen", { {"geometry", StringReference}, {"radius", RealReference},
-      {"sigma", RealReference} } },
+      {"sigma", RealReference}, {"channel", MagickChannelOptions} } },
     { "Shear", { {"geometry", StringReference}, {"x", IntegerReference},
       {"y", RealReference}, {"color", StringReference} } },
     { "Spread", { {"radius", RealReference} } },
@@ -431,6 +428,12 @@ static struct PackageInfo *ClonePackageInfo(struct PackageInfo *info)
 
   clone_info=(struct PackageInfo *)
     AcquireMagickMemory(sizeof(struct PackageInfo));
+  if (clone_info == (struct PackageInfo *) NULL)
+    {
+      ThrowPerlException(ResourceLimitError,"UnableToClonePackageInfo",
+        PackageName);
+      return((struct PackageInfo *) NULL);
+    }
   if (!info)
     {
       clone_info->image_info=CloneImageInfo((ImageInfo *) NULL);
@@ -733,7 +736,7 @@ static Image *GetList(pTHX_ SV *reference,SV ***reference_vector,int *current,
                   exception;
 
                 GetExceptionInfo(&exception);
-                image=CloneImage(image,0,0,True,&exception);
+                image=CloneImage(image,0,0,MagickTrue,&exception);
                 if (exception.severity != UndefinedException)
                   CatchException(&exception);
                 DestroyExceptionInfo(&exception);
@@ -769,9 +772,15 @@ static Image *GetList(pTHX_ SV *reference,SV ***reference_vector,int *current,
                 *reference_vector=(SV **) ResizeMagickMemory(*reference_vector,
                   *last*sizeof(*reference_vector));
             }
-        (*reference_vector)[*current]=reference;
-        (*reference_vector)[++(*current)]=NULL;
-      }
+          if (!*reference_vector)
+            {
+              ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+                PackageName);
+              return((Image *) NULL);
+            }
+          (*reference_vector)[*current]=reference;
+          (*reference_vector)[++(*current)]=NULL;
+        }
       return(image);
     }
   }
@@ -1009,12 +1018,12 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     x,
     y;
 
+  MagickStatusType
+    flags;
+
   PixelPacket
     *color,
     target_color;
-
-  unsigned int
-    flags;
 
   GetExceptionInfo(&exception);
   switch (*attribute)
@@ -1024,7 +1033,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"adjoin") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1037,7 +1046,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"antialias") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1163,7 +1172,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"colorspace") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickColorspaceOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickColorspaceOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1179,7 +1188,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"compression") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickCompressionOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickCompressionOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1252,7 +1261,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"dispose") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickDisposeOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickDisposeOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1268,7 +1277,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         {
           if (info)
             {
-              sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,False,
+              sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,MagickFalse,
                 SvPV(sval,na)) : SvIV(sval);
               if (sp < 0)
                 {
@@ -1298,7 +1307,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"endian") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickEndianOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickEndianOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1378,7 +1387,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"gravity") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickGravityOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickGravityOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1448,7 +1457,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"interlace") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickInterlaceOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickInterlaceOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1506,7 +1515,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"matte") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1529,7 +1538,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"monochrome") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1627,7 +1636,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"preview") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickPreviewOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickPreviewOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1671,7 +1680,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"render") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickIntentOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickIntentOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1762,7 +1771,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"type") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickImageOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickImageOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1783,7 +1792,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"units") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickResolutionOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickResolutionOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1804,7 +1813,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleCompare(attribute,"verbose") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickBooleanOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -1823,7 +1832,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleCompare(attribute,"virtual-pixel") == 0)
         {
-          sp=SvPOK(sval) ? ParseMagickOption(MagickVirtualPixelOptions,False,
+          sp=SvPOK(sval) ? ParseMagickOption(MagickVirtualPixelOptions,MagickFalse,
             SvPV(sval,na)) : SvIV(sval);
           if (sp < 0)
             {
@@ -2022,11 +2031,11 @@ Animate(ref,...)
     animateimage  = 3
   PPCODE:
   {
-    jmp_buf
-      error_jmp;
-
     Image
       *image;
+
+    jmp_buf
+      error_jmp;
 
     register int
       i;
@@ -2169,7 +2178,7 @@ Append(ref,...)
     /*
       Get options.
     */
-    stack=True;
+    stack=MagickTrue;
     for (i=2; i < items; i+=2)
     {
       attribute=(char *) SvPV(ST(i-1),na);
@@ -2180,7 +2189,7 @@ Append(ref,...)
         {
           if (LocaleCompare(attribute,"stack") == 0)
             {
-              stack=ParseMagickOption(MagickBooleanOptions,False,
+              stack=ParseMagickOption(MagickBooleanOptions,MagickFalse,
                 SvPV(ST(i),na));
               if (stack < 0)
                 {
@@ -2319,7 +2328,7 @@ Average(ref)
       image->filename));
     (void) CopyMagickString(image->filename,info->image_info->filename,
       MaxTextExtent);
-    SetImageInfo(info->image_info,False,&image->exception);
+    SetImageInfo(info->image_info,MagickFalse,&image->exception);
     SvREFCNT_dec(MY_CXT.error_list);
     MY_CXT.error_jump=NULL;
     XSRETURN(1);
@@ -2403,18 +2412,31 @@ BlobToImage(ref,...)
     number_images=0;
     ac=(items < 2) ? 1 : items-1;
     list=(char **) AcquireMagickMemory((ac+1)*sizeof(*list));
+    length=(STRLEN *) NULL;
+    if (list == (char **) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
     length=(STRLEN *) AcquireMagickMemory((ac+1)*sizeof(length));
+    if (length == (STRLEN *) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
     if (!sv_isobject(ST(0)))
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
     if (SvTYPE(reference) != SVt_PVAV)
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     av=(AV *) reference;
     info=GetPackageInfo(aTHX_ (void *) av,(struct PackageInfo *) NULL);
@@ -2422,7 +2444,7 @@ BlobToImage(ref,...)
     if (items <= 1)
       {
         ThrowPerlException(OptionError,"NoBlobDefined",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     for (n=0, i=0; i < ac; i++)
     {
@@ -2438,7 +2460,7 @@ BlobToImage(ref,...)
     keep=list;
     MY_CXT.error_jump=(&error_jmp);
     if (setjmp(error_jmp))
-      goto ReturnIt;
+      goto MethodException;
     GetExceptionInfo(&exception);
     for (i=number_images=0; i < n; i++)
     {
@@ -2467,9 +2489,11 @@ BlobToImage(ref,...)
               break;
             }
 
-  ReturnIt:
-    list=(char **) RelinquishMagickMemory(list);
-    length=(STRLEN *) RelinquishMagickMemory(length);
+  MethodException:
+    if (list)
+      list=(char **) RelinquishMagickMemory(list);
+    if (length)
+      length=(STRLEN *) RelinquishMagickMemory(length);
     sv_setiv(MY_CXT.error_list,(IV) number_images);
     SvPOK_on(MY_CXT.error_list);
     ST(0)=sv_2mortal(MY_CXT.error_list);
@@ -2657,7 +2681,7 @@ Copy(ref)
     GetExceptionInfo(&exception);
     for ( ; image; image=image->next)
     {
-      clone=CloneImage(image,0,0,True,&exception);
+      clone=CloneImage(image,0,0,MagickTrue,&exception);
       if (exception.severity != UndefinedException)
         CatchException(&exception);
       sv=newSViv((IV) clone);
@@ -2926,7 +2950,7 @@ Flatten(ref)
       image->filename));
     (void) CopyMagickString(image->filename,info->image_info->filename,
       MaxTextExtent);
-    SetImageInfo(info->image_info,False,&image->exception);
+    SetImageInfo(info->image_info,MagickFalse,&image->exception);
     SvREFCNT_dec(MY_CXT.error_list);
     MY_CXT.error_jump=NULL;
     XSRETURN(1);
@@ -3030,50 +3054,53 @@ Fx(ref,...)
     */
     channel=AllChannels &~ OpacityChannel;
     (void) strcpy(expression,"u");
-    for (i=2; i < items; i+=2)
-    {
-      attribute=(char *) SvPV(ST(i-1),na);
-      switch (*attribute)
+    if (items == 2)
+      (void) strcpy(expression,(char *) SvPV(ST(1),na));
+    else
+      for (i=2; i < items; i+=2)
       {
-        case 'C':
-        case 'c':
+        attribute=(char *) SvPV(ST(i-1),na);
+        switch (*attribute)
         {
-          if (LocaleCompare(attribute,"channel") == 0)
-            {
-              long
-                option;
+          case 'C':
+          case 'c':
+          {
+            if (LocaleCompare(attribute,"channel") == 0)
+              {
+                long
+                  option;
 
-              option=ParseChannelOption(SvPV(ST(i),na));
-              if (option < 0)
-                {
-                  ThrowPerlException(OptionError,"UnrecognizedType",
-                    SvPV(ST(i),na));
-                  return;
-                }
-              channel=(ChannelType) option;
-              break;
-            }
-          ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
-          break;
-        }
-        case 'E':
-        case 'e':
-        {
-          if (LocaleCompare(attribute,"expression") == 0)
-            {
-              (void) CopyMagickString(expression,SvPV(ST(i),na),MaxTextExtent);
-              break;
-            }
-          ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
-          break;
-        }
-        default:
-        {
-          ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
-          break;
+                option=ParseChannelOption(SvPV(ST(i),na));
+                if (option < 0)
+                  {
+                    ThrowPerlException(OptionError,"UnrecognizedType",
+                      SvPV(ST(i),na));
+                    return;
+                  }
+                channel=(ChannelType) option;
+                break;
+              }
+            ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
+            break;
+          }
+          case 'E':
+          case 'e':
+          {
+            if (LocaleCompare(attribute,"expression") == 0)
+              {
+                (void) CopyMagickString(expression,SvPV(ST(i),na),MaxTextExtent);
+                break;
+              }
+            ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
+            break;
+          }
+          default:
+          {
+            ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
+            break;
+          }
         }
       }
-    }
     GetExceptionInfo(&exception);
     image=FxImageChannel(image,channel,expression,&exception);
     if (exception.severity != UndefinedException)
@@ -3138,6 +3165,9 @@ Get(ref,...)
     int
       j;
 
+    jmp_buf
+      error_jmp;
+
     register int
       i;
 
@@ -3148,6 +3178,11 @@ Get(ref,...)
       *reference,
       *s;
 
+    volatile int
+      status;
+
+    dMY_CXT;
+    MY_CXT.error_list=newSVpv("",0);
     if (!sv_isobject(ST(0)))
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
@@ -3159,6 +3194,17 @@ Get(ref,...)
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
         XSRETURN_EMPTY;
+      }
+    MY_CXT.error_jump=(&error_jmp);
+    status=setjmp(error_jmp);
+    if (status)
+      {
+        sv_setiv(MY_CXT.error_list,(IV) SvCUR(MY_CXT.error_list) != 0);
+        SvPOK_on(MY_CXT.error_list);
+        ST(0)=sv_2mortal(MY_CXT.error_list);
+        MY_CXT.error_list=NULL;
+        MY_CXT.error_jump=NULL;
+        XSRETURN(1);
       }
     EXTEND(sp,items);
     for (i=1; i < items; i++)
@@ -4100,6 +4146,8 @@ Get(ref,...)
               }
         }
     }
+    MY_CXT.error_list=NULL;
+    MY_CXT.error_jump=NULL;
   }
 
 #
@@ -4197,7 +4245,7 @@ Histogram(ref,...)
         continue;
       count+=number_colors;
       EXTEND(sp,5*count);
-      for (i=0; i < number_colors; i++)
+      for (i=0; i < (long) number_colors; i++)
       {
         (void) FormatMagickString(message,MaxTextExtent,"%u",
           histogram[i].pixel.red);
@@ -4246,7 +4294,11 @@ GetPixels(ref,...)
       *av;
 
     char
-      *attribute;
+      *attribute,
+      *map;
+
+    double
+      *pixels;
 
     ExceptionInfo
       exception;
@@ -4254,14 +4306,11 @@ GetPixels(ref,...)
     Image
       *image;
 
-    IndexPacket
-      *indexes;
+    MagickBooleanType
+      status;
 
     RectangleInfo
       region;
-
-    register const PixelPacket
-      *p;
 
     register int
       i;
@@ -4271,9 +4320,6 @@ GetPixels(ref,...)
 
     SV
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
-
-    unsigned long
-      channels;
 
     dMY_CXT;
     MY_CXT.error_list=newSVpv("",0);
@@ -4286,6 +4332,7 @@ GetPixels(ref,...)
         ThrowPerlException(OptionError,"NoImagesDefined",PackageName);
         goto MethodException;
       }
+    map="RGB";
     region.x=0;
     region.y=0;
     region.width=image->columns;
@@ -4312,6 +4359,17 @@ GetPixels(ref,...)
           if (LocaleCompare(attribute,"height") == 0)
             {
               region.height=SvIV(ST(i));
+              break;
+            }
+          ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
+          break;
+        }
+        case 'M':
+        case 'm':
+        {
+          if (LocaleCompare(attribute,"map") == 0)
+            {
+              map=SvPV(ST(i),na);
               break;
             }
           ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
@@ -4357,35 +4415,28 @@ GetPixels(ref,...)
         }
       }
     }
-    channels=3;
-    if (image->matte)
-      channels++;
-    if ((image->storage_class == PseudoClass) ||
-       (image->colorspace == CMYKColorspace))
-      channels++;
-    EXTEND(sp,channels*region.width*region.height);
     GetExceptionInfo(&exception);
-    p=AcquireImagePixels(image,region.x,region.y,region.width,region.height,
-      &exception);
-    if (exception.severity != UndefinedException)
-      CatchException(&exception);
-    indexes=GetIndexes(image);
-    if (p == (const PixelPacket *) NULL)
+    pixels=(double *) AcquireMagickMemory(strlen(map)*region.width*
+      region.height*sizeof(double));
+    if (pixels == (double *) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
+    status=ExportImagePixels(image,region.x,region.y,region.width,region.height,
+      map,DoublePixel,pixels,&exception);
+    if (status == MagickFalse)
       PUSHs(&sv_undef);
     else
-      for (i=0; i < (region.width*region.height); i++)
       {
-        PUSHs(sv_2mortal(newSViv(p->red)));
-        PUSHs(sv_2mortal(newSViv(p->red)));
-        PUSHs(sv_2mortal(newSViv(p->green)));
-        PUSHs(sv_2mortal(newSViv(p->blue)));
-        if (image->matte)
-          PUSHs(sv_2mortal(newSViv(p->opacity)));
-        if ((image->storage_class == PseudoClass) ||
-            (image->colorspace == CMYKColorspace))
-          PUSHs(sv_2mortal(newSViv(indexes[i])));
-        p++;
+        EXTEND(sp,strlen(map)*region.width*region.height);
+        for (i=0; i < (long) (strlen(map)*region.width*region.height); i++)
+          PUSHs(sv_2mortal(newSVnv(pixels[i])));
       }
+    pixels=(double *) RelinquishMagickMemory(pixels);
+    if (exception.severity != UndefinedException)
+      CatchException(&exception);
 
   MethodException:
     SvREFCNT_dec(MY_CXT.error_list);
@@ -4475,7 +4526,7 @@ ImageToBlob(ref,...)
       (void) CopyMagickString(next->filename,filename,MaxTextExtent);
       next->scene=scene++;
     }
-    SetImageInfo(package_info->image_info,True,&image->exception);
+    SetImageInfo(package_info->image_info,MagickTrue,&image->exception);
     EXTEND(sp,(long) GetImageListLength(image));
     GetExceptionInfo(&exception);
     for ( ; image; image=image->next)
@@ -4732,6 +4783,12 @@ Mogrify(ref,...)
       j,
       y;
 
+    MagickBooleanType
+      status;
+
+    MagickStatusType
+      flags;
+
     PixelPacket
       fill_color;
 
@@ -4757,10 +4814,6 @@ Mogrify(ref,...)
     struct ArgumentList
       argument_list[MaxArguments];
 
-    unsigned int
-      flags,
-      status;
-
     volatile int
       number_images;
 
@@ -4773,7 +4826,7 @@ Mogrify(ref,...)
     if (!sv_isobject(ST(0)))
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     reference=SvRV(ST(0));
     region_info.width=0;
@@ -4809,7 +4862,7 @@ Mogrify(ref,...)
             {
               ThrowPerlException(OptionError,"UnrecognizedPerlMagickMethod",
                 attribute);
-              goto ReturnIt;
+              goto MethodException;
             }
           if (strEQcase(attribute,rp->name))
             break;
@@ -4820,7 +4873,7 @@ Mogrify(ref,...)
     if (image == (Image *) NULL)
       {
         ThrowPerlException(OptionError,"NoImagesDefined",attribute);
-        goto ReturnIt;
+        goto MethodException;
       }
     Zero(&argument_list,NumberOf(argument_list),struct ArgumentList);
     Zero(&attribute_flag,NumberOf(attribute_flag),char);
@@ -4889,7 +4942,7 @@ Mogrify(ref,...)
             {
               ThrowPerlException(OptionError,"ReferenceIsNotMyType",
                 PackageName);
-              goto ReturnIt;
+              goto MethodException;
             }
           break;
         }
@@ -4908,10 +4961,15 @@ Mogrify(ref,...)
           /*
             Is a string; look up name.
           */
-          al->long_reference=ParseMagickOption((MagickOption) pp->type,False,
-            SvPV(sv,na));
-          if ((al->long_reference < 0) &&
-              ((al->long_reference=SvIV(sv)) <= 0))
+          if ((al->length > 1) && (*(char *) SvPV(sv,al->length) == '@'))
+            {
+              al->string_reference=(char *) SvPV(sv,al->length);
+              al->long_reference=(-1);
+              break;
+            }
+          al->long_reference=ParseMagickOption((MagickOption) pp->type,
+            MagickFalse,SvPV(sv,na));
+          if ((al->long_reference < 0) && ((al->long_reference=SvIV(sv)) <= 0))
             {
               (void) FormatMagickString(message,MaxTextExtent,
                 "invalid %.60s value",pp->method);
@@ -4926,7 +4984,7 @@ Mogrify(ref,...)
     }
     MY_CXT.error_jump=(&error_jmp);
     if (setjmp(error_jmp))
-      goto ReturnIt;
+      goto MethodException;
     (void) ResetMagickMemory((char *) &fill_color,0,sizeof(PixelPacket));
     pv=reference_vector;
     GetExceptionInfo(&exception);
@@ -4950,7 +5008,7 @@ Mogrify(ref,...)
           (void) FormatMagickString(message,MaxTextExtent,"%d",(long) ix);
           ThrowPerlException(OptionError,"UnrecognizedPerlMagickMethod",
             message);
-          goto ReturnIt;
+          goto MethodException;
         }
         case 1:  /* Comment */
         {
@@ -5267,8 +5325,10 @@ Mogrify(ref,...)
             geometry_info.rho=argument_list[1].real_reference;
           if (attribute_flag[2])
             geometry_info.sigma=argument_list[2].real_reference;
-          image=SharpenImage(image,geometry_info.rho,geometry_info.sigma,
-            &exception);
+          if (attribute_flag[3])
+            channel=(ChannelType) argument_list[3].long_reference;
+          image=SharpenImageChannel(image,channel,geometry_info.rho,
+            geometry_info.sigma,&exception);
           break;
         }
         case 28:  /* Shear */
@@ -5549,13 +5609,19 @@ Mogrify(ref,...)
             {
               ThrowPerlException(OptionError,"CompositeImageRequired",
                 PackageName);
-              goto ReturnIt;
+              goto MethodException;
             }
           if (attribute_flag[1])
             compose=(CompositeOperator) argument_list[1].long_reference;
-          if (compose == DissolveCompositeOp)
-            (void) CloneString(&image->geometry,
-              argument_list[6].string_reference);
+          if (attribute_flag[6])
+            {
+              if (compose == DissolveCompositeOp)
+                (void) CloneString(&image->geometry,
+                  argument_list[6].string_reference);
+              else
+                SetImageOpacity(composite_image,(Quantum)
+                  StringToDouble(argument_list[6].string_reference,MaxRGB));
+            }
           if (attribute_flag[9])
             QueryColorDatabase(argument_list[9].string_reference,
               &composite_image->background_color,&exception);
@@ -5601,8 +5667,8 @@ Mogrify(ref,...)
             {
               mask_image=argument_list[10].image_reference;
               composite_image->storage_class=DirectClass;
-              composite_image->matte=True;
-              if (!composite_image->matte)
+              composite_image->matte=MagickTrue;
+              if (composite_image->matte == MagickFalse)
                 SetImageOpacity(composite_image,OpaqueOpacity);
               (void) CompositeImage(composite_image,CopyOpacityCompositeOp,
                 mask_image,0,0);
@@ -5652,10 +5718,16 @@ Mogrify(ref,...)
             info ? info->draw_info : (DrawInfo *) NULL);
           draw_info->fill.opacity=TransparentOpacity;
           draw_info->stroke.opacity=OpaqueOpacity;
-          (void) CloneString(&draw_info->primitive,"Point");
-          if (attribute_flag[0] && (argument_list[0].long_reference > 0))
-            (void) CloneString(&draw_info->primitive,MagickOptionToMnemonic(
-              MagickPrimitiveOptions,argument_list[0].long_reference));
+          (void) CloneString(&draw_info->primitive,"point");
+          if (attribute_flag[0])
+            {
+              if (argument_list[0].long_reference < 0)
+                (void) CloneString(&draw_info->primitive,
+                  argument_list[0].string_reference);
+              else
+                (void) CloneString(&draw_info->primitive,MagickOptionToMnemonic(
+                  MagickPrimitiveOptions,argument_list[0].long_reference));
+            }
           if (attribute_flag[1])
             {
               if (LocaleCompare(draw_info->primitive,"path") == 0)
@@ -5790,8 +5862,8 @@ Mogrify(ref,...)
               current.rx*affine.tx+current.sy*affine.ty+current.ty;
           }
           if (attribute_flag[15])
-            draw_info->fill_pattern=
-              CloneImage(argument_list[15].image_reference,0,0,True,&exception);
+            draw_info->fill_pattern=CloneImage(
+              argument_list[15].image_reference,0,0,MagickTrue,&exception);
           if (attribute_flag[16])
             draw_info->pointsize=argument_list[16].real_reference;
           if (attribute_flag[17])
@@ -5843,7 +5915,7 @@ Mogrify(ref,...)
           if (!attribute_flag[0])
             {
               ThrowPerlException(OptionError,"MapImageRequired",PackageName);
-              goto ReturnIt;
+              goto MethodException;
             }
           if (!attribute_flag[1])
             argument_list[1].long_reference=1;
@@ -5872,7 +5944,7 @@ Mogrify(ref,...)
           opacity=TransparentOpacity;
           if (attribute_flag[3])
             opacity=StringToDouble(argument_list[3].string_reference,MaxRGB);
-          if (image->matte == False)
+          if (image->matte == MagickFalse)
             SetImageOpacity(image,OpaqueOpacity);
           target=AcquireOnePixel(image,(long) (geometry.x % image->columns),
             (long) (geometry.y % image->rows),&exception);
@@ -5961,14 +6033,14 @@ Mogrify(ref,...)
             (info? info->quantize_info->colorspace : RGBColorspace));
           quantize_info.dither=attribute_flag[3] ?
             argument_list[3].long_reference :
-            (info ? info->quantize_info->dither : False);
+            (info ? info->quantize_info->dither : MagickFalse);
           quantize_info.measure_error=attribute_flag[4] ?
             argument_list[4].long_reference :
-            (info ? info->quantize_info->measure_error : False);
+            (info ? info->quantize_info->measure_error : MagickFalse);
           if (attribute_flag[5] && argument_list[5].long_reference)
             {
               (void) QuantizeImages(&quantize_info,image);
-              goto ReturnIt;
+              goto MethodException;
             }
           if ((image->storage_class == DirectClass) ||
               (image->colors > quantize_info.number_colors) ||
@@ -6001,13 +6073,13 @@ Mogrify(ref,...)
             cluster_threshold,
             smoothing_threshold;
 
-          unsigned int
+          MagickBooleanType
             verbose;
 
           cluster_threshold=1.0;
           smoothing_threshold=1.5;
           colorspace=RGBColorspace;
-          verbose=False;
+          verbose=MagickFalse;
           if (attribute_flag[0])
             {
               flags=ParseGeometry(argument_list[0].string_reference,
@@ -6042,7 +6114,7 @@ Mogrify(ref,...)
         }
         case 53:  /* Sync */
         {
-          SyncImage(image);
+          (void) SyncImage(image);
           break;
         }
         case 54:  /* Texture */
@@ -6058,11 +6130,11 @@ Mogrify(ref,...)
             op;
 
           op=SetEvaluateOperator;
-          if (attribute_flag[0] == False)
+          if (attribute_flag[0] == MagickFalse)
             argument_list[0].real_reference=0.0;
-          if (attribute_flag[1] != False)
+          if (attribute_flag[1] != MagickFalse)
             op=(MagickEvaluateOperator) argument_list[1].long_reference;
-          if (attribute_flag[2] != False)
+          if (attribute_flag[2] != MagickFalse)
             channel=(ChannelType) argument_list[2].long_reference;
           (void) EvaluateImageChannel(image,channel,op,
             argument_list[0].real_reference,&exception);
@@ -6155,7 +6227,7 @@ Mogrify(ref,...)
           if (!attribute_flag[0])
             {
               ThrowPerlException(OptionError,"StereoImageRequired",PackageName);
-              goto ReturnIt;
+              goto MethodException;
             }
           image=StereoImage(image,argument_list[0].image_reference,&exception);
           break;
@@ -6166,7 +6238,7 @@ Mogrify(ref,...)
             {
               ThrowPerlException(OptionError,"SteganoImageRequired",
                 PackageName);
-              goto ReturnIt;
+              goto MethodException;
             }
           if (!attribute_flag[1])
             argument_list[1].long_reference=0;
@@ -6206,7 +6278,7 @@ Mogrify(ref,...)
           double
             *kernel;
 
-          unsigned int
+          unsigned long
             order;
 
           if (!attribute_flag[0])
@@ -6214,8 +6286,14 @@ Mogrify(ref,...)
           if (attribute_flag[1])
             channel=(ChannelType) argument_list[1].long_reference;
           av=(AV *) argument_list[0].array_reference;
-          order=(unsigned int) sqrt(av_len(av)+1);
+          order=(unsigned long) sqrt(av_len(av)+1);
           kernel=(double *) AcquireMagickMemory(order*order*sizeof(double));
+          if (kernel == (double *) NULL)
+            {
+              ThrowPerlException(ResourceLimitFatalError,
+                "MemoryAllocationFailed",PackageName);
+              goto MethodException;
+            }
           for (j=0; j < (av_len(av)+1); j++)
             kernel[j]=(double) SvNV(*(av_fetch(av,j,0)));
           for ( ; j < (long) (order*order); j++)
@@ -6246,7 +6324,7 @@ Mogrify(ref,...)
                 Remove a profile from the image.
               */
               (void) ProfileImage(image,name,(const unsigned char *) NULL,0,
-                True);
+                MagickTrue);
               break;
             }
           if (attribute_flag[1] != 0)
@@ -6258,7 +6336,7 @@ Mogrify(ref,...)
               SetStringInfoDatum(profile,(const unsigned char *)
                 argument_list[1].string_reference);
               (void) ProfileImage(image,name,profile->datum,(unsigned long)
-                profile->length,False);
+                profile->length,MagickFalse);
               DestroyStringInfo(profile);
               break;
             }
@@ -6278,7 +6356,7 @@ Mogrify(ref,...)
             profile=GetImageProfile(profile_image,name);
             if (profile != (StringInfo *) NULL)
               (void) ProfileImage(image,name,profile->datum,(unsigned long)
-                profile->length,False);
+                profile->length,MagickFalse);
             name=GetNextImageProfile(profile_image);
           }
           DestroyImage(profile_image);
@@ -6376,7 +6454,7 @@ Mogrify(ref,...)
           if (!attribute_flag[0])
             argument_list[0].string_reference="#1";
           if (!attribute_flag[1])
-            argument_list[1].long_reference=True;
+            argument_list[1].long_reference=MagickTrue;
           (void) ClipPathImage(image,argument_list[0].string_reference,
             argument_list[1].long_reference);
           break;
@@ -6490,7 +6568,7 @@ Mogrify(ref,...)
             {
               ThrowPerlException(OptionError,"ReferenceImageRequired",
                 PackageName);
-              goto ReturnIt;
+              goto MethodException;
             }
           (void) IsImagesEqual(image,argument_list[0].image_reference);
           break;
@@ -6554,7 +6632,7 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].file_reference=stdout;
-          (void) DescribeImage(image,argument_list[0].file_reference,True);
+          (void) DescribeImage(image,argument_list[0].file_reference,MagickTrue);
           break;
         }
         case 80:  /* BlackThreshold */
@@ -6679,7 +6757,7 @@ Mogrify(ref,...)
     }
     DestroyExceptionInfo(&exception);
 
-  ReturnIt:
+  MethodException:
     if (reference_vector)
       reference_vector=(SV **) RelinquishMagickMemory(reference_vector);
     sv_setiv(MY_CXT.error_list,(IV) number_images);
@@ -6823,7 +6901,7 @@ Montage(ref,...)
           if (LocaleCompare(attribute,"compose") == 0)
             {
               sp=!SvPOK(ST(i)) ? SvIV(ST(i)) :
-                ParseMagickOption(MagickCompositeOptions,False,SvPV(ST(i),na));
+                ParseMagickOption(MagickCompositeOptions,MagickFalse,SvPV(ST(i),na));
               if (sp < 0)
                 {
                   ThrowPerlException(OptionError,"UnrecognizedType",
@@ -6895,7 +6973,7 @@ Montage(ref,...)
                in;
 
              in=!SvPOK(ST(i)) ? SvIV(ST(i)) :
-               ParseMagickOption(MagickGravityOptions,False,SvPV(ST(i),na));
+               ParseMagickOption(MagickGravityOptions,MagickFalse,SvPV(ST(i),na));
              if (in < 0)
                {
                  ThrowPerlException(OptionError,"UnrecognizedType",
@@ -6939,7 +7017,7 @@ Montage(ref,...)
                 in;
 
               in=!SvPOK(ST(i)) ? SvIV(ST(i)) :
-                ParseMagickOption(MagickModeOptions,False,SvPV(ST(i),na));
+                ParseMagickOption(MagickModeOptions,MagickFalse,SvPV(ST(i),na));
               switch (in)
               {
                 default:
@@ -6951,20 +7029,20 @@ Montage(ref,...)
                 case FrameMode:
                 {
                   (void) CloneString(&montage_info->frame,"15x15+3+3");
-                  montage_info->shadow=True;
+                  montage_info->shadow=MagickTrue;
                   break;
                 }
                 case UnframeMode:
                 {
                   montage_info->frame=(char *) NULL;
-                  montage_info->shadow=False;
+                  montage_info->shadow=MagickFalse;
                   montage_info->border_width=0;
                   break;
                 }
                 case ConcatenateMode:
                 {
                   montage_info->frame=(char *) NULL;
-                  montage_info->shadow=False;
+                  montage_info->shadow=MagickFalse;
                   (void) CloneString(&montage_info->geometry,"+0+0");
                   montage_info->border_width=0;
                 }
@@ -6991,7 +7069,7 @@ Montage(ref,...)
           if (LocaleCompare(attribute,"shadow") == 0)
             {
               sp=!SvPOK(ST(i)) ? SvIV(ST(i)) :
-                ParseMagickOption(MagickBooleanOptions,False,SvPV(ST(i),na));
+                ParseMagickOption(MagickBooleanOptions,MagickFalse,SvPV(ST(i),na));
               if (sp < 0)
                 {
                   ThrowPerlException(OptionError,"UnrecognizedType",
@@ -7307,7 +7385,7 @@ Mosaic(ref)
     info=GetPackageInfo(aTHX_ (void *) av,info);
     (void) CopyMagickString(image->filename,info->image_info->filename,
       MaxTextExtent);
-    SetImageInfo(info->image_info,False,&image->exception);
+    SetImageInfo(info->image_info,MagickFalse,&image->exception);
     if (exception.severity != UndefinedException)
       CatchException(&exception);
     DestroyExceptionInfo(&exception);
@@ -7369,6 +7447,9 @@ Ping(ref,...)
     jmp_buf
       error_jmp;
 
+    MagickBooleanType
+      status;
+
     register char
       **p;
 
@@ -7385,9 +7466,6 @@ Ping(ref,...)
     SV
       *reference;
 
-    unsigned int
-      status;
-
     unsigned long
       count;
 
@@ -7397,18 +7475,32 @@ Ping(ref,...)
     ac=(items < 2) ? 1 : items-1;
     list=(char **) AcquireMagickMemory((ac+1)*sizeof(*list));
     keep=list;
+    length=(STRLEN *) NULL;
+    if (list == (char **) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
+    keep=list;
     length=(STRLEN *) AcquireMagickMemory((ac+1)*sizeof(length));
+    if (length == (STRLEN *) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
     if (!sv_isobject(ST(0)))
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
     if (SvTYPE(reference) != SVt_PVAV)
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     av=(AV *) reference;
     info=GetPackageInfo(aTHX_ (void *) av,(struct PackageInfo *) NULL);
@@ -7441,13 +7533,13 @@ Ping(ref,...)
     keep=list;
     MY_CXT.error_jump=(&error_jmp);
     if (setjmp(error_jmp))
-      goto ReturnIt;
+      goto MethodException;
     status=ExpandFilenames(&n,&list);
-    if (status == False)
+    if (status == MagickFalse)
       {
         ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
           PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     count=0;
     GetExceptionInfo(&exception);
@@ -7482,12 +7574,15 @@ Ping(ref,...)
               break;
             }
 
-  ReturnIt:
+  MethodException:
     if (package_info)
       DestroyPackageInfo(package_info);
-    keep=(char **) RelinquishMagickMemory(keep);
-    list=(char **) RelinquishMagickMemory(list);
-    length=(STRLEN *) RelinquishMagickMemory(length);
+    if (keep)
+      keep=(char **) RelinquishMagickMemory(keep);
+    if (list)
+      list=(char **) RelinquishMagickMemory(list);
+    if (length)
+      length=(STRLEN *) RelinquishMagickMemory(length);
     SvREFCNT_dec(MY_CXT.error_list);  /* throw away all errors */
     MY_CXT.error_list=NULL;
   }
@@ -7572,7 +7667,7 @@ Preview(ref,...)
     preview_type=GammaPreview;
     if (items > 1)
       preview_type=(PreviewType)
-        ParseMagickOption(MagickPreviewOptions,False,SvPV(ST(1),na));
+        ParseMagickOption(MagickPreviewOptions,MagickFalse,SvPV(ST(1),na));
     GetExceptionInfo(&exception);
     for ( ; image; image=image->next)
     {
@@ -7636,20 +7731,20 @@ QueryColor(ref,...)
     MY_CXT.error_list=newSVpv("",0);
     if (items == 1)
       {
-        char
+        const ColorInfo
           **colorlist;
 
         unsigned long
           colors;
 
-        colorlist=GetColorList("*",&colors);
+        colorlist=GetColorInfoList("*",&colors);
         EXTEND(sp,colors);
-        for (i=0; i < colors; i++)
+        for (i=0; i < (long) colors; i++)
         {
-          PUSHs(sv_2mortal(newSVpv(colorlist[i],0)));
-          colorlist[i]=(char *) RelinquishMagickMemory(colorlist[i]);
+          PUSHs(sv_2mortal(newSVpv(colorlist[i]->name,0)));
         }
-        colorlist=(char **) RelinquishMagickMemory(colorlist);
+        colorlist=(const ColorInfo **)
+          RelinquishMagickMemory((ColorInfo **) colorlist);
         goto MethodException;
       }
     EXTEND(sp,4*items);
@@ -7773,20 +7868,20 @@ QueryFont(ref,...)
     MY_CXT.error_list=newSVpv("",0);
     if (items == 1)
       {
-        char
+        const TypeInfo
           **typelist;
 
         unsigned long
           types;
 
-        typelist=GetTypeList("*",&types);
+        typelist=GetTypeInfoList("*",&types);
         EXTEND(sp,types);
-        for (i=0; i < types; i++)
+        for (i=0; i < (long) types; i++)
         {
-          PUSHs(sv_2mortal(newSVpv(typelist[i],0)));
-          typelist[i]=(char *) RelinquishMagickMemory(typelist[i]);
+          PUSHs(sv_2mortal(newSVpv(typelist[i]->name,0)));
         }
-        typelist=(char **) RelinquishMagickMemory(typelist);
+        typelist=(const TypeInfo **)
+          RelinquishMagickMemory((TypeInfo **) typelist);
         goto MethodException;
       }
     EXTEND(sp,10*items);
@@ -7899,6 +7994,15 @@ QueryFontMetrics(ref,...)
     int
       type;
 
+    jmp_buf
+      error_jmp;
+
+    MagickBooleanType
+      status;
+
+    MagickStatusType
+      flags;
+
     register int
       i;
 
@@ -7911,21 +8015,25 @@ QueryFontMetrics(ref,...)
     TypeMetric
       metrics;
 
-    unsigned int
-      flags,
-      status;
-
     dMY_CXT;
     MY_CXT.error_list=newSVpv("",0);
     reference=SvRV(ST(0));
     av=(AV *) reference;
     info=GetPackageInfo(aTHX_ (void *) av,(struct PackageInfo *) NULL);
+    MY_CXT.error_jump=(&error_jmp);
+    status=setjmp(error_jmp);
+    if (status)
+      {
+        sv_setiv(MY_CXT.error_list,(IV) SvCUR(MY_CXT.error_list) != 0);
+        SvPOK_on(MY_CXT.error_list);
+        ST(0)=sv_2mortal(MY_CXT.error_list);
+        MY_CXT.error_list=NULL;
+        MY_CXT.error_jump=NULL;
+        XSRETURN(1);
+      }
     image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
     if (image == (Image *) NULL)
-      {
-        ThrowPerlException(OptionError,"NoImagesDefined",PackageName);
-        goto MethodException;
-      }
+      ThrowPerlException(OptionError,"NoImagesDefined",PackageName);
     draw_info=CloneDrawInfo(info->image_info,info->draw_info);
     CloneString(&draw_info->text,"");
     current=draw_info->affine;
@@ -7943,7 +8051,7 @@ QueryFontMetrics(ref,...)
         {
           if (LocaleCompare(attribute,"antialias") == 0)
             {
-              type=ParseMagickOption(MagickBooleanOptions,False,
+              type=ParseMagickOption(MagickBooleanOptions,MagickFalse,
                 SvPV(ST(i),na));
               if (type < 0)
                 {
@@ -7987,7 +8095,6 @@ QueryFontMetrics(ref,...)
               CloneString(&draw_info->family,SvPV(ST(i),na));
               break;
             }
-          ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
           if (LocaleCompare(attribute,"fill") == 0)
             {
               if (info)
@@ -8013,8 +8120,8 @@ QueryFontMetrics(ref,...)
             }
           if (LocaleCompare(attribute,"gravity") == 0)
             {
-              draw_info->gravity=(GravityType)
-                ParseMagickOption(MagickGravityOptions,False,SvPV(ST(i),na));
+              draw_info->gravity=(GravityType) ParseMagickOption(
+                MagickGravityOptions,MagickFalse,SvPV(ST(i),na));
               break;
             }
           ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
@@ -8083,7 +8190,8 @@ QueryFontMetrics(ref,...)
             }
           if (LocaleCompare(attribute,"style") == 0)
             {
-              type=ParseMagickOption(MagickStyleOptions,False,SvPV(ST(i),na));
+              type=ParseMagickOption(MagickStyleOptions,MagickFalse,
+                SvPV(ST(i),na));
               if (type < 0)
                 {
                   ThrowPerlException(OptionError,"UnrecognizedType",
@@ -8122,7 +8230,7 @@ QueryFontMetrics(ref,...)
           if (LocaleCompare(attribute,"weight") == 0)
             {
               flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
-              draw_info->weight=geometry_info.rho;
+              draw_info->weight=(unsigned long) geometry_info.rho;
               break;
             }
           ThrowPerlException(OptionError,"UnrecognizedAttribute",attribute);
@@ -8173,7 +8281,7 @@ QueryFontMetrics(ref,...)
       }
     status=GetTypeMetrics(image,draw_info,&metrics);
     (void) CatchImageException(image);
-    if (status == False)
+    if (status == MagickFalse)
       PUSHs(&sv_undef);
     else
       {
@@ -8186,10 +8294,9 @@ QueryFontMetrics(ref,...)
         PUSHs(sv_2mortal(newSVnv(metrics.max_advance)));
       }
     DestroyDrawInfo(draw_info);
-
-  MethodException:
-    SvREFCNT_dec(MY_CXT.error_list);
+    SvREFCNT_dec(MY_CXT.error_list);  /* can't return warning messages */
     MY_CXT.error_list=NULL;
+    MY_CXT.error_jump=NULL;
   }
 
 #
@@ -8229,22 +8336,24 @@ QueryFormat(ref,...)
     if (items == 1)
       {
         char
-          format[MaxTextExtent],
+          format[MaxTextExtent];
+
+        const MagickInfo
           **format_list;
 
         unsigned long
           types;
 
-        format_list=GetMagickList("*",&types);
+        format_list=GetMagickInfoList("*",&types);
         EXTEND(sp,types);
-        for (i=0; i < types; i++)
+        for (i=0; i < (long) types; i++)
         {
-          (void) CopyMagickString(format,format_list[i],MaxTextExtent);
+          (void) CopyMagickString(format,format_list[i]->name,MaxTextExtent);
           LocaleLower(format);
           PUSHs(sv_2mortal(newSVpv(format,0)));
-          format_list[i]=(char *) RelinquishMagickMemory(format_list[i]);
         }
-        format_list=(char **) RelinquishMagickMemory(format_list);
+        format_list=(const MagickInfo **)
+          RelinquishMagickMemory((MagickInfo *) format_list);
         goto MethodException;
       }
     EXTEND(sp,8*items);
@@ -8324,6 +8433,9 @@ Read(ref,...)
     jmp_buf
       error_jmp;
 
+    MagickBooleanType
+      status;
+
     register char
       **p;
 
@@ -8342,9 +8454,6 @@ Read(ref,...)
       *rv,
       *sv;
 
-    unsigned int
-      status;
-
     volatile int
       number_images;
 
@@ -8355,18 +8464,31 @@ Read(ref,...)
     ac=(items < 2) ? 1 : items-1;
     list=(char **) AcquireMagickMemory((ac+1)*sizeof(*list));
     keep=list;
+    length=(STRLEN *) NULL;
+    if (list == (char **) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
     length=(STRLEN *) AcquireMagickMemory((ac+1)*sizeof(length));
+    if (length == (STRLEN *) NULL)
+      {
+        ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
+          PackageName);
+        goto MethodException;
+      }
     if (!sv_isobject(ST(0)))
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     reference=SvRV(ST(0));
     hv=SvSTASH(reference);
     if (SvTYPE(reference) != SVt_PVAV)
       {
         ThrowPerlException(OptionError,"ReferenceIsNotMyType",PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     av=(AV *) reference;
     info=GetPackageInfo(aTHX_ (void *) av,(struct PackageInfo *) NULL);
@@ -8399,13 +8521,13 @@ Read(ref,...)
     keep=list;
     MY_CXT.error_jump=(&error_jmp);
     if (setjmp(error_jmp))
-      goto ReturnIt;
+      goto MethodException;
     status=ExpandFilenames(&n,&list);
-    if (status == False)
+    if (status == MagickFalse)
       {
         ThrowPerlException(ResourceLimitError,"MemoryAllocationFailed",
           PackageName);
-        goto ReturnIt;
+        goto MethodException;
       }
     GetExceptionInfo(&exception);
     number_images=0;
@@ -8438,12 +8560,15 @@ Read(ref,...)
               break;
             }
 
-  ReturnIt:
+  MethodException:
     if (package_info)
       DestroyPackageInfo(package_info);
-    keep=(char **) RelinquishMagickMemory(keep);
-    list=(char **) RelinquishMagickMemory(list);
-    length=(STRLEN *) RelinquishMagickMemory(length);
+    if (keep)
+      keep=(char **) RelinquishMagickMemory(keep);
+    if (list)
+      list=(char **) RelinquishMagickMemory(list);
+    if (length)
+      length=(STRLEN *) RelinquishMagickMemory(length);
     sv_setiv(MY_CXT.error_list,(IV) number_images);
     SvPOK_on(MY_CXT.error_list);
     ST(0)=sv_2mortal(MY_CXT.error_list);
@@ -8687,7 +8812,7 @@ Transform(ref,...)
     GetExceptionInfo(&exception);
     for ( ; image; image=image->next)
     {
-      clone=CloneImage(image,0,0,True,&exception);
+      clone=CloneImage(image,0,0,MagickTrue,&exception);
       if (exception.severity != UndefinedException)
         CatchException(&exception);
       if (clone == (Image *) NULL)
@@ -8800,7 +8925,7 @@ Write(ref,...)
       (void) CopyMagickString(next->filename,filename,MaxTextExtent);
       next->scene=scene++;
     }
-    SetImageInfo(package_info->image_info,True,&image->exception);
+    SetImageInfo(package_info->image_info,MagickTrue,&image->exception);
     for (next=image; next; next=next->next)
     {
       (void) WriteImage(package_info->image_info,next);
@@ -8809,7 +8934,6 @@ Write(ref,...)
       if (package_info->image_info->adjoin)
         break;
     }
-    package_info->image_info->file=(FILE *) NULL;
 
   MethodException:
     if (package_info)

@@ -26,7 +26,7 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.0.0',
+   'VERSION'   => '6.0.2',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
@@ -50,7 +50,7 @@ WriteMakefile
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/local/lib -L../magick/.libs -lMagick -L/usr/X11R6/lib -L/usr/lib -L/usr/lib -llcms -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
+   'LIBS'	=> ['-L/usr/local/lib -L../magick/.libs -lMagick -L/usr/X11R6/lib -lfreetype -lz -L/usr/lib -llcms -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -91,5 +91,5 @@ sub MY::test {
      my $inherited = shift->SUPER::test(@_);
                                                                                 
      # Run tests in our environment
-     $inherited =~ s:PERL_DL_NONLAZY=1:PERL_DL_NONLAZY=1:g ;     $inherited;
+     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh ../magick.sh PERL_DL_NONLAZY=1:g ;     $inherited;
  }

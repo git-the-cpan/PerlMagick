@@ -5,9 +5,9 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'	=> 'Image::Magick',
     'VERSION_FROM' => 'Magick.pm', # finds $VERSION
-    'LIBS'	=> ['-L/pathos/home/cristy/ImageMagick/bzlib -L/pathos/home/cristy/ImageMagick/hdf/hdf/src -L/pathos/home/cristy/ImageMagick/jbig/libjbig -L/pathos/home/cristy/ImageMagick/jpeg -L/pathos/home/cristy/ImageMagick/zlib -L/pathos/home/cristy/ImageMagick/png -L/pathos/home/cristy/ImageMagick/tiff/libtiff -L/pathos/home/cristy/ImageMagick/ttf -L/pathos/home/cristy/ImageMagick/ttf/lib -L/pathos/home/cristy/ImageMagick/ttf/lib/.libs -L/usr/local/lib -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/local/lib -L/usr/local/lib -lMagick  -lX11 -lsocket -lnsl -lXext -lXt -ljbig -ljpeg -lbz2 -ldf -lpng -ltiff -lttf -ldpstk -ldps -lz -lm'],
+    'LIBS'	=> ['-L/usr/local/lib -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/local/lib -L/usr/local/lib -lMagick  -lX11 -lsocket -lnsl -lXext -lXt -ldpstk -ldps -lm'],
     'DEFINE'	=> '',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '-I../magick -I/pathos/home/cristy/ImageMagick/bzlib -I/pathos/home/cristy/ImageMagick/hdf/hdf/src -I/pathos/home/cristy/ImageMagick/jbig/libjbig -I/pathos/home/cristy/ImageMagick/jpeg -I/pathos/home/cristy/ImageMagick/zlib -I/pathos/home/cristy/ImageMagick/png -I/pathos/home/cristy/ImageMagick/tiff/libtiff -I/pathos/home/cristy/ImageMagick/ttf -I/pathos/home/cristy/ImageMagick/ttf/lib -I/pathos/home/cristy/ImageMagick/ttf/lib/.libs -I/usr/local/include -I/usr/openwin/include -I/usr/openwin/include/X11',
+    'INC'	=> '-I../magick -I/usr/local/include/magick -I/usr/openwin/include -I/usr/openwin/include/X11',
 );
 
 #
@@ -17,12 +17,13 @@ sub MY::test
 {
    #
    # List any ImageMagick features derived from add-on libraries
-   # or programs (delegate) you would like to test.
+   # or programs you would like to test.
    #
    # Valid choices are:
    #
    #  Feature   Formats Tested		Prerequisites
    #  =======   ======================	======================================
+   #   bzlib    BZip compression        BZip library
    #   cgm	CGM format		'ralcgm' program
    #   hdf	HDF format		HDF library
    #   jbig	JBIG format		JBIG library
@@ -43,13 +44,14 @@ sub MY::test
 
    package MY; # so that "SUPER" works right
    my $inherited = shift->SUPER::test(@_);
-   my $delegatetests='';
+   my $delegate_tests='';
    my $delegate;
    foreach $delegate (@DELEGATES) {
      if( -d "t/$delegate" ) {
-       $delegatetests .= " t/$delegate/*.t";
+       $delegate_tests .= " t/$delegate/*.t";
     }
    }
-   $inherited =~ s:^TEST_FILES =.*:TEST_FILES = t/*.t ${delegatetests}:m;
+   $inherited =~ s:^TEST_FILES =.*:TEST_FILES = t/*.t ${delegate_tests}:m;
    $inherited;
 }
+

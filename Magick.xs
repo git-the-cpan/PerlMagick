@@ -171,8 +171,8 @@ static char *p_previews[] = {
 
 static char *p_primitives[] = {
     "Undefined", "Point", "Line", "Rectangle", "FillRectangle", "Circle",
-    "FillCircle", "Polygon", "FillPolygon", "Color", "Matte", "Text", "Image",
-0 };
+    "FillCircle", "Ellipse", "FillEllipse", "Polygon", "FillPolygon", "Color",
+    "Matte", "Text", "Image", 0 };
 
 static char *p_units[] = {
     "undefined units", "pixels / inch", "pixels / centimeter", 0 };
@@ -367,8 +367,6 @@ copy_info(struct info *info)
     }
 
     *newinfo = *info;
-    newinfo->info.filename =
-      strcpy((char *) safemalloc(MaxTextExtent), info->info.filename);
     if (info->info.server_name)
 	newinfo->info.server_name = copy_string(info->info.server_name);
     if (info->info.font)
@@ -410,8 +408,6 @@ copy_info(struct info *info)
 static void
 destroy_info(struct info *info)
 {
-    if (info->info.filename)
-	safefree(info->info.filename);
     if (info->info.server_name)
 	safefree(info->info.server_name);
     if (info->info.font)
@@ -1347,14 +1343,14 @@ Animate(ref, ...)
 		for (n = 2; n < items; n += 2)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
-	    display = XOpenDisplay(info->info.server_name);
+	    display = XOpenDisplay(temp->info.server_name);
 	    if (display)
 	    {
 		XSetErrorHandler(XError);
 		resource_database = XGetResourceDatabase(display, client_name);
 		XGetResourceInfo(resource_database, client_name, &resource);
-		resource.image_info = info->info;
-		resource.quantize_info = info->quant;
+		resource.image_info = temp->info;
+		resource.quantize_info = temp->quant;
 
 		(void) XAnimateImages(display, &resource, (char **) NULL, 0,
 		    image);
@@ -1636,10 +1632,10 @@ Display(ref, ...)
 		for (n = 2; n < items; n += 2)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
-	    display = XOpenDisplay(info->info.server_name);
+	    display = XOpenDisplay(temp->info.server_name);
             if (!display)
                 warning(XServerError,"Unable to connect to X server",
-                    XDisplayName(info->info.server_name))
+                    XDisplayName(temp->info.server_name))
             else
 	    {
 		XSetErrorHandler(XError);
@@ -2317,7 +2313,6 @@ Mogrify(ref, ...)
 	    Image *image, *next, *region_image = NULL;
 	    struct info *info, *temp = NULL;
 	    char b[80];
-	    unsigned int compress;
 	    SV **svarr = NULL, **pv;
 	    char *commands[10];
 
@@ -2463,8 +2458,6 @@ Mogrify(ref, ...)
 	    {
 		image = next;
 
-		compress = image->packets <
-		    ((image->columns*image->rows*3) >> 2);
 		if ((rg.width*rg.height) != 0)
 		{
 		    region_image = image;
@@ -3266,8 +3259,6 @@ Mogrify(ref, ...)
 
 		if (image)
 		{
-		    if (compress)
-			CondenseImage(image);
 		    ++nimg;
 		    if (next && next != image)
 		    {

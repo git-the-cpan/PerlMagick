@@ -4,7 +4,7 @@
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
-BEGIN { $| = 1; $test=1, print "1..76)\n"; }
+BEGIN { $| = 1; $test=1, print "1..75)\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -12,6 +12,10 @@ $loaded=1;
 require 't/subroutines.pl';
 
 chdir 't' || die 'Cd failed';
+
+# Determine if QuantumLeap is defined
+$image=Image::Magick->new;
+my $depth = $image->Get('depth');
 
 testSetAttribute('input.miff','adjoin','True');
 
@@ -25,13 +29,18 @@ testSetAttribute('input.miff','antialias','True');
 testSetAttribute('input.miff','antialias','False');
 
 ++$test;
-testSetAttribute('input.miff','background','#807060');
+if ($depth eq 16) {
+   testSetAttribute('input.miff','background','#808070706060');
+} else {
+   testSetAttribute('input.miff','background','#807060');
+}
 
 ++$test;
-testSetAttribute('input.miff','bordercolor','#807060');
-
-++$test;
-testSetAttribute('input.miff','colormap[20]','#807060');
+if ($depth eq 16) {
+   testSetAttribute('input.miff','bordercolor','#808070706060');
+} else {
+   testSetAttribute('input.miff','bordercolor','#807060');
+}
 
 ++$test;
 testSetAttribute('input.miff','compress','None');
@@ -103,7 +112,11 @@ testSetAttribute('input.miff','loop',100);
 testSetAttribute('input.miff','magick','TIFF');
 
 ++$test;
-testSetAttribute('input.miff','mattecolor','#807060');
+if ($depth eq 16) {
+   testSetAttribute('input.miff','mattecolor','#808070706060');
+} else {
+   testSetAttribute('input.miff','mattecolor','#807060');
+}
 
 ++$test;
 testSetAttribute('input.miff','monochrome','True');
@@ -116,7 +129,11 @@ testSetAttribute('input.miff','page','595x842>+0+0');
 
 ++$test;
 # The value must be equal to the value of the image at this pixel (currently #ccc)
-testSetAttribute('input.miff','pixel[20,23]','#807060');
+if ($depth eq 16) {
+   testSetAttribute('input.miff','pixel[20,23]','#808070706060');
+} else {
+   testSetAttribute('input.miff','pixel[20,23]','#807060');
+}
 
 ++$test;
 testSetAttribute('input.miff','pointsize',12);

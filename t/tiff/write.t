@@ -17,25 +17,31 @@ chdir 't/tiff' || die 'Cd failed';
 #
 # 1) Test pseudocolor image
 #
+print("PsuedoColor image ...\n");
 testReadWrite( 'input_256.tiff',
 	       'output_256.tiff',
 	       q/quality=>54/,
-	       '6098df40d515cdc35541d05928c0ea1b' );
+	       '07babaaf9f2622e1176a2ab7caf4012d',
+               'f90f998ebc41c7c9833ea2a454791d70');
 
 #
 # 2) Test truecolor image
 #
 ++$test;
+print("TrueColor image ...\n");
 testReadWrite( 'input_truecolor.tiff',
 	       'output_truecolor.tiff',
 	       q/quality=>55/,
-	       'ae1ef2c41e1750186bc03d867a9b47bf' );
+	       '8023e6a23a15ab1240b48ec6c085ed40',
+               '4d3c3e472ace236f15b27c7af6e3d464' );
 
 #
 # 3) Test monochrome image
 #
 ++$test;
+print("Monochrome image ...\n");
 testReadWrite(  'input_mono.tiff',
 		'output_mono.tiff',
 		q//,
-		'f194ead12be5179c3930fa7a59e9af45' );
+		'8023e6a23a15ab1240b48ec6c085ed40',
+		'ae8254aa2869a317f789629aa4276f0a' );

@@ -12,27 +12,25 @@ $image->Read('xc:white');
 #
 # Draw shapes.
 #
-$image->Draw(pen=>'@tile.gif',primitive=>'FillPolygon',
+$tile=Image::Magick->new;
+$tile->Read('tile.gif');
+$image->Draw(primitive=>'Polygon',tile=>$tile,
   points=>'30,30 100,10 190,290 30,290');
-$image->Draw(pen=>'red',primitive=>'FillEllipse',
-  points=>'100,100 100,150 0,360');
-$image->Draw(pen=>'black',primitive=>'Ellipse',
-  points=>'100,100 100,150 0,360',linewidth=>5);
-$image->Draw(pen=>'black',primitive=>'Polygon',
-  points=>'30,30 100,10 190,290 30,290 30,30',linewidth=>5);
+$image->Draw(stroke=>'red',primitive=>'Ellipse',stroke=>'black',fill=>'red',
+  linewidth=>5,points=>'100,100 100,150 0,360');
+$image->Draw(primitive=>'Polygon',stroke=>'black',linewidth=>5,
+  points=>'30,30 100,10 190,290 30,290');
 $image->Set(fuzz=>80);
-$image->ColorFloodfill(geometry=>'+132+62',pen=>'blue');
-$image->Annotate(pen=>'red',geometry=>'+150+10',font=>'@Generic.ttf',
-  pointsize=>12,text=>'Hello world!');
-$image->Annotate(pen=>'blue',geometry=>'+150+28',font=>'@Generic.ttf',
-  pointsize=>10,text=>'Goodbye cruel world!');
+$image->ColorFloodfill(geometry=>'+132+62',fill=>'blue');
 #
-# Write rotated text.
+# Draw text.
 #
-$image->Rotate(90);
-$image->Annotate(pen=>'black',geometry=>'+20+280',font=>'@Generic.ttf',
-  pointsize=>10,text=>"I'm climbing the wall!");
-$image->Rotate(-90);
+$image->Annotate(fill=>'red',geometry=>'+150+20',font=>'@Generic.ttf',
+  pointsize=>18,text=>'Hello world!');
+$image->Annotate(fill=>'blue',geometry=>'+150+38',font=>'@Generic.ttf',
+  pointsize=>14,text=>'Goodbye cruel world!');
+$image->Annotate(fill=>'black',geometry=>'+280+120',font=>'@Generic.ttf',
+  pointsize=>14,text=>"I'm climbing the wall!",rotate=>90.0);
 #
 # Write image.
 #

@@ -7,9 +7,9 @@ use Config;
 WriteMakefile(
     'NAME'	=> 'Image::Magick',
     'VERSION_FROM' => 'Magick.pm', # finds $VERSION
-    'LIBS'	=> ['-L/usr/local/lib -L/usr/openwin/lib -R/usr/openwin/lib -L/pathos/home/cristy/Archive/ImageMagick/ImageMagick/magick -lMagick  -ldpstk -ldps -lXext -lXt -lX11 -lsocket -lnsl -lm'],
-    'DEFINE'	=> '',     # e.g., '-DHAVE_SOMETHING' 
-    'INC'	=> '-I.. -I/usr/local/include -I/usr/openwin/include -I/usr/openwin/include/X11',
+    'LIBS'	=> ['-L/pathos/home/cristy/ImageMagick/bzlib -L/pathos/home/cristy/ImageMagick/hdf/hdf/src -L/pathos/home/cristy/ImageMagick/jbig/libjbig -L/pathos/home/cristy/ImageMagick/jpeg -L/pathos/home/cristy/ImageMagick/zlib -L/pathos/home/cristy/ImageMagick/png -L/pathos/home/cristy/ImageMagick/tiff/libtiff -L/pathos/home/cristy/ImageMagick/ttf -L/pathos/home/cristy/ImageMagick/ttf/lib -L/pathos/home/cristy/ImageMagick/ttf/lib/.libs -L/usr/local/lib -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/local/lib -lMagick -ljbig -ldf -ltiff -lttf -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lX11 -lsocket -lnsl -lbz2 -lz -lpthread -lm'],
+    'DEFINE'	=> '-DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
+    'INC'	=> '-I../ -I.. -D_REENTRANT -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/pathos/home/cristy/ImageMagick/bzlib -I/pathos/home/cristy/ImageMagick/hdf/hdf/src -I/pathos/home/cristy/ImageMagick/jbig/libjbig -I/pathos/home/cristy/ImageMagick/jpeg -I/pathos/home/cristy/ImageMagick/zlib -I/pathos/home/cristy/ImageMagick/png -I/pathos/home/cristy/ImageMagick/tiff/libtiff -I/pathos/home/cristy/ImageMagick/ttf -I/pathos/home/cristy/ImageMagick/ttf/lib -I/pathos/home/cristy/ImageMagick/ttf/lib/.libs -I/usr/local/include -I/usr/openwin/include -I/usr/openwin/include/X11',
     ($Config{'archname'} =~ /-object$/i ? ('CAPI' => 'TRUE') : ()),
 );
 
@@ -43,7 +43,7 @@ sub MY::test
    #
    # e.g. my @DELEGATES = qw/jpeg tiff/;
    #
-   my @DELEGATES = qw/ cgm hpgl mpeg ps rad x xfig/;
+   my @DELEGATES = qw/ bzlib cgm hpgl hdf jbig jpeg mpeg png ps rad tiff ttf x xfig zlib/;
 
    package MY; # so that "SUPER" works right
    my $inherited = shift->SUPER::test(@_);
@@ -55,6 +55,12 @@ sub MY::test
     }
    }
    $inherited =~ s:^TEST_FILES =.*:TEST_FILES = t/*.t ${delegate_tests}:m;
+   #
+   # Only test installed PerlMagick due to portability problems
+   # and because PerlMagick does not link against the uninstalled
+   # ImageMagick library.
+   #
+   $inherited =~ s:PERL_DL_NONLAZY=1 ::mg;
    $inherited;
 }
 

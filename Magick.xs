@@ -153,8 +153,8 @@ static char *p_units[] = {
 
 static char *p_composites[] = {
     "Undefined", "Over", "In", "Out", "Atop", "Xor", "Plus", "Minus", "Add",
-    "Subtract", "Difference", "Bumpmap", "Replace", "MatteReplace", "Mask",
-    "Blend", "Displace", 0 };
+    "Subtract", "Difference", "Bumpmap", "Replace", "ReplaceRed",
+    "ReplaceGreen", "ReplaceBlue", "ReplaceMatte", "Blend", "Displace", 0 };
 
 static char *p_colorspaces[] = {
     "Undefined", "RGB", "Gray", "Transparent", "OHTA", "XYZ", "YCbCr", "YCC",

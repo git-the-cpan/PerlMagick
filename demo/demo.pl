@@ -43,9 +43,8 @@ $example->Label('Add Noise');
 $example->AddNoise("LaplacianNoise");
 push(@$images,$example);
 $example=$model->Clone();
-$example=$model->Clone();
 $example->Label('Annotate');
-$example->Annotate(text=>'Magick',geometry=>'+0+20',font=>'@Generic.ttf',
+$example->Annotate(text=>'Magick',geometry=>'+0+20',font=>'Generic.ttf',
   fill=>'gold',gravity=>'North',pointsize=>14);
 push(@$images,$example);
 $example=$model->Clone();
@@ -83,7 +82,7 @@ push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Draw');
 $example->Draw(stroke=>'gold',primitive=>'circle',points=>'60,90 60,120',
-  linewidth=>2);
+  stroke_width=>2);
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Detect Edges');
@@ -167,6 +166,10 @@ warn "$x" if "$x";
 $plasma->Label('Plasma');
 push(@$images,$plasma);
 $example=$model->Clone();
+$example->Label('Quantize');
+$example->Quantize();
+push(@$images,$example);
+$example=$model->Clone();
 $example->Label('Raise');
 $example->Raise();
 push(@$images,$example);
@@ -237,7 +240,7 @@ push(@$images,$example);
 print "Montage image...\n";
 $montage=$images->Montage(filename=>'PerlMagick',geometry=>'130x194+10+5>',
   gravity=>'Center',bordercolor=>'green',borderwidth=>1,tile=>'5x1000',
-  compose=>'over',background=>'#ffffff',font=>'@Generic.ttf',pointsize=>18,
+  compose=>'over',background=>'#ffffff',font=>'Generic.ttf',pointsize=>18,
   fill=>'#600');
 $logo=Image::Magick->new();
 $logo->Read('logo:');

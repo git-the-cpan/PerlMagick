@@ -9,11 +9,11 @@ Introduction
 
     See
 
-        http://www.wizards.dupont.com/magick/www/perl.html
+        http://www.simplesystems.org/ImageMagick/www/perl.html
 
     for additional information about PerlMagick.  See
 
-        http://www.wizards.dupont.com/magick/
+        http://www.simplesystems.org/ImageMagick/
 
     for instructions about installing ImageMagick.
 
@@ -22,8 +22,8 @@ Installation
 
     Get the PerlMagick distribution and type the following: 
 
-        gunzip PerlMagick-5.25.tar.gz
-        tar xvf PerlMagick-5.25.tar
+        gunzip PerlMagick-5.27.tar.gz
+        tar xvf PerlMagick-5.27.tar
         cd Magick
 
     Next, edit Makefile.PL and change LIBS and INC to include the

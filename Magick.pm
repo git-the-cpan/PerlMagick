@@ -26,7 +26,7 @@ require AutoLoader;
       CacheError StreamError Success Transparent Opaque
     );
 
-$VERSION = '5.25';
+$VERSION = '5.28';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -93,7 +93,7 @@ developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.wizards.dupont.com/cristy/www/perl.html
+	http://www.simplesystems.org/ImageMagick/www/perl.html
 
 =head1 AUTHOR
 

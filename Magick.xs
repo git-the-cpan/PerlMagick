@@ -128,9 +128,6 @@ static char *p_noises[] = {
     "Uniform", "Gaussian", "Multiplicative", "Impulse", "Laplacian", "Poisson",
 0 };
 
-static char *p_alignments[] = {
-    "Undefined", "Left", "Center", "Right", 0 };
-
 static char *p_boolean[] = {
     "False", "True", 0 };
 
@@ -253,10 +250,10 @@ static struct routines {
     {	"Zoom", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT},
 		  {"filter", p_filters} } },
     {	"IsGrayImage", },
-    {	"Annotate", { {"server", P_STR}, {"font", P_STR}, {"point", P_INT},
+    {	"Annotate", { {"text", P_STR}, {"font", P_STR}, {"point", P_INT},
 		    {"density", P_STR}, {"box", P_STR}, {"pen", P_STR},
-		    {"geom", P_STR}, {"text", P_STR}, {"x", P_INT},
-		    {"y", P_INT}, {"align", p_alignments} } },
+		    {"geom", P_STR}, {"server", P_STR}, {"x", P_INT},
+		    {"y", P_INT}, {"grav", p_gravities} } },
     {	"ColorFloodfill", { {"geom", P_STR}, {"x", P_INT}, {"y", P_INT},
 			    {"pen", P_STR}, {"bordercolor", P_STR} } },
     {	"Composite", { {"compos", p_composites}, {"image", P_IMG},
@@ -281,7 +278,7 @@ static struct routines {
     {	"Opaque", { {"color", P_STR}, {"pen", P_STR} } },
     {	"Quantize", { {"colors", P_INT}, {"tree", P_INT},
     		    {"colorsp", p_colorspaces}, {"dither", p_boolean},
-		    {"measure", p_boolean} } },
+		    {"measure", p_boolean}, {"global", p_boolean} } },
     {	"Raise", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT},
 		    {"x", P_INT}, {"y", P_INT}, {"raise", p_boolean} } },
     {	"Segment", { {"colorsp", p_colorspaces}, {"verbose", p_boolean},
@@ -298,6 +295,9 @@ static struct routines {
     {	"Wave", { {"geom", P_STR}, {"ampli", P_DBL}, {"wave", P_DBL} } },
     {	"Layer", { {"layer", p_layers} } },
     {	"Condense", },
+    {	"Stereo", { {"image", P_IMG} } },
+    {	"Stegano", { {"image", P_IMG}, {"offset", P_INT} } },
+    {	"Coalesce", },
 };
 
 static SV *im_er_mes;		/* Perl variable for storing messages */
@@ -373,8 +373,6 @@ copy_info(struct info *info)
 	newinfo->info.font = copy_string(info->info.font);
     if (info->info.pen)
 	newinfo->info.pen = copy_string(info->info.pen);
-    if (info->info.box)
-	newinfo->info.box = copy_string(info->info.box);
     if (info->info.size)
 	newinfo->info.size = copy_string(info->info.size);
     if (info->info.tile)
@@ -414,8 +412,6 @@ destroy_info(struct info *info)
 	safefree(info->info.font);
     if (info->info.pen)
 	safefree(info->info.pen);
-    if (info->info.box)
-	safefree(info->info.box);
     if (info->info.size)
 	safefree(info->info.size);
     if (info->info.tile)
@@ -455,7 +451,7 @@ warninghandler(const char *message, const char *qual)
 	return;
 
     magick_status = SetErrorStatus(0);
-    sprintf(b, "Warning %d: %.128s%s%.128s%s%s%.64s%s",
+    FormatString(b, "Warning %d: %.128s%s%.128s%s%s%.64s%s",
 		magick_status, message,
 		qual? " (" : "", qual? qual : "", qual? ")" : "",
 		en? " [" : "", en? strerror(en) : "", en? "]" : "");
@@ -488,7 +484,7 @@ errorhandler(const char *message, const char *qual)
     errno = 0;
 
     magick_status = SetErrorStatus(0);
-    sprintf(b, "Error %d: %.128s%s%.128s%s%s%.64s%s",
+    FormatString(b, "Error %d: %.128s%s%.128s%s%s%.64s%s",
 		magick_status,
 		(message ? message : "ERROR"),
 		qual? " (" : "", qual? qual : "", qual? ")" : "",
@@ -534,7 +530,7 @@ getinfo(void *rref, struct info *oldinfo)
     char b[80];
     struct info *info;
 
-    sprintf(b, "%s::A_%lx_Z", IM_packname, (long)rref);
+    FormatString(b, "%s::A_%lx_Z", IM_packname, (long)rref);
     sv = perl_get_sv(b, (TRUE | 0x2));
     if (!sv)
     {
@@ -615,12 +611,6 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		image->border_color.green = XDownScale(target_color.green);
 		image->border_color.blue = XDownScale(target_color.blue);
 	    }
-	    return;
-	}
-	if (strEQcase(attr, "box"))
-	{
-	    if (info)
-		newval(&info->info.box, SvPV(sval, na));
 	    return;
 	}
 	break;
@@ -807,7 +797,7 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 	format:
 	    if (info)
 	    {
-		sprintf(info->info.filename, "%.70s:", SvPV(sval, na));
+		FormatString(info->info.filename, "%.70s:", SvPV(sval, na));
 		SetImageInfo((ImageInfo *) &info->info, 1);
 		if (*info->info.magick == '\0')
 		    warning(OptionWarning, "Unrecognized image format",
@@ -1266,7 +1256,7 @@ DESTROY(ref)
 		    char b[80];
 		    struct info *info;
 
-		    sprintf(b, "%s::A_%lx_Z", IM_packname, (long)rref);
+		    FormatString(b, "%s::A_%lx_Z", IM_packname, (long)rref);
 		    if ((sv = perl_get_sv(b, FALSE)))
 		    {
 			if (SvREFCNT(sv) == 1 && SvIOK(sv)
@@ -1352,7 +1342,7 @@ Animate(ref, ...)
 		resource.image_info = temp->info;
 		resource.quantize_info = temp->quant;
 
-		(void) XAnimateImages(display, &resource, (char **) NULL, 0,
+		(void) XAnimateImages(display, &resource, &client_name, 1,
 		    image);
 
 		XCloseDisplay(display);
@@ -1369,23 +1359,26 @@ Animate(ref, ...)
 	}
 
 void
-Append(ref)
+Append(ref, ...)
 	Image::Magick	ref = NO_INIT
 	ALIAS:
-	    AppendImage   = 1
-	    append        = 2
-	    appendimage   = 3
+	    AppendImage	= 1
+	    append	= 2
+	    appendimage	= 3
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
-	    Image *image;
+	    Display *display;
+	    int n, stack;
+	    char *p, *arg = NULL;
 	    jmp_buf error_jmp;
-	    char *p;
+	    Image *im, *image;
 	    struct info *info;
-	    SV *sv, *rv;
-	    AV *av;
-	    HV *hv;
 	    volatile int retval = 0;
+	    SV **svarr = NULL;
+	    AV *av = NULL;
+	    HV *hv;
+	    SV *sv, *rv, *avref;
 
 	    im_er_mes = newSVpv("", 0);
 
@@ -1397,48 +1390,79 @@ Append(ref)
 	    rref = SvRV(ST(0));
 	    hv = SvSTASH(rref);
 
+
+	    av = newAV();
+	    avref = sv_2mortal(sv_bless(newRV((SV *)av), hv));
+	    SvREFCNT_dec(av);
+
 	    im_er_jmp = &error_jmp;
-	    if (retval = setjmp(error_jmp))
+	    if ((retval = setjmp(error_jmp)))
 		goto badreturn;
 
-	    if (!(image = setup_list(rref, &info, (SV ***) NULV)))
+	    if (!(image = setup_list(rref, &info, &svarr)))
 	    {
-		warning(OptionWarning, "No images to append", NULV);
+		warning(OptionWarning, "No images to montage", NULV);
 		goto badreturn;
 	    }
+	    info = getinfo((void *) av, info);
 
-	    image = AppendImages(image, True);
+	    /*
+	      Get options.
+	    */
+	    stack = True;
+	    for (n = 2; n < items; n += 2)
+	    {
+		arg = (char *)SvPV(ST(n-1), na);
+
+		/* switch on first letter of attribute.  'break' will go */
+		/* to "unknown" error; use 'continue' for known options */
+		switch (*arg)
+		{
+		case 'S': case 's':
+		    if (strEQcase(arg, "stack"))
+		    {
+			stack = LookupStr(p_boolean, SvPV(ST(n), na));
+			if (stack < 0)
+			{
+			    warning(OptionWarning, "Unknown stack type",
+				SvPV(ST(n), na));
+			    return;
+			}
+			continue;
+		    }
+		    break;
+		}
+		/* fall through to here for unknown attributes */
+		warning(OptionWarning, "Unknown attribute", arg);
+	    }
+
+	    image = AppendImages(image, stack);
 	    if (!image)
 		goto badreturn;
 
-	    /* create blessed Perl array for the returned image */
-	    av = newAV();
-	    ST(0) = sv_2mortal(sv_bless(newRV((SV *)av), hv));
-	    SvREFCNT_dec(av);
+	    for (im = image; im; im = im->next)
+	    {
+		sv = newSViv((IV)im);
+		rv = newRV(sv);
+		av_push(av, sv_bless(rv, hv));
+		SvREFCNT_dec(sv);
+	    }
 
-	    sv = newSViv((IV)image);
-	    rv = newRV(sv);
-	    av_push(av, sv_bless(rv, hv));
-	    SvREFCNT_dec(sv);
-	    /*SvREFCNT_dec(rv);*/
-
-	    info = getinfo((void *) av, info);
-	    sprintf(info->info.filename, "append-%.*s", MaxTextExtent - 9,
-		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
-	    strcpy(image->filename, info->info.filename);
-	    SetImageInfo(&info->info, False);
-
-	    SvREFCNT_dec(im_er_mes);
+	    ST(0) = avref;
 	    im_er_jmp = NULL;
+	    SvREFCNT_dec(im_er_mes);	/* can't return warning messages */
+	    im_er_mes = NULL;
 	    XSRETURN(1);
 
 	badreturn:
+	    im_er_jmp = NULL;
 	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
-	    SvPOK_on(im_er_mes);	/* return messages in string context */
+	    SvPOK_on(im_er_mes);
 	    ST(0) = sv_2mortal(im_er_mes);
 	    im_er_mes = NULL, im_er_jmp = NULL;
 	    XSRETURN(1);
 	}
+
 
 void
 Average(ref)
@@ -1495,7 +1519,7 @@ Average(ref)
 	    /*SvREFCNT_dec(rv);*/
 
 	    info = getinfo((void *) av, info);
-	    sprintf(info->info.filename, "average-%.*s", MaxTextExtent - 9,
+	    FormatString(info->info.filename, "average-%.*s", MaxTextExtent - 9,
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
 	    strcpy(image->filename, info->info.filename);
 	    SetImageInfo(&info->info, False);
@@ -1649,7 +1673,7 @@ Display(ref, ...)
 		    if (temp->info.delay)
 			resource.delay = atoi(temp->info.delay);
 		    state=DefaultState;
-		    (void) XDisplayImage(display, &resource, (char **) NULL, 0,
+		    (void) XDisplayImage(display, &resource, &client_name, 1,
 								   &im, &state);
 		    if (state & ExitState)
 			break;
@@ -1668,93 +1692,6 @@ Display(ref, ...)
 	    XSRETURN(1);
 	}
 
-void
-Blob(ref, ...)
-	Image::Magick	ref = NO_INIT
-	ALIAS:
-	    blob		= 1
-	PPCODE:
-	{
-	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
-	    int n;
-	    char *p, *arg = NULL;
-	    jmp_buf error_jmp;
-	    Image *im, *image;
-	    FILE *file;
-	    char *data;
-	    struct info *info;
-	    volatile int retval = 0;
-	    SV **svarr = NULL;
-	    AV *av = NULL;
-	    HV *hv;
-	    SV *sv, *rv, *avref;
-
-	    im_er_mes = newSVpv("", 0);
-
-	    if (!sv_isobject(ST(0)))
-	    {
-		warning(OptionWarning, complain, IM_packname);
-		goto badreturn;
-	    }
-	    rref = SvRV(ST(0));
-	    hv = SvSTASH(rref);
-
-	    av = newAV();
-	    avref = sv_2mortal(sv_bless(newRV((SV *)av), hv));
-	    SvREFCNT_dec(av);
-
-	    im_er_jmp = &error_jmp;
-	    if ((retval = setjmp(error_jmp)))
-		goto badreturn;
-
-	    if (!(image = setup_list(rref, &info, &svarr)))
-	    {
-		warning(OptionWarning, "No images to blob", NULV);
-		goto badreturn;
-	    }
-	    
-	    info = getinfo((void *) av, info);
-
-	    for (im = image; im; im = im->next)
-	    {
-		TemporaryFilename(im->filename);
-		puts(im->filename);
-		if (!WriteImage((ImageInfo *) &info->info, im))
-		    goto badreturn;
-
-		file = fopen(im->filename, ReadBinaryType);
-		(void) remove(im->filename);
-		if ( file == (FILE *) NULL)
-		    goto badreturn;
-
-		printf("%d\n",im->filesize);
-		data = safemalloc( im->filesize );
-		ReadData(data, 1, im->filesize, file);
-		fclose(file);
-
-		sv = newSVpv((char*) data, im->filesize);
-		rv = newRV(sv);
-		av_push(av, sv_bless(rv, hv));
-		SvREFCNT_dec(sv);
-		safefree((char *) data);
-		if (info->info.adjoin)
-		    break;
-	    }
-
-	    ST(0) = avref;
-	    im_er_jmp = NULL;
-	    SvREFCNT_dec(im_er_mes);	/* can't return warning messages */
-	    im_er_mes = NULL;
-	    XSRETURN(1);
-
-	badreturn:
-	    im_er_jmp = NULL;
-	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
-	    SvPOK_on(im_er_mes);
-	    ST(0) = sv_2mortal(im_er_mes);
-	    im_er_mes = NULL, im_er_jmp = NULL;
-	    XSRETURN(1);
-	}
 
 void
 Montage(ref, ...)
@@ -1813,7 +1750,7 @@ Montage(ref, ...)
 	      Get user defaults from X resource database.
 	    */
 	    XGetMontageInfo(&montage);
-	    sprintf(montage.filename, "montage-%.*s", MaxTextExtent - 9,
+	    FormatString(montage.filename, "montage-%.*s", MaxTextExtent - 9,
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
 
 	    display = XOpenDisplay(info->info.server_name);
@@ -2081,6 +2018,107 @@ Montage(ref, ...)
 	    im_er_mes = NULL, im_er_jmp = NULL;
 	    XSRETURN(1);
 	}
+
+
+void
+Morph(ref, ...)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    MorphImage	= 1
+	    morph	= 2
+	    morphimage	= 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    Display *display;
+	    int n, number_frames;
+	    char *p, *arg = NULL;
+	    jmp_buf error_jmp;
+	    Image *im, *image;
+	    struct info *info;
+	    volatile int retval = 0;
+	    SV **svarr = NULL;
+	    AV *av = NULL;
+	    HV *hv;
+	    SV *sv, *rv, *avref;
+
+	    im_er_mes = newSVpv("", 0);
+
+	    if (!sv_isobject(ST(0)))
+	    {
+		warning(OptionWarning, complain, IM_packname);
+		goto badreturn;
+	    }
+	    rref = SvRV(ST(0));
+	    hv = SvSTASH(rref);
+
+
+	    av = newAV();
+	    avref = sv_2mortal(sv_bless(newRV((SV *)av), hv));
+	    SvREFCNT_dec(av);
+
+	    im_er_jmp = &error_jmp;
+	    if ((retval = setjmp(error_jmp)))
+		goto badreturn;
+
+	    if (!(image = setup_list(rref, &info, &svarr)))
+	    {
+		warning(OptionWarning, "No images to montage", NULV);
+		goto badreturn;
+	    }
+	    info = getinfo((void *) av, info);
+
+	    /*
+	      Get options.
+	    */
+	    number_frames = 1;
+	    for (n = 2; n < items; n += 2)
+	    {
+		arg = (char *)SvPV(ST(n-1), na);
+
+		/* switch on first letter of attribute.  'break' will go */
+		/* to "unknown" error; use 'continue' for known options */
+		switch (*arg)
+		{
+		case 'F': case 'f':
+		    if (strEQcase(arg, "frame"))
+		    {
+			number_frames = SvIV(ST(n));
+			continue;
+		    }
+		    break;
+		}
+		/* fall through to here for unknown attributes */
+		warning(OptionWarning, "Unknown attribute", arg);
+	    }
+
+	    image = MorphImages(image, number_frames);
+	    if (!image)
+		goto badreturn;
+
+	    for (im = image; im; im = im->next)
+	    {
+		sv = newSViv((IV)im);
+		rv = newRV(sv);
+		av_push(av, sv_bless(rv, hv));
+		SvREFCNT_dec(sv);
+	    }
+
+	    ST(0) = avref;
+	    im_er_jmp = NULL;
+	    SvREFCNT_dec(im_er_mes);	/* can't return warning messages */
+	    im_er_mes = NULL;
+	    XSRETURN(1);
+
+	badreturn:
+	    im_er_jmp = NULL;
+	    sv_setiv(im_er_mes, (IV)(retval ? retval : SvCUR(im_er_mes) != 0));
+	    SvPOK_on(im_er_mes);
+	    ST(0) = sv_2mortal(im_er_mes);
+	    im_er_mes = NULL, im_er_jmp = NULL;
+	    XSRETURN(1);
+	}
+
 
 void
 Read(ref, ...)
@@ -2382,6 +2420,12 @@ Mogrify(ref, ...)
 		LayerImage		= 122
 		Condense		= 123
 		CondenseImage		= 124
+		Stereo			= 125
+		StereoImage		= 126
+		Stegano			= 127
+		SteganoImage		= 128
+		Coalesce		= 129
+		CoalesceImage		= 130
 		MogrifyRegion		= 666
 	PPCODE:
 	{
@@ -2520,7 +2564,7 @@ Mogrify(ref, ...)
 		    if (al->t_int < 0 && (al->t_int = SvIV(sv)) <= 0)
 		    {
 			char b[80];
-			sprintf(b, "Invalid %.60s value", pp->varname);
+			FormatString(b, "Invalid %.60s value", pp->varname);
 			warning(OptionWarning, b, arg);
 			goto continue_outer_loop;
 		    }
@@ -2557,7 +2601,7 @@ Mogrify(ref, ...)
 		switch (ix)
 		{
 		default:
-		    sprintf(b, "%d", (int)ix);
+		    FormatString(b, "%d", (int)ix);
 		    warning(OptionWarning, "Routine value out of range", b);
 		    goto return_it;
 		case  1:	/* Comment */
@@ -2849,37 +2893,36 @@ Mogrify(ref, ...)
 		case 33:	/* Annotate */
 		    if (first)
 		    {
-			GetAnnotateInfo(&annotate);
 			temp = copy_info(info);
-			annotate.image_info = &temp->info;
-			if (aflag[0])
-			    newval(&temp->info.server_name, alist[0].t_str);
 			if (aflag[1])
 			    newval(&temp->info.font, alist[1].t_str);
 			if (aflag[2])
 			    temp->info.pointsize = alist[2].t_int;
 			if (aflag[3])
 			    newval(&temp->info.density, alist[3].t_str);
-			if (aflag[4])
-			    newval(&temp->info.box, alist[4].t_str);
 			if (aflag[5])
 			    newval(&temp->info.pen, alist[5].t_str);
+			if (aflag[7])
+			    newval(&temp->info.server_name, alist[7].t_str);
+			GetAnnotateInfo(&temp->info, &annotate);
+			if (aflag[0])
+			    annotate.text = alist[0].t_str;
+			if (aflag[4])
+			    annotate.box = alist[4].t_str;
 			if (aflag[6])
 			    annotate.geometry = alist[6].t_str;
-			if (aflag[7])
-			    annotate.text = alist[7].t_str;
 			if (aflag[8] || aflag[9])
 			{
 			    if (!aflag[8])
 				alist[8].t_int = 0;
 			    if (!aflag[9])
 				alist[9].t_int = 0;
-			    sprintf(b, "%+d%+d",
+			    FormatString(b, "%+d%+d",
 					alist[8].t_int, alist[9].t_int);
 			    annotate.geometry = b;
 			}
 			if (aflag[10])
-			    annotate.alignment = (AlignmentType) alist[10].t_int;
+			    annotate.gravity = alist[10].t_int;
 		    }
 		    AnnotateImage(image, &annotate);
 		    break;
@@ -3031,18 +3074,16 @@ Mogrify(ref, ...)
 		case 38:	/* Draw */
 		    if (first)
 		    {
-			GetAnnotateInfo(&annotate);
 			temp = copy_info(info);
-			annotate.image_info = &temp->info;
 			if (aflag[3])
 			    newval(&temp->info.pen, alist[3].t_str);
-			if (aflag[4])
-			    annotate.linewidth = alist[4].t_int;
 			if (aflag[5])
-			    newval(&temp->info.server_name,
-				alist[5].t_str);
+			    newval(&temp->info.server_name, alist[5].t_str);
 			if (aflag[6])
 			    newval(&temp->info.border_color, alist[6].t_str);
+			GetAnnotateInfo(&temp->info, &annotate);
+			if (aflag[4])
+			    annotate.linewidth = alist[4].t_int;
 		    }
 		    n = MaxTextExtent;
 		    if (aflag[1])
@@ -3080,7 +3121,7 @@ Mogrify(ref, ...)
 			    alist[3].t_dbl = 1.0;
 			if (!aflag[0])
 			{
-			    sprintf(b, "%f/%f/%f", alist[1].t_dbl,
+			    FormatString(b, "%f/%f/%f", alist[1].t_dbl,
 					alist[2].t_dbl, alist[3].t_dbl);
 			    alist[0].t_str = b;
 			}
@@ -3161,7 +3202,7 @@ Mogrify(ref, ...)
 			    alist[2].t_dbl = 1.0;
 			if (!aflag[3])
 			    alist[3].t_dbl = 1.0;
-			sprintf(b, "%f/%f/%f", alist[1].t_dbl,
+			FormatString(b, "%f/%f/%f", alist[1].t_dbl,
 			    alist[2].t_dbl, alist[3].t_dbl);
 			if (!aflag[0])
 			    alist[0].t_str = b;
@@ -3198,11 +3239,20 @@ Mogrify(ref, ...)
 				(info? info->quant.colorspace : RGBColorspace));
 			quan.dither = aflag[3] ? alist[3].t_int :
 				(info? info->quant.dither : False);
-			(void) QuantizeImages(&quan, image);
+			if (aflag[5] && alist[5].t_int)
+			{
+			    (void) QuantizeImages(&quan, image);
+			    goto return_it;
+			}
+			if ((image->class == DirectClass) ||
+			    (image->colors > quan.number_colors))
+			    (void) QuantizeImage(&quan, image);
+			else
+			    CompressColormap(image);
 			if (aflag[4] && alist[4].t_int)
 			    (void) QuantizationError(image);
-		    	SyncImage(image);
-			goto return_it;
+			SyncImage(image);
+			break;
 		    }
 		case 49:	/* Raise */
 		    if (first)
@@ -3330,6 +3380,28 @@ Mogrify(ref, ...)
 		    break;
 		case 62:	/* Condense */
 		    CondenseImage(image);
+		    break;
+		case 63:	/* Stereo */
+		    if (!aflag[0])
+		    {
+			warning(OptionWarning, "Missing image in Stereo", NULV);
+			goto return_it;
+		    }
+		    image = StereoImage(image, alist[0].t_img);
+		    break;
+		case 64:	/* Stegano */
+		    if (!aflag[1])
+			alist[1].t_int = 0;
+		    if (!aflag[0])
+		    {
+			warning(OptionWarning, "Missing image in Stegano", NULV);
+			goto return_it;
+		    }
+		    image->offset = alist[1].t_int;
+		    image = SteganoImage(image, alist[0].t_img);
+		    break;
+		case 65:	/* Coalesce */
+		    CoalesceImages(image);
 		    break;
 		}
 
@@ -3500,7 +3572,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%g,%g", image->chromaticity.blue_primary.x,
+			FormatString(b, "%g,%g", image->chromaticity.blue_primary.x,
 			    image->chromaticity.blue_primary.y);
 			s = newSVpv(b, 0);
 		    }
@@ -3508,7 +3580,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%u,%u,%u,%u",
+			FormatString(b, "%u,%u,%u,%u",
 				    image->border_color.red,
 				    image->border_color.green,
 				    image->border_color.blue,
@@ -3519,7 +3591,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%u,%u,%u,%u",
+			FormatString(b, "%u,%u,%u,%u",
 				    image->background_color.red,
 				    image->background_color.green,
 				    image->background_color.blue,
@@ -3589,7 +3661,7 @@ Get(ref, ...)
 			if (i > image->colors)
 			    i %= image->colors;
 			cp = image->colormap+i;
-			sprintf(b, "%u,%u,%u", cp->red, cp->green, cp->blue);
+			FormatString(b, "%u,%u,%u", cp->red, cp->green, cp->blue);
 			s = newSVpv(b, 0);
 		    }
 		    else if (strEQcase(arg, "column"))
@@ -3693,7 +3765,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%g,%g", image->chromaticity.green_primary.x,
+			FormatString(b, "%g,%g", image->chromaticity.green_primary.x,
 			    image->chromaticity.green_primary.y);
 			s = newSVpv(b, 0);
 		    }
@@ -3761,7 +3833,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%u,%u,%u,%u",
+			FormatString(b, "%u,%u,%u,%u",
 				    image->matte_color.red,
 				    image->matte_color.green,
 				    image->matte_color.blue,
@@ -3854,7 +3926,7 @@ Get(ref, ...)
 			if (x > image->columns)
 			    x %= image->columns;
 			cp = image->pixels+(y*image->columns+x);
-			sprintf(b, "%u,%u,%u,%u", cp->red, cp->green,
+			FormatString(b, "%u,%u,%u,%u", cp->red, cp->green,
 						    cp->blue, cp->index);
 			s = newSVpv(b, 0);
 		    }
@@ -3896,7 +3968,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%g,%g", image->chromaticity.red_primary.x,
+			FormatString(b, "%g,%g", image->chromaticity.red_primary.x,
 			    image->chromaticity.red_primary.y);
 			s = newSVpv(b, 0);
 		    }
@@ -4028,7 +4100,7 @@ Get(ref, ...)
 		    {
 			if (!image)
 			    break;
-			sprintf(b, "%g,%g", image->chromaticity.white_point.x,
+			FormatString(b, "%g,%g", image->chromaticity.white_point.x,
 			    image->chromaticity.white_point.y);
 			s = newSVpv(b, 0);
 		    }
@@ -4100,7 +4172,7 @@ Ping(ref, ...)
 		if (filesize == 0)
 		    s = &sv_undef;
 		else {
-		    sprintf(b, "%u,%u,%u,%s", columns, rows, filesize,
+		    FormatString(b, "%u,%u,%u,%s", columns, rows, filesize,
 		    	info->info.magick);
 		    s = sv_2mortal(newSVpv(b, 0));
 		}
@@ -4136,7 +4208,7 @@ QueryColor(ref, ...)
 		if (!XQueryColorDatabase(arg, &target_color))
 		    s = &sv_undef;
 		else {
-		    sprintf(b, "%u,%u,%u", XDownScale(target_color.red),
+		    FormatString(b, "%u,%u,%u", XDownScale(target_color.red),
 					   XDownScale(target_color.green),
 					   XDownScale(target_color.blue));
 		    s = sv_2mortal(newSVpv(b, 0));

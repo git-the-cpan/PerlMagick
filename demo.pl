@@ -36,7 +36,7 @@ $example=$null->Clone();
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Annotate');
-$example->Annotate(text=>'Magick',geometry=>'+0+10',font=>'@ArtBrush.ttf',
+$example->Annotate(text=>'Magick',geometry=>'+0+10',font=>'@Generic.ttf',
   pen=>'gold',align=>'center');
 push(@$images,$example);
 $example=$model->Clone();
@@ -197,7 +197,7 @@ $title->Set(size=>'550x90');
 $x=$title->ReadImage('xc:black');
 warn "$x" if "$x";
 $title->Annotate(text=>'PerlMagick',geometry=>"+1+1",
-  font=>'@ArtBrush.ttf',pointsize=>18,density=>'300x300',pen=>'white',
+  font=>'@Generic.ttf',pointsize=>18,density=>'300x300',pen=>'white',
   align=>'center');
 $title->Draw(primitive=>'Matte',points=>'+0+0',method=>'Replace',
   pen=>'black');
@@ -207,11 +207,11 @@ $title->Composite(image=>$background,compose=>'Add');
 #
 $montage=$images->montage(geometry=>'130x194+10+5>',gravity=>'Center',
   bordercolor=>'green',borderwidth=>1,tile=>'5x1000',compose=>'over',
-  texture=>'granite:',font=>'@ArtBrush.ttf');
+  texture=>'granite:',font=>'@Generic.ttf');
 $montage->Composite(image=>$title,geometry=>'+90+50',compose=>'Over');
 $montage->Annotate(text=>'Every thing you see on this page was created ' .
   'with the PerlMagick and ImageMagick toolkits.',geometry=>"+20+175",
-  font=>'@ArtBrush.ttf',pointsize=>11,pen=>'#600');
+  font=>'@Generic.ttf',pointsize=>11,pen=>'#600');
 $montage->Set(matte=>'false');
 $x=$montage->Write('demo.jpg');
 $montage->Write('demo.gif') if "$x";  # may not have the JPEG plug-in

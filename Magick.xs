@@ -2957,6 +2957,12 @@ Mogrify(ref, ...)
 		    TextureImage(image, alist[0].t_str);
 		    break;
 		case 55:	/* Transform */
+		    if (!aflag[0])
+			alist[0].t_str = NULL;
+		    if (!aflag[1])
+			alist[1].t_str = NULL;
+		    next = (Image *) NULL;
+		    TransformImage(&image, alist[0].t_str, alist[1].t_str);
 		    break;
 		case 56:	/* Transparent */
 		    if (!aflag[0])

@@ -310,6 +310,7 @@ copy_info(info)
 
     if (!info)
     {
+        (void) SetClientName(client_name);
 	GetImageInfo(&new->info);
 	GetQuantizeInfo(&new->quant);
 	return new;

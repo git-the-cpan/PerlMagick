@@ -169,14 +169,16 @@ static struct routines {
     {	"Minify", },
     {	"OilPaint", { {"radius", P_INT} } },
     {	"ReduceNoise", },
-    {	"Roll", { {"x", P_INT}, {"y", P_INT} } },
+    {	"Roll", { {"geom", P_STR}, {"x", P_INT}, {"y", P_INT} } },
     {	"Rotate", { {"degree", P_DBL}, {"crop", p_boolean},
 		  {"sharpen", p_boolean} } },
     {	"Sample", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT} } },
     {	"Scale", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT} } },
-    {	"Shade", { {"color", P_INT}, {"azimuth", P_DBL}, {"elevat", P_DBL} } },
+    {	"Shade", { {"geom", P_STR}, {"azimuth", P_DBL},
+		   {"elevat", P_DBL},{"color", p_boolean} } },
     {	"Sharpen", { {"factor", P_DBL} } },
-    {	"Shear", { {"x", P_DBL}, {"y", P_DBL} } },
+    {	"Shear", { {"geom", P_STR}, {"x", P_DBL}, {"y", P_DBL},
+		   {"crop", p_boolean} } },
     {	"Spread", { {"amount", P_INT} } },
     {	"Swirl", { {"degree", P_DBL} } },
     {	"Zoom", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT},
@@ -184,8 +186,8 @@ static struct routines {
     {	"IsGrayImage", },
     {	"Annotate", { {"server", P_STR}, {"font", P_STR}, {"point", P_INT},
 		    {"box", P_STR}, {"pen", P_STR}, {"geom", P_STR},
-		    {"text", P_STR}, {"prim", P_STR}, {"center", p_boolean},
-		    {"x", P_INT}, {"y", P_INT}, {"align", p_alignments} } },
+		    {"text", P_STR}, {"x", P_INT}, {"y", P_INT},
+		    {"align", p_alignments} } },
     {	"ColorFloodfill", },
     {	"Composite", { {"compos", p_composites}, {"image", P_IMG},
 		    {"x", P_INT}, {"y", P_INT} } },
@@ -219,6 +221,7 @@ static struct routines {
     {   "Threshold", { {"threshold", P_DBL} } },
     {   "Charcoal", { {"factor", P_DBL} } },
     {	"Trim", },
+    {	"Wave", { {"geom", P_STR}, {"ampli", P_DBL}, {"wave", P_DBL} } },
 };
 
 static SV *im_er_mes;		/* Perl variable for storing messages */
@@ -1031,6 +1034,9 @@ Copy(ref)
             CopyImage   = 1
             copy        = 2
             copyimage   = 3
+            CloneImage  = 4
+            clone       = 5
+            Cloneimage  = 6
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1072,7 +1078,7 @@ Copy(ref)
 
 	    for (im=image ; im; im = im->next)
 	    {
-		image = CopyImage(im, im->columns, im->rows, True);
+		image = CloneImage(im, im->columns, im->rows, True);
 		if (!image)
 		    break;
 		sv = newSViv((IV)image);
@@ -1229,6 +1235,19 @@ Montage(ref, ...)
 						  sizeof montage.filename);
 			continue;
 		    }
+                    if (strEQcase(arg, "filter"))
+                    {
+                        int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
+                                 LookupStr(p_filters, SvPV(ST(n), na));
+                        if (sp < 0)
+                        {
+                            warninghandler("Unknown filter type",
+                                                        SvPV(ST(n), na));
+                            continue;
+                        }
+                        montage.filter = sp;
+                        continue;
+                    }
 		    if (strEQcase(arg, "font"))
 		    {
 			resource.font = SvPV(ST(n), na);
@@ -1562,65 +1581,126 @@ void
 Mogrify(ref, ...)
 	Image::Magick	ref = NO_INIT
 	ALIAS:
-		Comment		=  1
-		Label		=  2
-		AddNoise	=  3
-		Colorize	=  4
-		Border		=  5
-		Blur		=  6
-		Chop		=  7
-		Crop		=  8
-		Despeckle	=  9
-		Edge		= 10
-		Emboss		= 11
-		Enhance		= 12
-		Flip		= 13
-		Flop		= 14
-		Frame		= 15
-		Implode		= 16
-		Magnify		= 17
-		MedianFilter	= 18
-		Minify		= 19
-		OilPaint	= 20
-		ReduceNoise	= 21
-		Roll		= 22
-		Rotate		= 23
-		Sample		= 24
-		Scale		= 25
-		Shade		= 26
-		Sharpen		= 27
-		Shear		= 28
-		Spread		= 29
-		Swirl		= 30
-		Zoom		= 31
-		IsGrayImage	= 32
-		Annotate	= 33
-		ColorFloodfill	= 34
-		Composite	= 35
-		Contrast	= 36
-		CycleColormap	= 37
-		Draw		= 38
-		Equalize	= 39
-		Gamma		= 40
-		Map		= 41
-		MatteFloodfill	= 42
-		Modulate	= 43
-		Negate		= 44
-		Normalize	= 45
-		NumberColors	= 46
-		Opaque		= 47
-		Quantize	= 48
-		Raise		= 49
-		Segment		= 50
-		Signature	= 51
-		Solarize	= 52
-		Sync		= 53
-		Texture		= 54
-		Transform	= 55
-		Transparent	= 56
-		Threshold	= 57
-		Charcoal	= 58
-		Trim		= 59
+		Comment			=   1
+		CommentImage		=   2
+		Label			=   3
+		LabelImage		=   4
+		AddNoise		=   5
+		AddNoiseImage		=   6
+		Colorize		=   7
+		ColorizeImage		=   8
+		Border			=   9
+		BorderImage		=  10
+		Blur			=  11
+		BlurImage		=  12
+		Chop			=  13
+		ChopImage		=  14
+		Crop			=  15
+		CropImage		=  16
+		Despeckle		=  17
+		DespeckleImage		=  18
+		Edge			=  19
+		EdgeImage		=  20
+		Emboss			=  21
+		EmbossImage		=  22
+		Enhance			=  23
+		EnhanceImage		=  24
+		Flip			=  25
+		FlipImage		=  26
+		Flop			=  27
+		FlopImage		=  28
+		Frame			=  29
+		FrameImage		=  30
+		Implode			=  31
+		ImplodeImage		=  32
+		Magnify			=  33
+		MagnifyImage		=  34
+		MedianFilter		=  35
+		MedianFilterImage	=  36
+		Minify			=  37
+		MinifyImage		=  38
+		OilPaint		=  39
+		OilPaintImage		=  40
+		ReduceNoise		=  41
+		ReduceNoiseImage	=  42
+		Roll			=  43
+		RollImage		=  44
+		Rotate			=  45
+		RotateImage		=  46
+		Sample			=  47
+		SampleImage		=  48
+		Scale			=  49
+		ScaleImage		=  50
+		Shade			=  51
+		ShadeImage		=  52
+		Sharpen			=  53
+		SharpenImage		=  54
+		Shear			=  55
+		ShearImage		=  56
+		Spread			=  57
+		SpreadImage		=  58
+		Swirl			=  59
+		SwirlImage		=  60
+		Zoom			=  61
+		ZoomImage		=  62
+		IsGray			=  63
+		IsGrayImage		=  64
+		Annotate		=  65
+		AnnotateImage		=  66
+		ColorFloodfill		=  67
+		ColorFloodfillImage	=  68
+		Composite		=  69
+		CompositeImage		=  70
+		Contrast		=  71
+		ContrastImage		=  72
+		CycleColormap		=  73
+		CycleColormapImage	=  74
+		Draw			=  75
+		DrawImage		=  76
+		Equalize		=  77
+		EqualizeImage		=  78
+		Gamma			=  79
+		GammaImage		=  80
+		Map			=  81
+		MapImage		=  82
+		MatteFloodfill		=  83
+		MatteFloodfillImage	=  84
+		Modulate		=  85
+		ModulateImage		=  86
+		Negate			=  87
+		NegateImage		=  88
+		Normalize		=  89
+		NormalizeImage		=  90
+		NumberColors		=  91
+		NumberColorsImage	=  92
+		Opaque			=  93
+		OpaqueImage		=  94
+		Quantize		=  95
+		QuantizeImage		=  96
+		Raise			=  97
+		RaiseImage		=  98
+		Segment			=  99
+		SegmentImage		= 100
+		Signature		= 101
+		SignatureImage		= 102
+		Solarize		= 103
+		SolarizeImage		= 104
+		Sync			= 105
+		SyncImage		= 106
+		Texture			= 107
+		TextureImage		= 108
+		Transform		= 109
+		TransformImage		= 110
+		Transparent		= 111
+		TransparentImage	= 112
+		Threshold		= 113
+		ThresholdImage		= 114
+		Charcoal		= 115
+		CharcoalImage		= 116
+		Trim			= 117
+		TrimImage		= 118
+		Wave			= 119
+		WaveImage		= 120
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1651,7 +1731,8 @@ Mogrify(ref, ...)
 
 	    if (ix)	/* called as Routinename(...) */
 	    {
-		rp = &routines[ix - 1];
+		ix=(ix+1)/2;
+		rp = &routines[ix-1];
 		arg = rp->name;
 	    }
 	    else	/* called as Mogrify("Routinename", ...) */
@@ -1948,12 +2029,17 @@ Mogrify(ref, ...)
 		    image = ReduceNoiseImage(image);
 		    break;
 		case 22:	/* Roll */
-		    if (!aflag[0])
-			alist[0].t_int = 0;
-		    if (!aflag[1])
-			alist[1].t_int = 0;
+		    br.x = 0;
+		    br.y = 0;
+		    if (aflag[1])
+		        br.x = alist[1].t_int;
+		    if (aflag[2])
+		        br.y = alist[2].t_int;
+		    if (aflag[0])
+		      (void) ParseImageGeometry(alist[0].t_str, &br.x, &br.y,
+		        &br.width, &br.height);
 
-		    image = RollImage(image, alist[0].t_int, alist[1].t_int);
+		    image = RollImage(image, br.x, br.y);
 		    break;
 		case 23:	/* Rotate */
 		    if (!aflag[0])
@@ -1991,29 +2077,46 @@ Mogrify(ref, ...)
 		    image = ScaleImage(image, br.width, br.height);
 		    break;
 		case 26:	/* Shade */
-		    if (!aflag[0])
-			alist[0].t_int = 0;
-		    if (!aflag[1])
-			alist[1].t_dbl = 30.0;
-		    if (!aflag[2])
-			alist[2].t_dbl = 30.0;
+		{
+		    float azimuth, elevation;
 
-		    image = ShadeImage(image, alist[0].t_int, alist[1].t_dbl,
-							      alist[2].t_dbl);
+		    azimuth = 30.0;
+		    elevation = 30.0;
+		    if (aflag[1])
+		        azimuth = alist[1].t_dbl;
+		    if (aflag[2])
+		        elevation = alist[2].t_dbl;
+		    if (aflag[0])
+		      (void) sscanf(alist[0].t_str, "%fx%f", &azimuth,
+							     &elevation);
+
+		    image = ShadeImage(image, alist[3].t_int, azimuth,
+							      elevation);
 		    break;
+		}
 		case 27:	/* Sharpen */
 		    if (!aflag[0])
 			alist[0].t_dbl = 30.0;
 		    image = SharpenImage(image, alist[0].t_dbl);
 		    break;
 		case 28:	/* Shear */
-		    if (!aflag[0])
-			alist[0].t_dbl = 45.0;
-		    if (!aflag[1])
-			alist[1].t_dbl = 45.0;
+		{
+		    float x_shear, y_shear;
 
-		    image = ShearImage(image, alist[0].t_dbl, alist[1].t_dbl,0);
+		    x_shear = 45.0;
+		    y_shear = 45.0;
+		    if (aflag[1])
+		        x_shear = alist[1].t_dbl;
+		    if (aflag[2])
+		        y_shear = alist[2].t_dbl;
+		    if (aflag[0])
+		      (void) sscanf(alist[0].t_str, "%fx%f", &x_shear,
+							     &y_shear);
+
+		    image = ShearImage(image, x_shear, y_shear,
+						       alist[3].t_int);
 		    break;
+		}
 		case 29:	/* Spread */
 		    if (!aflag[0])
 			alist[0].t_int = 3;
@@ -2059,22 +2162,18 @@ Mogrify(ref, ...)
 			    annotate.geometry = alist[5].t_str;
 			if (aflag[6])
 			    annotate.text = alist[6].t_str;
-			if (aflag[7])
-			    annotate.primitive = alist[7].t_str;
-			if (aflag[8])
-			    annotate.alignment = alist[8].t_int+1;
-			if (aflag[9] || aflag[10])
+			if (aflag[7] || aflag[8])
 			{
-			    if (!aflag[9])
-			    alist[9].t_int = 0;
-			    if (!aflag[10])
-				alist[10].t_int = 0;
+			    if (!aflag[7])
+			        alist[7].t_int = 0;
+			    if (!aflag[8])
+				alist[8].t_int = 0;
 			    sprintf(b, "%+d%+d",
-					alist[9].t_int, alist[10].t_int);
+					alist[7].t_int, alist[8].t_int);
 			    annotate.geometry = b;
 			}
-			if (aflag[11])
-			    annotate.alignment = alist[11].t_int;
+			if (aflag[9])
+			    annotate.alignment = alist[9].t_int;
 		    }
 		    AnnotateImage(image, &annotate);
 		    break;
@@ -2120,9 +2219,13 @@ Mogrify(ref, ...)
 		    }
 		    n=MaxTextExtent;
 		    if (aflag[1])
-		      n+=strlen(alist[1].t_str);
-    		    annotate.primitive =
-		      strcpy(safemalloc(n), p_primitives[alist[0].t_int]);
+		        n+=strlen(alist[1].t_str);
+    		    if (alist[0].t_int > 0)
+    		        annotate.primitive =
+		          strcpy(safemalloc(n), p_primitives[alist[0].t_int]);
+		    else
+    		        annotate.primitive =
+		          strcpy(safemalloc(n), alist[0].t_str);
 		    if (aflag[1])
 		    {
 		        strcat(annotate.primitive, " ");
@@ -2317,6 +2420,23 @@ Mogrify(ref, ...)
 		    if (next != image)
 			next = NULL;  /* 'cause it's been blown away */
 		    break;
+		case 60:	/* Wave */
+		{
+		    float amplitude, wavelength;
+
+		    amplitude = 10.0;
+		    wavelength = 10.0;
+		    if (aflag[1])
+		        amplitude = alist[1].t_dbl;
+		    if (aflag[2])
+		        wavelength = alist[2].t_dbl;
+		    if (aflag[0])
+		      (void) sscanf(alist[0].t_str, "%fx%f", &amplitude,
+							     &wavelength);
+
+		    image = WaveImage(image, amplitude, wavelength);
+		    break;
+		}
 		}
 
 		if (image)

@@ -266,7 +266,7 @@ push(@$images,$example);
 print "Resize...\n";
 $example=$model->Clone();
 $example->Label('Resize');
-$example->Resize('50%');
+$example->Resize('60%');
 push(@$images,$example);
 
 print "Roll...\n";
@@ -320,7 +320,7 @@ push(@$images,$example);
 print "Shear...\n";
 $example=$model->Clone();
 $example->Label('Shear');
-$example->Shear('-45x45');
+$example->Shear('-20x20');
 push(@$images,$example);
 
 print "Spread...\n";
@@ -357,7 +357,7 @@ push(@$images,$example);
 #
 print "Montage...\n";
 $montage=$images->Montage(geometry=>'130x194+10+5>',gravity=>'Center',
-  tile=>'5x1000+10+200',compose=>'over',background=>'#ffffff',
+  tile=>'5x+10+200',compose=>'over',background=>'#ffffff',
   font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none');
 
 $logo=Image::Magick->new();

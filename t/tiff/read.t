@@ -53,9 +53,7 @@ testRead( 'input_256.tiff',
 ++$test;
 print("PseudoColor (256 color + matte channel) ...\n");
 testRead( 'input_256_matte.tiff',
-	'01f9d29ebea733fb815dcccfa1fb769cf223d60d8bfbce47b8329d119587de15',
-	'16eaa513d08fce643934a18aad17f19c6b6a6af3cf3b32630f752891c1abd77a',
-	'299cf3465a88bd72591edd7d0f4b74a61b6c1e86c27754fac56bdaf04e8032ce' );
+	'01f9d29ebea733fb815dcccfa1fb769cf223d60d8bfbce47b8329d119587de15' );
 
 #
 # 6) Test reading PseudoColor using contiguous planar packing

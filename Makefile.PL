@@ -26,7 +26,7 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.0.2',
+   'VERSION'   => '6.1.1',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
@@ -38,7 +38,7 @@ WriteMakefile
    # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
-   'CCFLAGS'     => "$Config{'ccflags'} -g -O2 -Wall -pthread",
+   'CCFLAGS'     => "$Config{'ccflags'} -Wunused -Wall -pthread",
 
    # Linker flags for building an executable
    'LDFLAGS'    =>  "-L/usr/local/lib $Config{'ldflags'}",

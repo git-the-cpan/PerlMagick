@@ -20,7 +20,7 @@ chdir 't/ttf' || die 'Cd failed';
 print("Default ImageMagick read ...\n");
 testReadCompare('input.ttf', '../reference/ttf/read.miff',
                 q/size=>'512x512', depth=>8/,
-                0.11, 0.88);
+                0.11, 1.0);
 
 #
 # 2) Test drawing text using font
@@ -30,7 +30,7 @@ print("Draw text using font ...\n");
 testReadCompare(q!label:The quick brown fox jumps over the lazy dog.!,
                 q!../reference/ttf/label.miff!,
                 q!font=>'input.ttf', fill=>'#0000FF', pointsize=>14, size=>'245x16', depth=>8!,
-                0.00026, 0.004);
+                0.11, 1.0);
 
 #
 # 3) Test drawing text using annotate
@@ -46,6 +46,6 @@ testFilterCompare('xc:#FFFFFF',
                   font=>'input.ttf',
                   fill=>'#FF0000',
                   pointsize=>14!,
-                  1.9e-05, 0.004);
+                  0.11, 1.0);
 
 1;

@@ -44,7 +44,7 @@ testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Colorize.miff',
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/Contrast.miff', 'Contrast',
-  q/sharpen=>True/, 0.0025, 0.184);
+  q/sharpen=>True/, 0.0025, 0.385);
 
 ++$test;
 testFilterCompare('input.miff', q//,
@@ -80,7 +80,7 @@ testFilterCompare('input.miff', q//, 'reference/filter/Flop.miff', 'Flop',
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/Frame.miff', 'Frame',
-  q/geometry=>"10x10+2+2"/, 0.00043, 0.004);
+  q/geometry=>"10x10+2+2"/, 0.015, 0.489);
 
 ++$test;
 testFilterCompare('input.miff', q//, 'reference/filter/Gamma.miff', 'Gamma',

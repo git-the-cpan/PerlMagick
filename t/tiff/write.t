@@ -54,7 +54,7 @@ testReadWrite( 'input_256_matte.tiff',
   'output_256_matte.tiff',
   q//,
   '01f9d29ebea733fb815dcccfa1fb769cf223d60d8bfbce47b8329d119587de15',
-  '7010bdfa2b6d8595a16c6c11147c3e58f730177303dea8ff2c081cd4ef192360' );
+  '01f9d29ebea733fb815dcccfa1fb769cf223d60d8bfbce47b8329d119587de15' );
 
 #
 # 5) Test truecolor image

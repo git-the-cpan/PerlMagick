@@ -23,7 +23,7 @@ int IM_do_warn = 0;		/* if != 0: error messages call Perl warn */
 
 static char *complain = "Reference is not my type";
 
-#define warning(e, s1, s2) { magick_status = e; warninghandler(s1, s2); }
+#define warning(e, s1, s2) { SetErrorStatus(e); warninghandler(s1, s2); }
 
 static double
 constant(name, arg)
@@ -130,7 +130,7 @@ static char *p_gravities[] = {
     "Center", "East", "SouthWest", "South", "SouthEast", "Static", 0 };
 
 static char *p_interlaces[] = {
-    "Undefined", "No", "Line", "Plane", "Partition", 0 };
+    "Undefined", "None", "Line", "Plane", "Partition", 0 };
 
 static char *p_methods[] = {
     "Point", "Replace", "Floodfill", "Reset", 0 };
@@ -385,12 +385,14 @@ warninghandler(message, qual)
     const char *message, *qual;
 {
     char b[400];
+    int magick_status;
     int en = errno;
     errno = 0;
 
     if (!message)
 	return;
 
+    magick_status = SetErrorStatus(0);
     sprintf(b, "Warning %d: %.128s%s%.128s%s%s%.64s%s",
 		magick_status, message,
 		qual? " (" : "", qual? qual : "", qual? ")" : "",
@@ -420,9 +422,11 @@ errorhandler(message, qual)
     const char *message, *qual;
 {
     char b[400];
+    int magick_status;
     int en = errno;
     errno = 0;
 
+    magick_status = SetErrorStatus(0);
     sprintf(b, "Error %d: %.128s%s%.128s%s%s%.64s%s",
 		magick_status,
 		(message ? message : "ERROR"),

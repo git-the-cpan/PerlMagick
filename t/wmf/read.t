@@ -15,11 +15,11 @@ require 't/subroutines.pl';
 chdir 't/wmf' || die 'Cd failed';
 
 testRead( 'wizard.wmf',
-          'ad68c7f9603996844e956d0de048676574f75f428adfaedb3ce98fe40ba34d32',
-          '5686ec552c34b022e08af38d5e371e9d1a46dd7543d618db82c6c8c5076df58c' );
+          '9ca87d864406234af188dea8a3f5c7db7b1c1802ceb45725747a2379deefd03f',
+          '89edd67a8edb6c1625d3c4e13d8fbce978261c0825e31c93e26906910285f319' );
 ++$test;
 testRead( 'clock.wmf',
-          'b477366dd4e4f892eac47297e9a0835efe55dc1df5e218ed344270b6d08d5671',
-          'a5ad75b745e73039f4bd43da8f26f9d082032a45dc4f2bfe9d19a14761a3a01f' );
+          '5a71ebef41ddcf702d1d2a63d6114acb9ccfd5e718215b705e0769f074fb4303',
+          '7477f68dfc34248c58ba19d9f5276ac5e520f62e6206f33c5638270be44e5c15' );
 
 

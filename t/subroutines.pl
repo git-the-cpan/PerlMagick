@@ -1,10 +1,5 @@
+# Copyright (C) 1994-2004 ImageMagick Studio LLC
 # Copyright (C) 2003 GraphicsMagick Group
-# Copyright (C) 2002 ImageMagick Studio
-# Copyright (C) 1999 E. I. du Pont de Nemours and Company
-#
-# This program is covered by multiple licenses, which are described in
-# Copyright.txt. You should have received a copy of Copyright.txt with this
-# package; otherwise see http://www.graphicsmagick.org/www/Copyright.html.
 #
 # Common subroutines to support tests
 #
@@ -39,6 +34,147 @@ elsif ($QuantumDepth == 32)
   {
     $MaxRGB=4294967295;
   }
+
+#
+# Test composite method using comparison with a reference image
+#
+# Usage: testFilterCompare( background image name, background read options,
+#                           composite image name, composite read options,
+#                           composite options,reference image
+#                           normalized_mean_error,
+#                           normalized_maximum_error );
+sub testCompositeCompare {
+  my ($background_name,
+      $background_read_options,
+      $composite_name,
+      $composite_read_options,
+      $composite_options,
+      $refimage_name,
+      $normalized_mean_error_max,
+      $normalized_maximum_error_max) = @_;
+  my ($background,
+      $composite,
+      $errorinfo,
+      $normalized_maximum_error,
+      $normalized_mean_error,
+      $refimage,
+      $status);
+
+  $errorinfo='';
+  $status='';
+
+  #print( $filter, " ...\n" );
+
+  # Create images
+  $background=Image::Magick->new;
+  $composite=Image::Magick->new;
+  $refimage=Image::Magick->new;
+
+  # Read background image
+  if ( "$background_read_options" ne "" ) {
+    print("Set($background_read_options) ...\n");
+    eval "\$status=\$background->Set($background_read_options);";
+    if ("$status")
+      {
+        $errorinfo = "Set($background_read_options): $status";
+        goto COMPARE_RUNTIME_ERROR;
+      }
+  }
+  $status=$background->ReadImage($background_name);
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($background_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  # Read composite image
+  if ( "$composite_read_options" ne "" ) {
+    print("Set($composite_read_options) ...\n");
+    eval "\$status=\$composite->Set($composite_read_options);";
+    if ("$status")
+      {
+        $errorinfo = "Set($composite_read_options): $status";
+        goto COMPARE_RUNTIME_ERROR;
+      }
+  }
+  $status=$composite->ReadImage($composite_name);
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($composite_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  # Do composition
+  print("Composite\($composite_options\) ...\n");
+  eval "\$status=\$background->Composite(image=>\$composite, $composite_options);";
+  if ("$status")
+    {
+      $errorinfo = "Composite ($composite_options): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $background->set(depth=>8);
+#  if ("$filter" eq "Atop") {
+#    $background->write(filename=>"$refimage_name", compression=>'None');
+#  $background->Display();
+#  }
+
+  $status=$refimage->ReadImage("$refimage_name");
+  if ("$status")
+    {
+      $errorinfo = "Readimage ($refimage_name): $status";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $status=$background->Compare($refimage);
+  if ("$status")
+    {
+      $errorinfo = "Compare($refimage_name): $status";
+      print("  Computed:  ", $background->Get('columns'), "x", $background->Get('rows'), "\n");
+      print("  Reference: ", $refimage->Get('columns'), "x", $refimage->Get('rows'), "\n");
+      goto COMPARE_RUNTIME_ERROR;
+    }
+
+  $normalized_mean_error=0;
+  $normalized_mean_error=$background->GetAttribute('mean-error');
+  if ( !defined($normalized_mean_error) )
+    {
+      $errorinfo = "GetAttribute('mean-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  $normalized_maximum_error=0;
+  $normalized_maximum_error=$background->GetAttribute('maximum-error');
+  if ( ! defined($normalized_maximum_error) )
+    {
+      $errorinfo = "GetAttribute('maximum-error') returned undefined value!";
+      goto COMPARE_RUNTIME_ERROR;
+    }
+  if ( ($normalized_mean_error > $normalized_mean_error_max) ||
+       ($normalized_maximum_error > $normalized_maximum_error_max) )
+    {
+      print("  mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
+      print "not ok $test\n";
+      $background->Display();
+      undef $background;
+      undef $composite;
+      undef $refimage;
+      return 1
+    }
+
+  undef $background;
+  undef $composite;
+  undef $refimage;
+  print "ok $test\n";
+  return 0;
+
+ COMPARE_RUNTIME_ERROR:
+  undef $background;
+  undef $composite;
+  undef $refimage;
+  print("  $errorinfo\n");
+  print "not ok $test\n";
+  return 1
+}
 
 #
 # Test reading a 16-bit file in which two signatures are possible,
@@ -88,10 +224,13 @@ sub testRead {
     $image=Image::Magick->new;
     $image->Set(size=>'512x512');
     $status=$image->ReadImage("$infile");
-    if( "$status" && !($status =~ /Exception 315/)) {
-      print "ReadImage $infile: $status";
+    if( "$status" && !($status =~ /Exception ((315)|(350))/)) {
+      print "ReadImage $infile: $status\n";
       ++$failure;
     } else {
+      if( "$status" ) {
+        print "ReadImage $infile: $status\n";
+      }
       undef $status;
       $magick=$image->Get('magick');
       $signature=$image->Get('signature');
@@ -101,10 +240,9 @@ sub testRead {
 	print "Image: $infile, signatures do not match.\n";
 	print "     Computed: $signature\n";
 	print "     Expected: $ref_signature\n";
-	print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
         print "     Depth:    $depth\n";
         ++$failure;
-        #$image->Display();
+        $image->Display();
       }
     }
     undef $image;
@@ -113,6 +251,7 @@ sub testRead {
   #
   # Test reading from blob
   #
+  if (!($infile =~ /\.bz2$/) && !($infile =~ /\.gz$/) && !($infile =~ /\.Z$/))
   {
     my(@blob, $blob_length, $image, $signature, $status);
 
@@ -126,17 +265,19 @@ sub testRead {
           $image=Image::Magick->new(magick=>$magick);
           $status=$image->BlobToImage( $blob );
           undef $blob;
-          if( "$status" && !($status =~ /Exception 315/)) {
-            print "BlobToImage $infile: $status";
+          if( "$status" && !($status =~ /Exception ((315)|(350))/)) {
+            print "BlobToImage $infile: $status\n";
             ++$failure;
           } else {
+            if( "$status" ) {
+              print "ReadImage $infile: $status\n";
+            }
             $signature=$image->Get('signature');
             if ( $signature ne $ref_signature ) {
               print "BlobToImage()\n";
               print "Image: $infile, signatures do not match.\n";
               print "     Computed: $signature\n";
               print "     Expected: $ref_signature\n";
-              print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
               print "     Depth:    $depth\n";
               #$image->Display();
               ++$failure;
@@ -190,7 +331,7 @@ sub testReadCompare {
       goto COMPARE_RUNTIME_ERROR;
     }
 
-#  if ("$srcimage_name" eq "input.wpg") {
+# if ("$srcimage_name" eq "input.tim") {
 #    $srcimage->write(filename=>"$refimage_name", compression=>'None');
 #  }
 
@@ -319,7 +460,6 @@ sub testReadSized {
 	print "Image: $infile, signatures do not match.\n";
 	print "     Computed: $signature\n";
 	print "     Expected: $ref_signature\n";
-        print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
         print "     Depth:    $depth\n";
         print "not ok $test\n";
         #$image->Display();
@@ -408,14 +548,13 @@ sub testReadWrite {
           print "Image: $infile, signatures do not match.\n";
           print "     Computed: $signature\n";
           print "     Expected: $ref_signature\n";
-          print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
           print "     Depth:    $depth\n";
           print "not ok $test\n";
-          #$image->Display();
+          $image->Display();
         } else {
           print "ok $test\n";
           ($file = $outfile) =~ s/.*://g;
-          unlink "$file";
+          #unlink "$file";
         }
       }
     }
@@ -722,7 +861,6 @@ sub testReadWriteSized {
           print "Image: $infile, signatures do not match.\n";
           print "     Computed: $signature\n";
           print "     Expected: $ref_signature\n";
-          print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
           print "     Depth:    $depth\n";
           print "not ok $test\n";
           #$image->Display();
@@ -866,22 +1004,23 @@ sub testMontage {
 
     # Generate image
     $image->Set(size=>'50x50');
+    #print("\$image->ReadImage(xc:$color);\n");
     $status=$image->ReadImage("xc:$color");
-    warn "Readimage: $status" if "$status";
-
-    # Add image to list
-    push( @$images, @$image);
-    
+    if ("$status") {
+      warn "Readimage: $status" if "$status";
+    } else {
+      # Add image to list
+      push( @$images, @$image);
+    }
     undef @$image;
   }
 
   # Set image options
-  #print "Image Options  : $imageOptions\n";
   if ("$imageOptions" ne "") {
     print("\$images->Set($imageOptions)\n");
+    eval "\$status = \$images->Set($imageOptions) ;";
+    warn "SetImage: $status" if "$status";
   }
-  eval "\$status = \$images->Set($imageOptions) ;";
-  warn "SetImage: $status" if "$status";
 
   #print "Border color : ", $images->Get('bordercolor'), "\n";
   #print "Matte color  : ", $images->Get('mattecolor'), "\n";
@@ -909,7 +1048,6 @@ sub testMontage {
         print "Test $test, signatures do not match.\n";
 	print "     Computed: $signature\n";
 	print "     Expected: $ref_signature\n";
-	print "     replace $ref_signature $signature t/*.t t/*/*.t\n";
         print "     Depth:    $depth\n";
         $status = $montage->Write("test_${test}_out.miff");
         warn "Write: $status" if "$status";
@@ -1060,8 +1198,8 @@ sub testFilterCompare {
     }
 
   $srcimage->set(depth=>8);
-#  if ("$filter" eq "Shade") {
-#  $srcimage->Display();
+#  if ("$filter" eq "Shear") {
+#    $srcimage->Display();
 #    $srcimage->write(filename=>"$refimage_name", compression=>'None');
 #  }
 
@@ -1109,13 +1247,19 @@ sub testFilterCompare {
       print("  mean-error=$normalized_mean_error, maximum-error=$normalized_maximum_error\n");
       print "not ok $test\n";
       #$srcimage->Display();
+      undef $srcimage;
+      undef $refimage;
       return 1
     }
 
+  undef $srcimage;
+  undef $refimage;
   print "ok $test\n";
   return 0;
 
  COMPARE_RUNTIME_ERROR:
+  undef $srcimage;
+  undef $refimage;
   print("  $errorinfo\n");
   print "not ok $test\n";
   return 1

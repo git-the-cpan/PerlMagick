@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 # Piddle example using PerlMagick methods.
 
 use Image::Magick;

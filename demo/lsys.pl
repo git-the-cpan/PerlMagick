@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 
 # Written by jreed@itis.com, adapted by John Cristy.
 

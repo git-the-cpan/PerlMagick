@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl
+#!/usr/bin/perl
 #
 # Overall demo of the major PerlMagick methods.
 #
@@ -17,29 +17,18 @@ $model=Image::Magick->new();
 $x=$model->ReadImage('model.gif');
 warn "$x" if "$x";
 $model->Label('Magick');
-$model->Set(bordercolor=>'black');
-$model->Set(background=>'black');
+$model->Set(background=>'white');
 
 $smile=Image::Magick->new;
 $x=$smile->ReadImage('smile.gif');
 warn "$x" if "$x";
 $smile->Label('Smile');
-$smile->Set(bordercolor=>'black');
+$smile->Set(background=>'white');
 #
 # Create image stack.
 #
 print "Transform image...\n";
 $images=Image::Magick->new();
-$example=$null->Clone();
-push(@$images,$example);
-$example=$null->Clone();
-push(@$images,$example);
-$example=$null->Clone();
-push(@$images,$example);
-$example=$null->Clone();
-push(@$images,$example);
-$example=$null->Clone();
-push(@$images,$example);
 
 print "Adaptive Threshold...\n";
 $example=$model->Clone();
@@ -50,7 +39,7 @@ push(@$images,$example);
 print "Add Noise...\n";
 $example=$model->Clone();
 $example->Label('Add Noise');
-$example->AddNoise("LaplacianNoise");
+$example->AddNoise("Laplacian");
 push(@$images,$example);
 
 print "Annotate...\n";
@@ -81,7 +70,7 @@ push(@$images,$example);
 print "Charcoal...\n";
 $example=$model->Clone();
 $example->Label('Charcoal');
-$example->Charcoal();
+$example->Charcoal('0x1');
 push(@$images,$example);
 
 print "Composite...\n";
@@ -142,7 +131,6 @@ push(@$images,$example);
 print "Implode...\n";
 $example=$model->Clone();
 $example->Label('Explode');
-$example->Set(background=>'#000000FF');
 $example->Implode(-1);
 push(@$images,$example);
 
@@ -163,6 +151,11 @@ $example=$model->Clone();
 $example->Label('Frame');
 $example->Frame('15x15+3+3');
 push(@$images,$example);
+
+print "Fx...\n";
+$example=$model->Clone();
+$example->Label('Fx');
+push(@$images,$example->Fx(expression=>'0.5*u'));
 
 print "Gamma...\n";
 $example=$model->Clone();
@@ -252,6 +245,12 @@ $example->Label('Quantize');
 $example->Quantize();
 push(@$images,$example);
 
+print "Radial Blur...\n";
+$example=$model->Clone();
+$example->Label('Radial Blur');
+$example->RadialBlur(10);
+push(@$images,$example);
+
 print "Raise...\n";
 $example=$model->Clone();
 $example->Label('Raise');
@@ -280,7 +279,12 @@ print "Rotate...\n";
 $example=$model->Clone();
 $example->Label('Rotate');
 $example->Rotate(45);
-$example->Transparent(color=>'black');
+push(@$images,$example);
+
+print "Sample...\n";
+$example=$model->Clone();
+$example->Label('Sample');
+$example->Sample('60%');
 push(@$images,$example);
 
 print "Scale...\n";
@@ -317,7 +321,6 @@ print "Shear...\n";
 $example=$model->Clone();
 $example->Label('Shear');
 $example->Shear('-45x45');
-$example->Transparent(color=>'black');
 push(@$images,$example);
 
 print "Spread...\n";
@@ -334,7 +337,6 @@ push(@$images,$example);
 
 print "Swirl...\n";
 $example=$model->Clone();
-$example->Set(background=>'#000000FF');
 $example->Label('Swirl');
 $example->Swirl(90);
 push(@$images,$example);
@@ -348,7 +350,6 @@ push(@$images,$example);
 print "Wave...\n";
 $example=$model->Clone();
 $example->Label('Wave');
-$example->Set(background=>'#000000FF');
 $example->Wave('25x150');
 push(@$images,$example);
 #
@@ -356,9 +357,8 @@ push(@$images,$example);
 #
 print "Montage...\n";
 $montage=$images->Montage(geometry=>'130x194+10+5>',gravity=>'Center',
-  bordercolor=>'green',borderwidth=>1,tile=>'5x1000',compose=>'over',
-  background=>'#ffffff',font=>'Generic.ttf',pointsize=>18,fill=>'#600',
-  stroke=>'none');
+  tile=>'5x1000+10+200',compose=>'over',background=>'#ffffff',
+  font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none');
 
 $logo=Image::Magick->new();
 $logo->Read('logo:');

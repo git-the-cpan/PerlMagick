@@ -6,7 +6,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jng exif jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
+foreach $delegate (qw/ bzlib jng jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -26,19 +26,19 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '5.5.7',
+   'VERSION'   => '6.0.0',
 
    # Preprocessor defines
-   'DEFINE'	=> '-DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
+   'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
 
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -D_FILE_OFFSET_BITS=64 -D_REENTRANT -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2',
+   'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -D_FILE_OFFSET_BITS=64 -D_REENTRANT -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2",
+   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
-   # 'CCFLAGS'     => "$Config{'ccflags'} -O2 -g -Wall",
+   'CCFLAGS'     => "$Config{'ccflags'} -g -O2 -Wall -pthread",
 
    # Linker flags for building an executable
    'LDFLAGS'    =>  "-L/usr/local/lib $Config{'ldflags'}",
@@ -50,7 +50,7 @@ WriteMakefile
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/local/lib -lMagick -L/usr/X11R6/lib -L/usr/lib -L/usr/lib -llcms -lfreetype -lexif -lXext -lSM -lICE -lX11 -lbz2 -lz -lpthread -lm'],
+   'LIBS'	=> ['-L/usr/local/lib -L../magick/.libs -lMagick -L/usr/X11R6/lib -L/usr/lib -L/usr/lib -llcms -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -59,7 +59,7 @@ WriteMakefile
    # 'OPTIMIZE'	=> '',
 
    # Use same compiler as ImageMagick
-   'PERLMAINCC'	=> 'gcc -L/home/cristy/ImageMagick-5.5.7/ttf/objs',
+   'PERLMAINCC'	=> '',
 
    # Set Perl installation prefix to ImageMagick
 #   'PREFIX'	=> '/usr/local',
@@ -84,4 +84,12 @@ sub MY::makeaperl {
 
      $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/local/lib: ;
      $inherited;
+ }
+
+sub MY::test {
+     package MY; # so that "SUPER" works right
+     my $inherited = shift->SUPER::test(@_);
+                                                                                
+     # Run tests in our environment
+     $inherited =~ s:PERL_DL_NONLAZY=1:PERL_DL_NONLAZY=1:g ;     $inherited;
  }

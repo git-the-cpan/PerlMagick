@@ -1,8 +1,11 @@
 id=ImageMagick  version=1.0
-class=DirectClass  matte=False
+class=DirectClass  colors=0  matte=False
 columns=70  rows=46  depth=8
-page=70x46+0+0
-signature=eb4d6e084afe2835a1ad28ad7fc12ced
+colorspace=RGB
+compression=None
+resolution=72x72
+compose=Over
+signature={eb4d6e084afe2835a1ad28ad7fc12ced}
 comment={
 This is a comment.}
 

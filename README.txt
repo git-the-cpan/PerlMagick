@@ -1,10 +1,10 @@
 Introduction 
 
     PerlMagick, is an objected-oriented Perl interface to ImageMagick.
-    Use the module to read, manipulate, or write an image or image
-    sequence from within a Perl script. This makes it suitable for Web
-    CGI scripts. You must have ImageMagick 5.5.2 or above installed on
-    your system for this module to work properly.
+    Use the module to read, manipulate, or write an image or image sequence
+    from within a Perl script. This makes it suitable for Web CGI scripts. You
+    must have ImageMagick 6.0.0 or above installed on your system for this
+    module to work properly.
 
     See
 
@@ -21,47 +21,44 @@ Installation
 
     Get the PerlMagick distribution and type the following: 
 
-        gunzip ImageMagick-5.5.7.tar.gz
-        tar xvf ImageMagick-5.5.7
+        gunzip ImageMagick-6.0.0-2.tar.gz
+        tar xvf ImageMagick-6.0.0
 
     Follow the ImageMagick installation instructions in INSTALL-unix.txt
 		then type
 
       cd PerlMagick
 
-    Next, edit Makefile.PL and change LIBS and INC to include the
-    appropriate path information to the required libMagick library. You
-    will also need library search paths (-L) to JPEG, PNG, TIFF,
-    etc. libraries if they were included with your installed
-    version of ImageMagick. If an extension library is built as a
-    shared library but not installed in the system's default
-    library search path, you may need to add run-path information
-    (often -R or -rpath) corresponding to the equivalent library
-    search path option so that the library can be located at
-    run-time.
+    Next, edit Makefile.PL and change LIBS and INC to include the appropriate
+    path information to the required libMagick library. You will also need
+    library search paths (-L) to JPEG, PNG, TIFF, etc. libraries if they were
+    included with your installed version of ImageMagick. If an extension
+    library is built as a shared library but not installed in the system's
+    default library search path, you may need to add run-path information
+    (often -R or -rpath) corresponding to the equivalent library search
+    path option so that the library can be located at run-time.
 
-    To create and install the dymamically-loaded version of
-    PerlMagick (the preferred way), execute
+    To create and install the dymamically-loaded version of PerlMagick
+    (the preferred way), execute
         
         perl Makefile.PL
         make
         make install
 
-    To create and install a new 'perl' executable (replacing your
-    existing PERL interpreter!) with PerlMagick statically linked
-    (but other libraries linked statically or dynamically according
-    to system linker default), execute
+    To create and install a new 'perl' executable (replacing your existing
+    PERL interpreter!) with PerlMagick statically linked (but other libraries
+    linked statically or dynamically according to system linker default),
+    execute
 
         perl Makefile.PL
         make perl
         make -f Makefile.aperl inst_perl
 	
-    or to create and install a new PERL interpreter with a
-    different name than 'perl' (e.g. 'PerlMagick') and with
-    PerlMagick statically linked
+    or to create and install a new PERL interpreter with a different name
+    than 'perl' (e.g. 'PerlMagick') and with PerlMagick statically linked
 
         perl Makefile.PL MAP_TARGET=PerlMagick
-	make PerlMagick
+        make PerlMagick
         make -f Makefile.aperl inst_perl
 
     See the ExtUtils::MakeMaker(3) manual page for more information on
@@ -74,8 +71,8 @@ Installation
 
     For Unix, you typically need to be root to install the software.
     There are ways around this.  Consult the Perl manual pages for more
-    information. You are now ready to utilize the PerlMagick routines
-    from within your Perl scripts.
+    information. You are now ready to utilize the PerlMagick routines from
+    within your Perl scripts.
 
 
 Testing PerlMagick
@@ -111,5 +108,5 @@ Example Perl Magick Script
         $x = $q->Write("x.gif");
         warn "$x" if $x;
 
-    The script reads three images, crops them, and writes a single
-    image as a GIF animation sequence.
+    The script reads three images, crops them, and writes a single image
+    as a GIF animation sequence.

@@ -30,7 +30,7 @@ require AutoLoader;
       ConfigureError FatalErrorException
     );
 
-$VERSION = '5.5.7';
+$VERSION = '6.0.0';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -85,7 +85,7 @@ __END__
 
 =head1 NAME
 
-Image::Magick - Perl extension for calling ImageMagick's libImageMagick routines
+Image::Magick - Perl extension for calling ImageMagick's libMagick methods
 
 =head1 SYNOPSIS
 
@@ -106,7 +106,7 @@ It was originally developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.ImageMagick.org/www/perl.html
+	http://www.imagemagick.org/www/perl.html
 
 =head1 AUTHOR
 

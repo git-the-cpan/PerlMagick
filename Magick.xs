@@ -25,6 +25,7 @@ int IM_do_warn = 0;		/* if != 0: error messages call Perl warn */
 static char *complain = "Reference is not my type";
 
 #define warning(e, s1, s2) { SetErrorStatus(e); warninghandler(s1, s2); }
+#define error(e, s1, s2) { SetErrorStatus(e); errorhandler(s1, s2); }
 
 static double
 constant(char *name, int arg)
@@ -122,7 +123,9 @@ static char *p_compressions[] = {
     "Undefined", "None", "JPEG", "LZW", "Runlength", "Zip", 0 };
 
 static char *p_filters[] = {
-    "Box", "Mitchell", "Triangle", 0 };
+    "Undefined", "Point", "Box", "Triangle", "Hermite", "Hanning", "Hamming",
+    "Blackman", "Guassian", "Quadratic", "Cubic", "Catrom", "Mitchell",
+    "Lanczos", "Bessel", "Sinc", 0 };
 
 static char *p_gravities[] = {
     "Forget", "NorthWest", "North", "NorthEast", "West",
@@ -710,6 +713,23 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 		strncpy(image->filename, p, MaxTextExtent - 1);
 	    return;
 	}
+	if (strEQcase(attr, "filter"))
+	{
+	    int sp = SvPOK(sval) ? LookupStr(p_filters, SvPV(sval, na))
+				 : SvIV(sval);
+	    if (sp < 0)
+	    {
+		warning(OptionWarning, "Unknown filter type", SvPV(sval, na));
+		return;
+	    }
+	    if (info)
+		{
+		    info->info.filter = (FilterType) sp;
+		    for ( ; image; image = image->next) 
+			image->filter = (FilterType) sp;
+		}
+	    return;
+	}
 	if (strEQcase(attr, "font"))
 	{
 	    if (info)
@@ -1036,6 +1056,12 @@ get_list(SV *rref, SV ***svarr, int *cur, int *last)
 		    Image *image = get_list(SvRV(*rv), svarr, cur, last);
 		    if (!image)
 			continue;
+		    if (image == prev)
+			{
+			    error(OptionError, "duplicate image in list",
+				"remove or use method Clone()");
+			    return NULL;
+			}
 		    image->previous = prev;
 		    *(prev? &prev->next : &head) = image;
 		    for (prev = image; prev->next; prev = prev->next)
@@ -1567,6 +1593,7 @@ Montage(ref, ...)
 	    rref = SvRV(ST(0));
 	    hv = SvSTASH(rref);
 
+
 	    av = newAV();
 	    avref = sv_2mortal(sv_bless(newRV((SV *)av), hv));
 	    SvREFCNT_dec(av);
@@ -1675,19 +1702,6 @@ Montage(ref, ...)
 		    {
 			strncpy(montage.filename, SvPV(ST(n), na),
 						  sizeof montage.filename);
-			continue;
-		    }
-		    if (strEQcase(arg, "filter"))
-		    {
-			int sp = !SvPOK(ST(n)) ? SvIV(ST(n)) :
-				  LookupStr(p_filters, SvPV(ST(n), na));
-			if (sp < 0)
-			{
-			    warning(OptionWarning, "Unknown filter type",
-						    SvPV(ST(n), na));
-			    continue;
-			}
-			montage.filter = (FilterType) sp;
 			continue;
 		    }
 		    if (strEQcase(arg, "font"))
@@ -2615,8 +2629,8 @@ Mogrify(ref, ...)
 							 &br.width, &br.height);
 		    if (!aflag[3])
 			alist[3].t_int = 1;
-		    image = ZoomImage(image, br.width, br.height,
-						  (FilterType) alist[3].t_int);
+		    image->filter=(FilterType) alist[3].t_int;
+		    image = ZoomImage(image, br.width, br.height);
 		    break;
 		case 32:	/* IsGrayImage */
 		    break;
@@ -3517,12 +3531,7 @@ Get(ref, ...)
 		    }
 		    break;
 		case 'R': case 'r':
-		    if (strEQcase(arg, "runlength"))
-		    {
-			if (image)
-			    s = newSViv(image->runlength);
-		    }
-		    else if (strEQcase(arg, "row"))
+		    if (strEQcase(arg, "row"))
 		    {
 			if (image)
 			    s = newSViv(image->rows);

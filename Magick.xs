@@ -201,7 +201,8 @@ static struct routines {
 		    {"blue", P_DBL} } },
     {	"Map", { {"image", P_IMG}, {"dither", p_boolean} } },
     {	"MatteFloodfill", },
-    {	"Modulate", { {"bright", P_DBL}, {"satur", P_DBL}, {"hue", P_DBL} } },
+    {	"Modulate", { {"factor", P_STR}, {"bright", P_DBL}, {"satur", P_DBL},
+		    {"hue", P_DBL} } },
     {	"Negate", { {"gray", p_boolean} } },
     {	"Normalize", },
     {	"NumberColors", },
@@ -492,6 +493,18 @@ SetAttribute(info, image, attr, sval)
 	}
 	break;
     case 'B': case 'b':
+	if (strEQcase(attr, "background"))
+	{
+	    XColor target_color;
+
+	    (void) XQueryColorDatabase(SvPV(sval, na),&target_color);
+	    for ( ; image; image = image->next) {
+		image->background_color.red = XDownScale(target_color.red);
+		image->background_color.green = XDownScale(target_color.green);
+		image->background_color.blue = XDownScale(target_color.blue);
+	    }
+	    return;
+	}
 	if (strEQcase(attr, "bordercolor"))
 	{
 	    XColor target_color;
@@ -506,19 +519,29 @@ SetAttribute(info, image, attr, sval)
 	}
 	break;
     case 'C': case 'c':
-	if (strEQcase(attr, "compres"))
+	if (strEQcase(attr, "colormap"))
 	{
-	    int com = SvPOK(sval) ? LookupStr(p_compressions, SvPV(sval, na))
-				  : SvIV(sval);
-	    if (com < 0)
-	    {
-		warninghandler("Unknown compression type", SvPV(sval, na));
-		return;
-	    }
-	    if (info)
-		info->info.compression = com;
+	    ColorPacket *cp;
+	    int i, red, green, blue;
+
 	    for ( ; image; image = image->next)
-		image->compression = com;
+	    {
+	        if (image->class == DirectClass)
+		    continue;
+		i = 0;
+	        (void) sscanf(attr, "%*[^[][%d", &i);
+		if (i > image->colors)
+		    i %= image->colors;
+		cp = image->colormap+i;
+		red = cp->red;
+		blue = cp->green;
+		green = cp->blue;
+		(void) sscanf(SvPV(sval, na), "%d,%d,%d", &red, &green,
+					&blue);
+		cp->red = red;
+		cp->blue = green;
+		cp->green = blue;
+	    }
 	    return;
 	}
 	if (strEQcase(attr, "colorsp"))
@@ -541,6 +564,21 @@ SetAttribute(info, image, attr, sval)
 	colors:
 	    if (info && !(info->quant.number_colors = SvIV(sval)))
 		info->quant.number_colors = MaxRGB+1;
+	    return;
+	}
+	if (strEQcase(attr, "compres"))
+	{
+	    int com = SvPOK(sval) ? LookupStr(p_compressions, SvPV(sval, na))
+				  : SvIV(sval);
+	    if (com < 0)
+	    {
+		warninghandler("Unknown compression type", SvPV(sval, na));
+		return;
+	    }
+	    if (info)
+		info->info.compression = com;
+	    for ( ; image; image = image->next)
+		image->compression = com;
 	    return;
 	}
 	break;
@@ -703,6 +741,36 @@ SetAttribute(info, image, attr, sval)
 	    free(p);
 	    return;
 	}
+	if (strEQcase(attr, "pixel"))
+	{
+	    RunlengthPacket *cp;
+	    int x, y, red, green, blue, index;
+
+	    for ( ; image; image = image->next)
+	    {
+	        if (!UncompressImage(image))
+		    continue;
+		x = 0;
+		y = 0;
+	        (void) sscanf(attr, "%*[^[][%d,%d", &x, &y);
+		if (y > image->rows)
+		    y %= image->rows;
+		if (x > image->columns)
+		    x %= image->columns;
+		cp = image->pixels+(y*image->columns+x);
+		red = cp->red;
+		blue = cp->green;
+		green = cp->blue;
+		index = cp->index;
+		(void) sscanf(SvPV(sval, na), "%d,%d,%d,%d", &red, &green,
+					&blue, &index);
+		cp->red = red;
+		cp->blue = green;
+		cp->green = blue;
+		cp->index = index;
+	    }
+	    return;
+	}
 	if (strEQcase(attr, "points"))
 	{
 	    if (info && (info->info.pointsize = SvIV(sval)) <= 0)
@@ -721,6 +789,12 @@ SetAttribute(info, image, attr, sval)
     case 'R': case 'r':
 	break;
     case 'S': case 's':
+	if (strEQcase(attr, "scene"))
+	{
+	    for ( ; image; image = image->next)
+		image->scene = SvIV(sval);
+	    return;
+	}
 	if (strEQcase(attr, "subim"))
 	{
 	    if (info)
@@ -2281,12 +2355,10 @@ Mogrify(ref, ...)
 			    alist[2].t_dbl = 1.0;
 			if (!aflag[3])
 			    alist[3].t_dbl = 1.0;
+			sprintf(b, "%f/%f/%f", alist[1].t_dbl,
+			    alist[2].t_dbl, alist[3].t_dbl);
 			if (!aflag[0])
-			{
-			    sprintf(b, "%f/%f/%f", alist[1].t_dbl,
-					alist[2].t_dbl, alist[3].t_dbl);
 			    alist[0].t_str = b;
-			}
 		    }
 		    ModulateImage(image, alist[0].t_str);
 		    break;
@@ -2634,14 +2706,13 @@ Get(ref, ...)
 
 			if (!image || !image->colormap)
 			    break;
-			s = newSVpv("", 0);
-			cp = image->colormap;
-			for (i = 0; i < image->colors; i++, cp++)
-			{
-			    sprintf(b, "%u,%u,%u\n", cp->red, cp->green,
-						cp->blue);
-			    sv_catpv(s, b);
-			}
+		        i = 0;
+		        (void) sscanf(arg, "%*[^[][%d,%d", &i );
+		        if (i > image->colors)
+		            i %= image->colors;
+			cp = image->colormap+i;
+			sprintf(b, "%u,%u,%u\n", cp->red, cp->green, cp->blue);
+			s = newSVpv(b, 0);
 		    }
 		    else if (strEQcase(arg, "color"))	/* same as number */
 		    {
@@ -2880,19 +2951,23 @@ Get(ref, ...)
 		    else if (strEQcase(arg, "pixel"))
 		    {
 			RunlengthPacket *cp;
-			int j;
+			int x, y;
 
 			if (!image || !image->pixels)
 			    break;
-			s = newSVpv("", 0);
-			cp = image->pixels;
-			for (i = 0; i < image->packets; i++, cp++)
-			    for (j = 0; j <= ((int) cp->length); j++)
-			    {
-				sprintf(b, "%u,%u,%u,%u\n", cp->red, cp->green,
-							cp->blue, cp->index);
-				sv_catpv(s, b);
-			    }
+			if (!UncompressImage(image))
+			    break;
+		        x = 0;
+		        y = 0;
+		        (void) sscanf(arg, "%*[^[][%d,%d", &x, &y);
+		        if (y > image->rows)
+		            y %= image->rows;
+		        if (x > image->columns)
+		            x %= image->columns;
+			cp = image->pixels+(y*image->columns+x);
+			sprintf(b, "%u,%u,%u,%u\n", cp->red, cp->green,
+						    cp->blue, cp->index);
+			s = newSVpv(b, 0);
 		    }
 		    else if (strEQcase(arg, "points"))
 		    {

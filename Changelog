@@ -1,9 +1,11 @@
 Revision history for Perl extension Image::Magick.
 
+1.10  Tue May 20 1997
+	- Access individual pixels of an image; Set('pixel[4,4]'=>'255,255,255')
 1.07  Tue May 06 1997
-	- Added Clone is an alias of Copy.
+	- Clone is an alias of Copy.
 1.05  Fri Apr 25 1997
-	- added allignment to function Annotate (left, center, right).  Requires
+	- Added allignment to function Annotate (left, center, right).  Requires
 	  ImageMagick 3.8.5 to compile.
 1.03  Mon Apr 11 1997
 	- some objects were not being destroyed when dereferenced due to an

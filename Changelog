@@ -1,5 +1,9 @@
 Revision history for Perl extension Image::Magick.
 
+1.43 Thr Aug 27 1198
+	- Added RemoteCommand method to send a command to a remote
+	  display program.  PerlMagick was not always honoring the
+          adjoin option.
 1.42 Wed Aug 12 1198
 	- Added Transform method to accept a fully-qualified geometry
           specification for crop and image size.

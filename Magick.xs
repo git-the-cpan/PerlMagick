@@ -2017,7 +2017,6 @@ Write(ref, ...)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
 	    strcpy(filename, temp->info.filename);
-	    SetImageInfo((void *)&temp->info, True);	/* sets adjoin */
 
 	    for (n = 0, im = image; im; im = im->next, n++)
 	    {
@@ -3233,6 +3232,8 @@ Get(ref, ...)
 		    else if (strEQcase(arg, "compress"))
 		    {
 			i = info ? info->info.compression : image->compression;
+			if (info && info->info.compression == UndefinedCompression)
+			    i = image->compression;
 			s = newSViv(i);
 			if (i >= 0 && i < NUMBEROF(p_compressions) - 1)
 			{
@@ -3333,6 +3334,16 @@ Get(ref, ...)
 			else if (info && info->info.filename &&
 				 *info->info.filename)
 			    s = newSVpv(info->info.filename, 0);
+		    }
+		    else if (strEQcase(arg, "filter"))
+		    {
+			i = info ? info->info.filter : image->filter;
+			s = newSViv(i);
+			if (i >= 0 && i < NUMBEROF(p_filters) - 1)
+			{
+			    sv_setpv(s, p_filters[i]);
+			    SvIOK_on(s);
+			}
 		    }
 		    else if (strEQcase(arg, "font"))
 		    {
@@ -3761,3 +3772,37 @@ QueryColor(ref, ...)
 	    SvREFCNT_dec(im_er_mes);    /* throw away all errors */
 	    im_er_mes = NULL;
 	}
+
+# remote image
+
+void
+Remote(ref, ...)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+	    RemoteCommand	= 1
+	    remote		= 2
+	    remoteCommand	= 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    int n;
+	    char b[80];
+	    Display *display;
+	    struct info *info;
+	    AV *av;
+	    SV *s;
+
+	    EXTEND(sp, items - 1);
+	    im_er_mes = newSVpv("", 0);
+
+	    rref = SvRV(ST(0));
+	    av = (AV *)rref;
+	    info = getinfo((void *) av, (struct info *) NULV);
+	    display = XOpenDisplay(info->info.server_name);
+	    for (n = 1; n < items; n++)
+		XRemoteCommand(display, (char *) NULL, (char *)SvPV(ST(n), na));
+
+	    SvREFCNT_dec(im_er_mes);    /* throw away all errors */
+	    im_er_mes = NULL;
+	}
+

@@ -216,7 +216,6 @@ static struct routines {
     {   "Threshold", { {"threshold", P_DBL} } },
     {   "Charcoal", { {"factor", P_DBL} } },
     {	"Trim", },
-    {	"Copy", },
 };
 
 static SV *im_er_mes;		/* Perl variable for storing messages */
@@ -957,6 +956,10 @@ DESTROY(ref)
 void
 Average(ref)
 	Image::Magick	ref = NO_INIT
+	ALIAS:
+            AverageImage   = 1
+            average        = 2
+            averageimage   = 3
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1001,7 +1004,7 @@ Average(ref)
 	    /* create blessed Perl array for the returned image */
 	    av = newAV();
 	    ST(0) = sv_2mortal(sv_bless(newRV((SV *)av), hv));
-	    /*SvREFCNT_dec(av);*/
+	    SvREFCNT_dec(av);
 
 	    sv = newSViv((IV)image);
 	    rv = newRV(sv);
@@ -1014,6 +1017,68 @@ Average(ref)
 		((p = strrchr(image->filename, '/')) ? p+1 : image->filename));
 	    strcpy(image->filename, info->info.filename);
 	    SetImageInfo(&info->info, False);
+	    im_er_jmp = NULL;
+	    XSRETURN(1);
+	}
+
+void
+Copy(ref)
+	Image::Magick	ref = NO_INIT
+	ALIAS:
+            CopyImage   = 1
+            copy        = 2
+            copyimage   = 3
+	PPCODE:
+	{
+	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
+	    Image *im, *image;
+	    jmp_buf error_jmp;
+	    char *p;
+	    struct info *info;
+	    SV *sv, *rv;
+	    AV *av;
+	    HV *hv;
+
+	    im_er_mes = NULL;   /* we can't handle returning messages */
+	    if (!sv_isobject(ST(0)))
+	    {
+		warninghandler(complain, IM_packname);
+		XSRETURN_EMPTY;
+	    }
+	    rref = SvRV(ST(0));
+	    hv = SvSTASH(rref);
+
+	    im_er_jmp = &error_jmp;
+	    if (setjmp(error_jmp))
+	    {
+		im_er_jmp = NULL;
+		XSRETURN_EMPTY;
+	    }
+
+	    if (!(image = setup_list(rref, &info, NULV)))
+	    {
+		warninghandler("No images to Copy", NULV);
+		im_er_jmp = NULL;
+		XSRETURN_EMPTY;
+	    }
+
+	    /* create blessed Perl array for the returned image */
+	    av = newAV();
+	    ST(0) = sv_2mortal(sv_bless(newRV((SV *)av), hv));
+	    SvREFCNT_dec(av);
+
+	    for (im=image ; im; im = im->next)
+	    {
+		image = CopyImage(im, im->columns, im->rows, True);
+		if (!image)
+		    break;
+		sv = newSViv((IV)image);
+		rv = newRV(sv);
+		av_push(av, sv_bless(rv, hv));
+		SvREFCNT_dec(sv);
+	    }
+
+	    info = getinfo(av, info);
 	    im_er_jmp = NULL;
 	    XSRETURN(1);
 	}
@@ -1049,7 +1114,7 @@ Montage(ref, ...)
 
 	    av = newAV();
 	    retval = sv_2mortal(sv_bless(newRV((SV *)av), hv));
-	    /*SvREFCNT_dec(av);*/
+	    SvREFCNT_dec(av);
 
 	    transparent_color = montage.tile = montage.texture = NULL;
 
@@ -1553,7 +1618,6 @@ Mogrify(ref, ...)
 		Threshold	= 57
 		Charcoal	= 58
 		Trim		= 59
-		Copy		= 60
 	PPCODE:
 	{
 	    SV *rref;	/* rref is the SV* of ref=SvIV(rref) */
@@ -1858,7 +1922,6 @@ Mogrify(ref, ...)
 			image->matte_color.blue = XDownScale(xc.blue);
 		    }
 		    image = FrameImage(image, &fr);
-		    image->class = DirectClass;
 		    break;
 		case 16:	/* Implode */
 		    if (!aflag[0])
@@ -2248,11 +2311,6 @@ Mogrify(ref, ...)
 		    MogrifyImage(&info->info, 8, commands, &image);
 		    if (next != image)
 			next = NULL;  /* 'cause it's been blown away */
-		    break;
-		case 60:	/* Copy */
-		    image = CopyImage(image, image->columns, image->rows, True);
-		    if (image)
-			next = NULL;	/* don't destroy original image */
 		    break;
 		}
 

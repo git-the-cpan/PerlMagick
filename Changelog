@@ -1,5 +1,10 @@
 Revision history for Perl extension Image::Magick.
 
+1.03  Mon Apr 11 1997
+	- some objects were not being destroyed when dereferenced due to an
+	  incorrect reference count.
+1.01  Mon Apr 02 1997
+	- Frame routine faulted if bad parameters were specified.
 1.00  Mon Apr 01 1997
 	- presumably there are no bugs.
 0.94  Wed Mar 12 1997

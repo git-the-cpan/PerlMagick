@@ -1,6 +1,6 @@
 package Image::Magick;
 
-# Released Feb. 17, 1997  by Kyle Shorter (kyle@magick.sympatico.org)
+# Released Feb. 17, 1997  by Kyle Shorter (magick@sympatico.org)
 # Public Domain
 
 use strict;
@@ -18,7 +18,7 @@ require AutoLoader;
 @EXPORT = qw(
 	
 );
-$VERSION = '1.0';
+$VERSION = '1.03';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()

@@ -1,5 +1,7 @@
 #!/usr/local/bin/perl
-
+#
+# Overall demo of the major PerlMagick methods.
+#
 use Image::Magick;
 
 #
@@ -11,13 +13,13 @@ $null->Set(size=>'70x70');
 $x=$null->ReadImage('NULL:black');
 warn "$x" if "$x";
 $model=Image::Magick->new;
-$x=$model->ReadImage('demo/model.gif');
+$x=$model->ReadImage('model.gif');
 warn "$x" if "$x";
 $model->Label('Magick');
 $model->Set(bordercolor=>'black');
 $model->Set(background=>'black');
 $smile=Image::Magick->new;
-$x=$smile->ReadImage('demo/smile.gif');
+$x=$smile->ReadImage('smile.gif');
 warn "$x" if "$x";
 $smile->Label('Smile');
 $smile->Set(bordercolor=>'black');
@@ -38,7 +40,7 @@ $example=$null->Clone();
 push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Annotate');
-$example->Annotate(text=>'Magick',geometry=>'+0+10',font=>'@demo/Generic.ttf',
+$example->Annotate(text=>'Magick',geometry=>'+0+10',font=>'@Generic.ttf',
   pen=>'gold',align=>'center');
 push(@$images,$example);
 $example=$model->Clone();
@@ -199,7 +201,7 @@ $title=Image::Magick->new;
 $title->Set(size=>'550x90');
 $x=$title->ReadImage('xc:black');
 warn "$x" if "$x";
-$title->Annotate(text=>'PerlMagick',geometry=>"+1+1",font=>'@demo/Generic.ttf',
+$title->Annotate(text=>'PerlMagick',geometry=>"+1+1",font=>'@Generic.ttf',
   pointsize=>18,density=>'300x300',pen=>'white',align=>'center');
 $title->Draw(primitive=>'Matte',points=>'+0+0',method=>'Replace',pen=>'black');
 $title->Composite(image=>$background,compose=>'Add');
@@ -209,14 +211,13 @@ $title->Composite(image=>$background,compose=>'Add');
 print "Montage image...\n";
 $montage=$images->montage(geometry=>'130x194+10+5>',gravity=>'Center',
   bordercolor=>'green',borderwidth=>1,tile=>'5x1000',compose=>'over',
-  texture=>'granite:',font=>'@demo/Generic.ttf');
+  texture=>'granite:',font=>'@Generic.ttf');
 $montage->Composite(image=>$title,geometry=>'+90+50',compose=>'Over');
 $montage->Annotate(text=>'Every thing you see on this page was created ' .
   'with the PerlMagick and ImageMagick toolkits.',geometry=>"+20+175",
-  font=>'@demo/Generic.ttf',pointsize=>11,pen=>'#600');
+  font=>'@Generic.ttf',pointsize=>11,pen=>'#600');
 print "Write image...\n";
 $montage->Set(matte=>'false');
-$x=$montage->Write('demo/demo.jpg');
-$montage->Write('demo/demo.gif') if "$x";  # may not have the JPEG plug-in
+$montage->Write('demo.gif') if "$x";  # may not have the JPEG plug-in
 print "Display image...\n";
 $montage->display();

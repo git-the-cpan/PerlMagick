@@ -4,28 +4,19 @@
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
-BEGIN { $| = 1; print "1..1\n"; }
+BEGIN { $| = 1; $test=1; print "1..1\n"; }
 END {print "not \n" unless $loaded;}
 
 use Image::Magick;
 $loaded=1;
 
+require 't/subroutines.pl';
+
 chdir 't/jbig' || die 'Cd failed';
 
-$image=Image::Magick->new;
-$x=$image->ReadImage('JBIG:input.jbig');
-if( "$x" ) {
-  print "$x\n";
-  print "not ok 1\n";
-} else {
-  $x=$image->WriteImage(filename=>'JBIG:output_tmp.jbig');
-  if( "$x" ) {
-    print "$x\n";
-    print "not ok 1\n";
-  } else {
-    system("cmp input.jbig output_tmp.jbig > /dev/null 2>&1") && print "not ";
-    unlink('output_tmp.jbig');
-    print "ok 1\n";
-  }
-}
-undef $image;
+testReadWrite( 'input.jbig',
+               'output.jbig',
+               '',
+               '7e03577f60aebfc4c36ac1693ef81bcc' );
+
+$test=0; # Keep perl from complaining

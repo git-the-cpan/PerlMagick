@@ -1526,7 +1526,10 @@ Display(ref, ...)
 		    SetAttribute(temp, NULL, SvPV(ST(n-1), na), ST(n));
 
 	    display = XOpenDisplay(info->info.server_name);
-	    if (display)
+            if (!display)
+                warning(XServerError,"Unable to connect to X server",
+                    XDisplayName(info->info.server_name))
+            else
 	    {
 		XSetErrorHandler(XError);
 		resource_database = XGetResourceDatabase(display, client_name);

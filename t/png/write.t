@@ -4,58 +4,38 @@
 #
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
-BEGIN { $| = 1; print "1..1\n"; }
-END {print "not \n" unless $loaded;}
+BEGIN { $| = 1; $test=1; print "1..3\n"; }
+END {print "not ok $test\n" unless $loaded;}
 
 use Image::Magick;
 $loaded=1;
+
+require 't/subroutines.pl';
 
 chdir 't/png' || die 'Cd failed';
 
 #
 # 1) Test pseudocolor image
 #
-
-$image=Image::Magick->new;
-$x=$image->ReadImage('PNG:input_256.png');
-if( "$x" ) {
-  print "$x\n";
-  print "not ok 1\n";
-} else {
-  $x=$image->WriteImage(filename=>'PNG:output_256_tmp.png', quality=>54);
-  if( "$x" ) {
-    print "$x\n";
-    print "not ok 1\n";
-  } else {
-    system("cmp output_256_master.png output_256_tmp.png > /dev/null 2>&1") && print "not ";
-    unlink('output_256_tmp.png');
-    print "ok 1\n";
-  }
-}
-undef $image;
+testReadWrite( 'input_256.png',
+	       'output_256.png',
+	       q/quality=>54/,
+	       '8de05f913b3269ce6acafbfba975837f' );
 
 #
 # 2) Test truecolor image
 #
+++$test;
+testReadWrite( 'input_truecolor.png',
+	       'output_truecolor.png',
+	       q/quality=>55/,
+	       '4449bf016e98250d673074583bc5b14f' );
 
-print "1..2\n";
-$image=Image::Magick->new;
-$x=$image->ReadImage('PNG:input_truecolor.png');
-if( "$x" ) {
-  print "$x\n";
-  print "not ok 2\n";
-} else {
-  $x=$image->WriteImage(filename=>'PNG:output_truecolor_tmp.png', quality=>55);
-  if( "$x" ) {
-    print "$x\n";
-    print "not ok 2\n";
-  } else {
-    system("cmp output_truecolor_master.png output_truecolor_tmp.png > /dev/null 2>&1") && print "not ";
-    unlink('output_truecolor_tmp.png');
-    print "ok 2\n";
-  }
-}
-
-
-
+#
+# 3) Test monochrome image
+#
+++$test;
+testReadWrite( 'input_mono.png',
+	       'output_mono.png', '',
+	       'd6a0c3ad0b6b8677f877290da26bda20' );
 

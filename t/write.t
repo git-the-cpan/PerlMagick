@@ -335,7 +335,7 @@ testReadWriteSized( 'YUV:input_70x46.yuv',
 		    'YUV:output_70x46.yuv',
 		    '70x46',
 		    q//,
-		    'c14b9bfbfba0105196ce2cccda7405ce' );
+		    '6e378064d69564683dd27abd0aeb0562' );
 
 
 1;

@@ -41,6 +41,12 @@ push(@$images,$example);
 $example=$null->Clone();
 push(@$images,$example);
 
+print "Adaptive Threshold...\n";
+$example=$model->Clone();
+$example->Label('Adaptive Threshold');
+$example->AdaptiveThreshold('5x5+5%');
+push(@$images,$example);
+
 print "Add Noise...\n";
 $example=$model->Clone();
 $example->Label('Add Noise');
@@ -193,7 +199,7 @@ push(@$images,$example);
 print "Level...\n";
 $example=$model->Clone();
 $example->Label('Level');
-$example->Border(level=>'20%');
+$example->Level(level=>'20%');
 push(@$images,$example);
 
 print "Median Filter...\n";

@@ -30,7 +30,7 @@ require AutoLoader;
       ConfigureError FatalErrorException
     );
 
-$VERSION = '5.53';
+$VERSION = '5.54';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -107,7 +107,7 @@ developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.imagemagick.org/ImageMagick/www/perl.html
+	http://www.imagemagick.org/www/perl.html
 
 =head1 AUTHOR
 

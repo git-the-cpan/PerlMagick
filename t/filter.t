@@ -73,12 +73,12 @@ testFilterSignature('input.miff', 'Edge',
   'a0106135ce0959a95d2fe8766018ba1436f97903ae4b88e23bb1e9901ae75249');
 
 ++$test;
-testFilterCompare('input.miff', q/2x1/, 'reference/filter/Emboss.miff', 'Emboss',
-  q/2x1/, 0, 0);
+testFilterCompare('input.miff', q/2x1/, 'reference/filter/Emboss.miff',
+  'Emboss', q/2x1/,  3.4e-05, 2.5e-02);
 
 ++$test;
-testFilterCompare('input.miff', q/2x1/, 'reference/filter/Equalize.miff', 'Equalize',
-  q/2x1/, 0, 0);
+testFilterCompare('input.miff', q/2x1/, 'reference/filter/Equalize.miff',
+  'Equalize', q/2x1/, 0, 0);
 
 ++$test;
 testFilterSignature('input.miff', 'Flip',
@@ -129,8 +129,8 @@ testFilterSignature('input.miff', 'Minify',
 ++$test;
 testFilterSignature('input.miff', 'Modulate',
   q/60/,
-  '4a9c88f7ffaa8937920235af65d4b7d38d70d72315e4868a9068c3b1d0cbb308',
-  '5d2a14f4ebece1c43e185ee9cefc05f6942f830d1a62b1a70de982da9627eda5');
+  '17b9fcd681d677c1a5e1e673901ebd7ba8051b6296b134739584be26468fdabe',
+  '7850fb3747bf7221bd9dab159c327334246d53aa83dbacad86044cee205bbcee');
 
 ++$test;
 testFilterSignature('input.miff', 'Negate',
@@ -163,8 +163,8 @@ testFilterSignature('input.miff', 'Quantize',
 ++$test;
 testFilterSignature('input.miff', 'Raise',
   q/10x10/,
-  'b31cae257270e0a9ab61181d79c57f2433e465a43f1c75fc70f1398473419c78',
-  '3dd26d98684455a4d6de122ca1040ae44f646f64e0d67cc655e32977f6d2b8bf');
+  'd675590ba355ff46287cbdb62076284fe9a046fff53ebcbf1456e2e03489458c',
+  '36adc65e9ffa3535723f42597f8d6a95782aa19f9e7ca855a6cbdb6dd56e0f80');
 
 ++$test;
 testFilterSignature('input.miff', 'Resize',
@@ -195,13 +195,14 @@ testFilterSignature('input.miff', 'Scale',
   'ff2af316c85f4d38a707e974525def24ed8b9c25eaf247c960d8d923575f1add');
 
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Shade.miff', 'Shade',
-  q/gray=>'true'/, 3.3e-06, 3.06e-05);
+testFilterCompare('input.miff', q//, 'reference/filter/Shade.miff',
+  'Shade', q/geometry=>'30x30',gray=>'true'/, 3.5e-06, 1.6e-05);
 
 ++$test;
 testFilterSignature('input.miff', 'Segment',
   q/1/,
-  'dfddaf9947c009961addec474d86d4142f418d20ff9de2460e8bd4928516aff3');
+  '5e65af380f40077db2aac8ba0a058c1a4d32057d1b48bbe0ae617c557d765606',
+  'a5e75fb937fcddc86a10aea2fbf9c596566c352304c3469eb257383dd5254416');
 
 ++$test;
 testFilterSignature('input.miff', 'Sharpen',
@@ -216,9 +217,9 @@ testFilterSignature('input.miff', 'Shave',
 
 ++$test;
 testFilterSignature('input.miff', 'Shear',
-  q/10/,
-  '7dd7b15ed83be0a3898ce1c06ef6ff35ace29f4beefd09f51fba88bc5b929389',
-  'b40146de3357c0c156c3b23398b294b125aca4c832ca83ee5e737c5ab2df403d');
+  q/10x10/,
+  '6a791cf363b5f6d9cf9bb80ca7ced8569733436cb96e5e3fa582819dd7ac4a35',
+  'f71634c949bba1d9437512063025e0b4e3d6bc49e0f420647fd45e7428425f04');
 
 ++$test;
 testFilterSignature('input.miff', 'Solarize',

@@ -255,7 +255,8 @@ static struct routines {
     {	"NumberColors", },
     {	"Opaque", { {"color", P_STR}, {"pen", P_STR} } },
     {	"Quantize", { {"colors", P_INT}, {"tree", P_INT},
-    		    {"colorsp", p_colorspaces}, {"dither", p_boolean} } },
+    		    {"colorsp", p_colorspaces}, {"dither", p_boolean},
+		    {"measure", p_boolean} } },
     {	"Raise", { {"geom", P_STR}, {"width", P_INT}, {"height", P_INT},
 		    {"x", P_INT}, {"y", P_INT}, {"raise", p_boolean} } },
     {	"Segment", { {"colorsp", p_colorspaces}, {"verbose", p_boolean},
@@ -854,16 +855,16 @@ SetAttribute(struct info *info, Image *image, char *attr, SV *sval)
 
 		    XQueryColorDatabase(SvPV(sval, na), &xc);
 		    cp->red = XDownScale(xc.red);
-		    cp->blue = XDownScale(xc.green);
-		    cp->green = XDownScale(xc.blue);
+		    cp->green = XDownScale(xc.green);
+		    cp->blue = XDownScale(xc.blue);
 		}
 		else
 		{
 		    int red, green, blue, index;
 
 		    red = cp->red;
-		    blue = cp->green;
-		    green = cp->blue;
+		    green = cp->green;
+		    blue = cp->blue;
 		    index = cp->index;
 		    (void) sscanf(SvPV(sval, na), "%d,%d,%d,%d",
 						&red, &green, &blue, &index);
@@ -2804,6 +2805,8 @@ Mogrify(ref, ...)
 			quan.dither = aflag[3] ? alist[3].t_int :
 				(info? info->quant.dither : False);
 			QuantizeImages(&quan, image);
+			if (aflag[4] && alist[4].t_int)
+			    QuantizationError(image);
 		    	SyncImage(image);
 			goto return_it;
 		    }

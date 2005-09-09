@@ -18,11 +18,11 @@ require AutoLoader;
 # Do not simply export all your public functions/methods/constants.
 @EXPORT =
   qw(
-      Success Transparent Opaque MaxRGB WarningException
-      ResourceLimitWarning TypeWarning OptionWarning DelegateWarning
-      MissingDelegateWarning CorruptImageWarning FileOpenWarning
-      BlobWarning StreamWarning CacheWarning CoderWarning ModuleWarning
-      DrawWarning ImageWarning XServerWarning RegistryWarning
+      Success Transparent Opaque QuantumDepth QuantumRange MaxRGB
+      WarningException ResourceLimitWarning TypeWarning OptionWarning
+      DelegateWarning MissingDelegateWarning CorruptImageWarning
+      FileOpenWarning BlobWarning StreamWarning CacheWarning CoderWarning
+      ModuleWarning DrawWarning ImageWarning XServerWarning RegistryWarning
       ConfigureWarning ErrorException ResourceLimitError TypeError
       OptionError DelegateError MissingDelegateError CorruptImageError
       FileOpenError BlobError StreamError CacheError CoderError
@@ -30,7 +30,7 @@ require AutoLoader;
       ConfigureError FatalErrorException
     );
 
-$VERSION = '6.2.0';
+$VERSION = '6.2.4';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -90,13 +90,13 @@ Image::Magick - Perl extension for calling ImageMagick's libMagick methods
 =head1 SYNOPSIS
 
   use Image::Magick;
-  p = new Image::Magick;
-  p->Read("imagefile");
-  p->Set(attribute => value, ...)
-  ($a, ...) = p->Get("attribute", ...)
-  p->routine(parameter => value, ...)
-  p->Mogrify("Routine", parameter => value, ...)
-  p->Write("filename");
+  $p = new Image::Magick;
+  $p->Read("imagefile");
+  $p->Set(attribute => value, ...)
+  ($a, ...) = $p->Get("attribute", ...)
+  $p->routine(parameter => value, ...)
+  $p->Mogrify("Routine", parameter => value, ...)
+  $p->Write("filename");
 
 =head1 DESCRIPTION
 
@@ -106,11 +106,11 @@ It was originally developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.imagemagick.org/www/perl.html
+	http://www.imagemagick.org/script/perl-magick.php
 
 =head1 AUTHOR
 
-Kyle Shorter	magick@wizards.dupont.com
+Kyle Shorter	magick-users@imagemagick.org
 
 =head1 BUGS
 

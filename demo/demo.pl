@@ -64,7 +64,7 @@ push(@$images,$example);
 print "Channel...\n";
 $example=$model->Clone();
 $example->Label('Channel');
-$example->Channel();
+$example->Channel(channel=>'red');
 push(@$images,$example);
 
 print "Charcoal...\n";
@@ -95,6 +95,7 @@ print "Crop...\n";
 $example=$model->Clone();
 $example->Label('Crop');
 $example->Crop(geometry=>'80x80+25+50');
+$example->Set(page=>'0x0+0+0');
 push(@$images,$example);
 
 print "Despeckle...\n";
@@ -119,10 +120,10 @@ push(@$images,$example);
 print "Emboss...\n";
 $example=$model->Clone();
 $example->Label('Emboss');
-$example->Emboss();
+$example->Emboss('0x1');
+push(@$images,$example);
 
 print "Equalize...\n";
-push(@$images,$example);
 $example=$model->Clone();
 $example->Label('Equalize');
 $example->Equalize();
@@ -211,6 +212,12 @@ $example=$model->Clone();
 print "Monochrome...\n";
 $example->Label('Monochrome');
 $example->Quantize(colorspace=>'gray',colors=>2,dither=>'false');
+push(@$images,$example);
+
+print "Motion Blur...\n";
+$example=$model->Clone();
+$example->Label('Motion Blur');
+$example->MotionBlur('0x13+10-10');
 push(@$images,$example);
 
 print "Negate...\n";
@@ -323,6 +330,12 @@ $example->Label('Shear');
 $example->Shear('-20x20');
 push(@$images,$example);
 
+print "Sigmoidal Contrast...\n";
+$example=$model->Clone();
+$example->Label('Sigmoidal Contrast');
+$example->SigmoidalContrast("3x50%");
+push(@$images,$example);
+
 print "Spread...\n";
 $example=$model->Clone();
 $example->Label('Spread');
@@ -356,8 +369,8 @@ push(@$images,$example);
 # Create image montage.
 #
 print "Montage...\n";
-$montage=$images->Montage(geometry=>'130x194+10+5>',gravity=>'Center',
-  tile=>'5x+10+200',compose=>'over',background=>'#ffffff',
+$montage=$images->Montage(geometry=>'128x160+8+4>',gravity=>'Center',
+  tile=>'6x+10+200',compose=>'over',background=>'#ffffff',
   font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none');
 
 $logo=Image::Magick->new();

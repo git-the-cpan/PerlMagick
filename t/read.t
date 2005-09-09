@@ -48,7 +48,7 @@ testReadCompare('input.gif87', 'reference/read/input_gif87.miff', q//, 0, 0);
 print("Gradient (gradual passing from one shade to another) ...\n");
 ++$test;
 testReadCompare('gradient:red-blue', 'reference/read/gradient.miff',
-                q/size=>"70x46"/, 0.0023, 0.004);
+                q/size=>"70x46"/, 0.00001, 0.002);
 
 print("GRANITE (granite texture) ...\n");
 ++$test;
@@ -207,4 +207,4 @@ testReadCompare('input_70x46.rgba', 'reference/read/input_rgba.miff',
 print("UYVY format ...\n");
 ++$test;
 testReadCompare('input_70x46.uyvy', 'reference/read/input_uyvy.miff',
-                q/size=>"70x46", depth=>8/, 0.006, 0.012);
+                q/size=>"70x46", depth=>8/, 0.00001, 0.002);

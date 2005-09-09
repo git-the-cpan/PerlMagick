@@ -4,7 +4,7 @@
 #  You may not use this file except in compliance with the License.  You may
 #  obtain a copy of the License at
 #
-#    http://www.imagemagick.org/www/Copyright.html
+#    http://www.imagemagick.org/script/license.php
 #
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jng jpeg lcms mpeg png ps tiff ttf x xfig zlib/) {
+foreach $delegate (qw/ bzlib jng jpeg mpeg png ps tiff x xfig/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -38,10 +38,10 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.2.0',
+   'VERSION'   => '6.2.4',
 
    # Preprocessor defines
-   'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
+   'DEFINE'	=> ' -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
 
    # Header search specfication and preprocessor flags
    'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2',
@@ -50,19 +50,19 @@ WriteMakefile
    # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
-   'CCFLAGS'     => "$Config{'ccflags'} -g -O2 -Wall -pthread",
+   'CCFLAGS'     => "$Config{'ccflags'} -O3 -g -Wall -pthread",
 
    # Linker flags for building an executable
-   'LDFLAGS'    =>  "-L/usr/local/lib $Config{'ldflags'}",
+   'LDFLAGS'    =>  "-L/usr/lib $Config{'ldflags'}",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS'  => "-L/usr/local/lib $Config{'lddlflags'}",
+   'LDDLFLAGS'  => "-L/usr/lib $Config{'lddlflags'}",
 
    # Install PerlMagick binary into ImageMagick bin directory
-   'INSTALLBIN'	=> '/usr/local/bin',
+   'INSTALLBIN'	=> '/usr/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/local/lib -lMagick -L/usr/X11R6/lib -lfreetype -lz -L/usr/lib -llcms -ltiff -lfreetype -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lz -lpthread -lm -lpthread'],
+   'LIBS'	=> ['-L/usr/lib -lMagick -L/usr/X11R6/lib64 -L/usr/lib -ltiff -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lpthread -lm -lpthread'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -74,7 +74,7 @@ WriteMakefile
    'PERLMAINCC'	=> '',
 
    # Set Perl installation prefix to ImageMagick installation prefix
-#   'PREFIX'	=> '/usr/local',
+#   'PREFIX'	=> '/usr',
 
    # Include delegate directories in tests
    test		=> { TESTS	=>	$delegate_tests},
@@ -96,7 +96,7 @@ sub MY::makeaperl {
      # tries to insert our library path first. Also, use the same compiler used
      # to build perlmain.c to link so that a C++ compiler may be used if
      # necessary.
-     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/local/lib: ;
+     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/lib: ;
      $inherited;
  }
 
@@ -108,6 +108,6 @@ sub MY::test {
      my $inherited = shift->SUPER::test(@_);
 
      # Run tests in our environment
-     $inherited =~ s:PERL_DL_NONLAZY=1:PERL_DL_NONLAZY=1:g ;
+     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh ../magick.sh PERL_DL_NONLAZY=1:g ;
      $inherited;
  }

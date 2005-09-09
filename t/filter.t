@@ -1,10 +1,22 @@
 #!/usr/bin/perl
 #
-# Test image filters.
+#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  dedicated to making software imaging solutions freely available.
 #
-# Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
+#  You may not use this file except in compliance with the License.  You may
+#  obtain a copy of the License at
 #
-BEGIN { $| = 1; $test=1, print "1..44\n"; }
+#    http://www.imagemagick.org/script/license.php
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+#  Test image filters.
+#
+BEGIN { $| = 1; $test=1, print "1..60\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -17,186 +29,186 @@ autoflush STDOUT 1;
 autoflush STDERR 1;
 
 #$QuantumDepth=quantumDepth();
-$fuzz=int($MaxRGB*0.05);
+$fuzz=int($QuantumRange*0.05);
 
-testFilterCompare('input.miff', q//, 'reference/filter/Blur.miff', 'Blur',
-  q/geometry=>"0.0x1.0"/, 0.0026, 0.0056);
-
+testFilterCompare('input.miff',  q//, 'reference/filter/AdaptiveThreshold.miff', 'AdaptiveThreshold', q/'5x5+5%'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff',  q//, 'reference/filter/Border.miff', 'Border',
-  q/geometry=>"10"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/AddNoise.miff', 'AddNoise', q/"Laplacian"/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Channel.miff', 'Channel',
-  q/channel=>"Red"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Annotate.miff', 'Annotate', q/text=>'Magick',geometry=>'+0+20',font=>'Generic.ttf',fill=>'gold',gravity=>'North',pointsize=>14/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Chop.miff', 'Chop',
-  q/geometry=>"10x10!"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Blur.miff', 'Blur', q/'0.0x1.0'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/ColorFloodfill.miff', 'ColorFloodfill',
-  q/geometry=>"+25+45"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Border.miff', 'Border', q/geometry=>'6x6',color=>'gold'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Colorize.miff', 'Colorize',
-  q/fill=>"red", opacity=>"50%"/, 0.0013, 0.0020 );
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Channel.miff', 'Channel', q/channel=>'red'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Contrast.miff', 'Contrast',
-  q/sharpen=>True/, 0.0025, 0.385);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Chop.miff', 'Chop', q/geometry=>'80x80+5+10'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//,
- 'reference/filter/Convolve.miff', 'Convolve', q/coefficients=>[1, 2, 1, 2, 4, 2, 1, 2, 1]/, 0.0026, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Charcoal.miff', 'Charcoal', q/'0x1'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Crop.miff', 'Crop',
-  q/geometry=>"10x10!"/, 0, 0);
 
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/ColorFloodfill.miff', 'ColorFloodfill', q/geometry=>"+25+45"/, 0, 0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Despeckle.miff', 'Despeckle',
-  q//, 0, 0);
 
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Colorize.miff', 'Colorize', q/fill=>"red", opacity=>"50%"/, 0.0013, 0.0020 );
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Edge.miff', 'Edge',
-  q/radius=>3/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Contrast.miff', 'Contrast', q//, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Emboss.miff', 'Emboss',
-  q/geometry=>"2x1"/, 0.003, 0.27);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Convolve.miff', 'Convolve', q/[1, 1, 1, 1, 4, 1, 1, 1, 1]/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Equalize.miff', 'Equalize',
-  q//, 0.001, 0.004 );
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Crop.miff', 'Crop', q/geometry=>'80x80+5+10'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Flip.miff', 'Flip',
-  q//, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Set.miff', 'Set', q/page=>'0x0+0+0'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Flop.miff', 'Flop',
-  q//, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Despeckle.miff', 'Despeckle', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Frame.miff', 'Frame',
-  q/geometry=>"10x10+2+2"/, 0.015, 0.489);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Draw.miff', 'Draw', q/fill=>'none',stroke=>'gold',primitive=>'circle',points=>'60,90 60,120',strokewidth=>2/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Gamma.miff', 'Gamma',
-  q/gamma=>2.2/, 0.001, 0.004 );
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Edge.miff', 'Edge', q//, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Implode.miff', 'Implode',
-  q/amount=>0.5/, 0.002, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Emboss.miff', 'Emboss', q/'0x1'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Magnify.miff', 'Magnify',
-  q//, 0.019, 0.18);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Equalize.miff', 'Equalize', q//, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/MatteFloodfill.miff', 'MatteFloodfill',
-  q/geometry=>"+25+45"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Implode.miff', 'Implode', q/-1/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Minify.miff', 'Minify',
-  q//, 0.053, 0.39);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Flip.miff', 'Flip', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Modulate.miff', 'Modulate',
-  q/brightness=>60, saturation=>30, hue=>20/, 0.0033, 0.165);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Flop.miff', 'Flop', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/MotionBlur.miff', 'MotionBlur',
-  q/radius=>2,sigma=>1,angle=>30/, 1.41, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Frame.miff', 'Frame', q/'15x15+3+3'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Negate.miff', 'Negate',
-  q/gray=>False/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Gamma.miff', 'Gamma', q/1.6/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Normalize.miff', 'Normalize',
-  q//, 0.002, 0.06 );
 
+testFilterCompare('input.miff',  q//, 'reference/filter/GaussianBlur.miff', 'GaussianBlur', q/'0.0x1.5'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/OilPaint.miff', 'OilPaint',
-  q/radius=>3/, 0.043, 0.84);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Implode.miff', 'Implode', q/0.5/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Opaque.miff', 'Opaque',
-  q/color=>"#e23834", fill=>"green"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Level.miff', 'Level', q/level=>'20%'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Quantize.miff', 'Quantize',
-                  q/colors=>128/, 0.020, 0.35);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Magnify.miff', 'Magnify', q/'60%'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Raise.miff', 'Raise',
-  q/geometry=>"10x10"/, 0.0011, 0.004);
 
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/MatteFloodfill.miff', 'MatteFloodfill', q/geometry=>"+25+45"/, 0, 0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Resize.miff', 'Resize',
-  q/geometry=>"50%", filter=>"Box"/, 0.0025, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/MedianFilter.miff', 'MedianFilter', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Roll.miff', 'Roll',
-  q/geometry=>"+10+10"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Minify.miff', 'Minify', q/'60%'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Rotate.miff', 'Rotate',
-  q/degrees=>10,color=>"green"/, 0.24, 0.87);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Modulate.miff', 'Modulate', q/brightness=>110,saturation=>110,hue=>110/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Sample.miff', 'Sample',
-  q/geometry=>"50%"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Quantize.miff', 'Quantize', q/colorspace=>'gray',colors=>2,dither=>'false'/, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Scale.miff', 'Scale',
-  q/geometry=>"50%"/, 0.004, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/MotionBlur.miff', 'MotionBlur', q/'0x13+10-10'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Shade.miff', 'Shade',
-  q/geometry=>"30x30",gray=>'true'/, 0.0162, 0.0079);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Negate.miff', 'Negate', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Sharpen.miff', 'Sharpen',
-  q/geometry=>"0.0x1.0"/, 0025, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Normalize.miff', 'Normalize', q//, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Shave.miff', 'Shave',
-  q/geometry=>"10x10"/, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/OilPaint.miff', 'OilPaint', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Shear.miff', 'Shear',
-  q/geometry=>'10x10',color=>'none'/, 0.094, 1.00);
 
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Opaque.miff', 'Opaque', q/color=>"#e23834", fill=>"green"/, 0, 0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Solarize.miff', 'Solarize',
-  q/60/, 0.14, 0.83);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Quantize.miff', 'Quantize', q//, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Swirl.miff', 'Swirl',
-  q/degrees=>60/, 0.002, 0.004);
 
-# Being just one pixel different spikes maximum error for the threshold
-# test, so check only mean error.  This test is primarily influenced by
-# the pixel intensity macro.
+testFilterCompare('input.miff',  q//, 'reference/filter/RadialBlur.miff', 'RadialBlur', q/10/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Threshold.miff', 'Threshold',
-  q/threshold=>"50%"/, 0.0013, 1);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Raise.miff', 'Raise', q/'10x10'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Trim.miff', 'Trim',
-  q//, 0, 0);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/ReduceNoise.miff', 'ReduceNoise', q//, 0.0, 0.0);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Wave.miff', 'Wave',
-  q/geometry=>"25x157"/, 0.0012, 0.004);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Resize.miff', 'Resize', q/'60%'/, 0.00001, 0.004);
 ++$test;
-testFilterCompare('input.miff', q//, 'reference/filter/Segment.miff', 'Segment',
-  q/geometry=>"1.5x3.5"/, 0.0029, 0.0037);
 
+testFilterCompare('input.miff',  q//, 'reference/filter/Roll.miff', 'Roll', q/geometry=>'+20+10'/, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Rotate.miff', 'Rotate', q/45/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Sample.miff', 'Sample', q/'60%'/, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Scale.miff', 'Scale', q/'60%'/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Segment.miff', 'Segment', q//, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Shade.miff', 'Shade', q/geometry=>'30x30',gray=>'true'/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Sharpen.miff', 'Sharpen', q/'0.0x1.0'/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Shave.miff', 'Shave', q/'10x10'/, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Shear.miff', 'Shear', q/'-20x20'/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/SigmoidalContrast.miff', 'SigmoidalContrast', q/"3x50%"/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Spread.miff', 'Spread', q//, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Solarize.miff', 'Solarize', q//, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Swirl.miff', 'Swirl', q/90/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Threshold.miff', 'Threshold', q/90%/, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Trim.miff', 'Trim', q//, 0.0, 0.0);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/UnsharpMask.miff', 'UnsharpMask', q/'0.0x1.0'/, 0.00001, 0.004);
+++$test;
+
+testFilterCompare('input.miff',  q//, 'reference/filter/Wave.miff', 'Wave', q/'25x150'/, 0.00001, 0.004);
 ++$test;
 
 1;

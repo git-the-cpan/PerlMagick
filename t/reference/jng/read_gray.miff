@@ -1,8 +1,11 @@
 id=ImageMagick  version=1.0
-class=DirectClass  matte=False
+class=DirectClass  colors=0  matte=False
 columns=70  rows=46  depth=8
+colorspace=RGB
+resolution=72x72
 page=70x46+0+0
-rendering-intent=perceptual
+compose=Over
+rendering-intent=Perceptual
 gamma=0.45455
 red-primary=0.64,0.33  green-primary=0.3,0.6  blue-primary=0.15,0.06
 white-point=0.3127,0.329

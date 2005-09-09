@@ -1,5 +1,17 @@
-# Copyright (C) 1994-2004 ImageMagick Studio LLC
-# Copyright (C) 2003 GraphicsMagick Group
+#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  dedicated to making software imaging solutions freely available.
+#
+#  You may not use this file except in compliance with the License.  You may
+#  obtain a copy of the License at
+#
+#    http://www.imagemagick.org/script/license.php
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
 #
 # Common subroutines to support tests
 #
@@ -18,21 +30,21 @@ sub quantumDepth ( ) {
 }
 
 #
-# Establish some global constants (MaxRGB, OpaqueOpacity, & QuantumDepth)
+# Establish some global constants (QuantumRange, OpaqueOpacity, & QuantumDepth)
 #
 $QuantumDepth=quantumDepth();
 $OpaqueOpacity=0;
 if ($QuantumDepth == 8)
   {
-    $MaxRGB=255;
+    $QuantumRange=255;
   }
 elsif ($QuantumDepth == 16)
   {
-    $MaxRGB=65535;
+    $QuantumRange=65535;
   }
 elsif ($QuantumDepth == 32)
   {
-    $MaxRGB=4294967295;
+    $QuantumRange=4294967295;
   }
 
 #

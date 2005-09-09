@@ -29,7 +29,7 @@
 %  You may not use this file except in compliance with the License.  You may  %
 %  obtain a copy of the License at                                            %
 %                                                                             %
-%    http://www.imagemagick.org/www/Copyright.html                            %
+%    http://www.imagemagick.org/script/license.php                            %
 %                                                                             %
 %  Unless required by applicable law or agreed to in writing, software        %
 %  distributed under the License is distributed on an "AS IS" BASIS,          %
@@ -60,7 +60,7 @@ extern "C" {
 #include "perl.h"
 #include "XSUB.h"
 #include <math.h>
-#include <magick/api.h>
+#include <magick/ImageMagick.h>
 #undef tainted
 
 #ifdef __cplusplus
@@ -90,7 +90,8 @@ extern "C" {
 #define PerlIO_findFILE(f)  NULL
 #endif
 #define RoundToQuantum(value)  ((Quantum) ((value) < 0.0 ? 0.0 : \
-  ((value) > (MagickRealType) MaxRGB) ? (MagickRealType) MaxRGB : (value)+0.5))
+  ((value) > (MagickRealType) QuantumRange) ? (MagickRealType) \
+  QuantumRange : (value)+0.5))
 #ifndef sv_undef
 #define sv_undef  PL_sv_undef
 #endif
@@ -230,8 +231,7 @@ static struct
     { "ReduceNoise", { {"radius", RealReference} } },
     { "Roll", { {"geometry", StringReference}, {"x", IntegerReference},
       {"y", IntegerReference} } },
-    { "Rotate", { {"degrees", RealReference},
-      {"color", StringReference} } },
+    { "Rotate", { {"degrees", RealReference}, {"color", StringReference} } },
     { "Sample", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference} } },
     { "Scale", { {"geometry", StringReference}, {"width", IntegerReference},
@@ -240,16 +240,16 @@ static struct
       {"elevation", RealReference}, {"gray", MagickBooleanOptions} } },
     { "Sharpen", { {"geometry", StringReference}, {"radius", RealReference},
       {"sigma", RealReference}, {"channel", MagickChannelOptions} } },
-    { "Shear", { {"geometry", StringReference}, {"x", IntegerReference},
+    { "Shear", { {"geometry", StringReference}, {"x", RealReference},
       {"y", RealReference}, {"color", StringReference} } },
     { "Spread", { {"radius", RealReference} } },
     { "Swirl", { {"degrees", RealReference} } },
     { "Resize", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference}, {"filter", MagickFilterOptions},
-      {"blur", RealReference } } },
+      {"support", RealReference }, {"blur", RealReference } } },
     { "Zoom", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference}, {"filter", MagickFilterOptions},
-      {"blur", RealReference } } },
+      {"support", RealReference }, {"blur", RealReference } } },
     { "Annotate", { {"text", StringReference}, {"font", StringReference},
       {"point", RealReference}, {"density", StringReference},
       {"undercolor", StringReference}, {"stroke", StringReference},
@@ -274,7 +274,7 @@ static struct
       {"gravity", MagickGravityOptions}, {"opacity", StringReference},
       {"tile", MagickBooleanOptions}, {"rotate", RealReference},
       {"color", StringReference}, {"mask", ImageReference} } },
-    { "Contrast", { {"sharp", MagickBooleanOptions} } },
+    { "Contrast", { {"sharpen", MagickBooleanOptions} } },
     { "CycleColormap", { {"display", IntegerReference} } },
     { "Draw", { {"primitive", MagickPrimitiveOptions},
       {"points", StringReference}, {"method", MagickMethodOptions},
@@ -316,7 +316,7 @@ static struct
       {"smooth", RealReference}, {"colorspace", MagickColorspaceOptions},
       {"verbose", MagickBooleanOptions} } },
     { "Signature", },
-    { "Solarize", { {"threshold", RealReference} } },
+    { "Solarize", { {"threshold", StringReference} } },
     { "Sync", },
     { "Texture", { {"texture", ImageReference} } },
     { "Evaluate", { {"value", RealReference},
@@ -366,11 +366,12 @@ static struct
       {"offset", IntegerReference} } },
     { "Resample", { {"density", StringReference}, {"x", RealReference},
       {"y", RealReference}, {"filter", MagickFilterOptions},
-      {"blur", RealReference } } },
+      {"support", RealReference }, {"blur", RealReference } } },
     { "Describe", { {"file", FileReference} } },
     { "BlackThreshold", { {"threshold", StringReference} } },
     { "WhiteThreshold", { {"threshold", StringReference} } },
-    { "RadialBlur", { {"angle", RealReference} } },
+    { "RadialBlur", { {"geometry", StringReference}, {"angle", RealReference},
+      {"channel", MagickChannelOptions} } },
     { "Thumbnail", { {"geometry", StringReference}, {"width", IntegerReference},
       {"height", IntegerReference} } },
     { "Strip", },
@@ -385,6 +386,12 @@ static struct
       {"sigma", RealReference}, {"x", IntegerReference},
       {"y", IntegerReference} } },
     { "Identify", { {"file", FileReference} } },
+    { "SepiaTone", { {"threshold", RealReference} } },
+    { "SigmoidalContrast", { {"geometry", StringReference},
+      {"alpha", RealReference}, {"beta", RealReference},
+      {"channel", MagickChannelOptions}, {"sharpen", MagickBooleanOptions} } },
+    { "Extent", { {"geometry", StringReference}, {"width", IntegerReference},
+      {"height", IntegerReference} } },
   };
 
 /*
@@ -553,7 +560,7 @@ static double constant(char *name,long sans)
     case 'M':
     {
       if (strEQ(name,"MaxRGB"))
-        return(MaxRGB);
+        return(QuantumRange);
       if (strEQ(name,"MissingDelegateError"))
         return(MissingDelegateError);
       if (strEQ(name,"MissingDelegateWarning"))
@@ -578,6 +585,8 @@ static double constant(char *name,long sans)
     {
       if (strEQ(name,"QuantumDepth"))
         return(QuantumDepth);
+      if (strEQ(name,"QuantumRange"))
+        return(QuantumRange);
       break;
     }
     case 'R':
@@ -934,7 +943,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=(~0UL);
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            (void) SetMagickResourceLimit(AreaResource,SvIV(sval));
+            limit=SvIV(sval);
+          (void) SetMagickResourceLimit(AreaResource,limit);
           break;
         }
       if (LocaleCompare(attribute,"authenticate") == 0)
@@ -962,7 +972,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"bias") == 0)
         {
           for ( ; image; image=image->next)
-            image->bias=StringToDouble(SvPV(sval,na),MaxRGB);
+            image->bias=StringToDouble(SvPV(sval,na),QuantumRange);
           break;
         }
       if (LocaleCompare(attribute,"blue-primary") == 0)
@@ -1107,7 +1117,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=(~0UL);
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            (void) SetMagickResourceLimit(DiskResource,SvIV(sval));
+            limit=SvIV(sval);
+          (void) SetMagickResourceLimit(DiskResource,limit);
           break;
         }
       if (LocaleCompare(attribute,"density") == 0)
@@ -1224,8 +1235,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"file") == 0)
         {
           if (info)
-            info->image_info->file=(FILE *)
-              PerlIO_findFILE(IoIFP(sv_2io(sval)));
+            SetImageInfoFile(info->image_info,(FILE *)
+              PerlIO_findFILE(IoIFP(sv_2io(sval))));
           break;
         }
       if (LocaleCompare(attribute,"fill") == 0)
@@ -1253,9 +1264,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"fuzz") == 0)
         {
           if (info)
-            info->image_info->fuzz=StringToDouble(SvPV(sval,na),MaxRGB);
+            info->image_info->fuzz=StringToDouble(SvPV(sval,na),QuantumRange);
           for ( ; image; image=image->next)
-            image->fuzz=StringToDouble(SvPV(sval,na),MaxRGB);
+            image->fuzz=StringToDouble(SvPV(sval,na),QuantumRange);
           break;
         }
       ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
@@ -1392,7 +1403,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=(~0UL);
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            (void) SetMagickResourceLimit(MapResource,SvIV(sval));
+            limit=SvIV(sval);
+          (void) SetMagickResourceLimit(MapResource,limit);
           break;
         }
       if (LocaleCompare(attribute,"mattecolor") == 0)
@@ -1425,7 +1437,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=(~0UL);
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            (void) SetMagickResourceLimit(MemoryResource,SvIV(sval));
+            limit=SvIV(sval);
+          (void) SetMagickResourceLimit(MemoryResource,limit);
           break;
         }
       if (LocaleCompare(attribute,"monochrome") == 0)
@@ -1453,6 +1466,22 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         {
           if (info)
             DefineImageOption(info->image_info,SvPV(sval,na));
+          break;
+        }
+      if (LocaleCompare(attribute,"orientation") == 0)
+        {
+          sp=SvPOK(sval) ? ParseMagickOption(MagickOrientationOptions,
+            MagickFalse,SvPV(sval,na)) : SvIV(sval);
+          if (sp < 0)
+            {
+              ThrowPerlException(exception,OptionError,
+                "UnrecognizedOrientationType",SvPV(sval,na));
+              break;
+            }
+          if (info)
+            info->image_info->orientation=(OrientationType) sp;
+          for ( ; image; image=image->next)
+            image->orientation=(OrientationType) sp;
           break;
         }
       ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
@@ -3092,7 +3121,8 @@ Get(ref,...)
             {
               if (image == (Image *) NULL)
                 break;
-              (void) FormatMagickString(color,MaxTextExtent,"%u,%u,%u,%u",
+              (void) FormatMagickString(color,MaxTextExtent,QuantumFormat ","
+                QuantumFormat "," QuantumFormat "," QuantumFormat,
                 image->background_color.red,image->background_color.green,
                 image->background_color.blue,image->background_color.opacity);
               s=newSVpv(color,0);
@@ -3156,7 +3186,8 @@ Get(ref,...)
             {
               if (image == (Image *) NULL)
                 break;
-              (void) FormatMagickString(color,MaxTextExtent,"%u,%u,%u,%u",
+              (void) FormatMagickString(color,MaxTextExtent,QuantumFormat ","
+                QuantumFormat "," QuantumFormat "," QuantumFormat,
                 image->border_color.red,image->border_color.green,
                 image->border_color.blue,image->border_color.opacity);
               s=newSVpv(color,0);
@@ -3258,7 +3289,8 @@ Get(ref,...)
               items=sscanf(attribute,"%*[^[][%ld",&j);
               if (j > (long) image->colors)
                 j%=image->colors;
-              (void) FormatMagickString(color,MaxTextExtent,"%u,%u,%u,%u",
+              (void) FormatMagickString(color,MaxTextExtent,QuantumFormat ","
+                QuantumFormat "," QuantumFormat "," QuantumFormat,
                 image->colormap[j].red,image->colormap[j].green,
                 image->colormap[j].blue,image->colormap[j].opacity);
               s=newSVpv(color,0);
@@ -3277,9 +3309,15 @@ Get(ref,...)
               const ImageAttribute
                 *attribute;
 
-              attribute=GetImageAttribute(image,"comment");
+              attribute=GetImageAttribute(image,"Comment");
               if (attribute != (ImageAttribute *) NULL)
                 s=newSVpv(attribute->value,0);
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
+          if (LocaleCompare(attribute,"copyright") == 0)
+            {
+              s=newSVpv(GetMagickCopyright(),0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3584,7 +3622,8 @@ Get(ref,...)
               if (p == (PixelPacket *) NULL)
                 break;
               indexes=GetIndexes(image);
-              (void) FormatMagickString(name,MaxTextExtent,"%u",*indexes);
+              (void) FormatMagickString(name,MaxTextExtent,QuantumFormat,
+                *indexes);
               s=newSVpv(name,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
@@ -3637,7 +3676,7 @@ Get(ref,...)
 
               if (image == (Image *) NULL)
                 break;
-              attribute=GetImageAttribute(image,"label");
+              attribute=GetImageAttribute(image,"Label");
               if (attribute != (ImageAttribute *) NULL)
                 s=newSVpv(attribute->value,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
@@ -3705,7 +3744,8 @@ Get(ref,...)
             {
               if (image == (Image *) NULL)
                 break;
-              (void) FormatMagickString(color,MaxTextExtent,"%u,%u,%u,%u",
+              (void) FormatMagickString(color,MaxTextExtent,QuantumFormat ","
+                QuantumFormat "," QuantumFormat "," QuantumFormat,
                 image->matte_color.red,image->matte_color.green,
                 image->matte_color.blue,image->matte_color.opacity);
               s=newSVpv(color,0);
@@ -3764,7 +3804,7 @@ Get(ref,...)
                 {
                   char
                     geometry[MaxTextExtent];
- 
+
                   (void) FormatMagickString(geometry,MaxTextExtent,
                     "%lux%lu%+ld%+ld",image->page.width,image->page.height,
                     image->page.x,image->page.y);
@@ -3775,9 +3815,6 @@ Get(ref,...)
             }
           if (LocaleNCompare(attribute,"pixel",5) == 0)
             {
-              char
-                name[MaxTextExtent];
-
               int
                 items;
 
@@ -3794,9 +3831,10 @@ Get(ref,...)
               y=0;
               items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               pixel=AcquireOnePixel(image,x,y,&image->exception);
-              (void) FormatMagickString(name,MaxTextExtent,"%u,%u,%u,%u",
+              (void) FormatMagickString(color,MaxTextExtent,QuantumFormat ","
+                QuantumFormat "," QuantumFormat "," QuantumFormat,
                 pixel.red,pixel.green,pixel.blue,pixel.opacity);
-              s=newSVpv(name,0);
+              s=newSVpv(color,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -3924,7 +3962,7 @@ Get(ref,...)
               if (image == (Image *) NULL)
                 break;
               (void) SignatureImage(image);
-              attribute=GetImageAttribute(image,"signature");
+              attribute=GetImageAttribute(image,"Signature");
               if (attribute != (ImageAttribute *) NULL)
                 s=newSVpv(attribute->value,0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
@@ -4010,6 +4048,12 @@ Get(ref,...)
             {
               if (info)
                 s=newSViv((long) info->image_info->verbose);
+              PUSHs(s ? sv_2mortal(s) : &sv_undef);
+              continue;
+            }
+          if (LocaleCompare(attribute,"version") == 0)
+            {
+              s=newSVpv(GetMagickVersion((unsigned long *) NULL),0);
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
@@ -4210,26 +4254,26 @@ Histogram(ref,...)
       EXTEND(sp,6*count);
       for (i=0; i < (long) number_colors; i++)
       {
-        (void) FormatMagickString(message,MaxTextExtent,"%u",
+        (void) FormatMagickString(message,MaxTextExtent,QuantumFormat,
           histogram[i].pixel.red);
         PUSHs(sv_2mortal(newSVpv(message,0)));
-        (void) FormatMagickString(message,MaxTextExtent,"%u",
+        (void) FormatMagickString(message,MaxTextExtent,QuantumFormat,
           histogram[i].pixel.green);
         PUSHs(sv_2mortal(newSVpv(message,0)));
-        (void) FormatMagickString(message,MaxTextExtent,"%u",
+        (void) FormatMagickString(message,MaxTextExtent,QuantumFormat,
           histogram[i].pixel.blue);
         PUSHs(sv_2mortal(newSVpv(message,0)));
         if (image->colorspace == CMYKColorspace)
           {
-            (void) FormatMagickString(message,MaxTextExtent,"%u",
-              histogram[i].pixel.blue);
+            (void) FormatMagickString(message,MaxTextExtent,QuantumFormat,
+              histogram[i].index);
             PUSHs(sv_2mortal(newSVpv(message,0)));
           }
-        (void) FormatMagickString(message,MaxTextExtent,"%u",
+        (void) FormatMagickString(message,MaxTextExtent,QuantumFormat,
           histogram[i].pixel.opacity);
         PUSHs(sv_2mortal(newSVpv(message,0)));
         (void) FormatMagickString(message,MaxTextExtent,"%lu",
-           histogram[i].count);
+           (unsigned long) histogram[i].count);
         PUSHs(sv_2mortal(newSVpv(message,0)));
       }
     }
@@ -4566,7 +4610,7 @@ ImageToBlob(ref,...)
     for ( ; image; image=image->next)
     {
       length=0;
-      blob=ImageToBlob(package_info->image_info,image,&length,&exception);
+      blob=ImagesToBlob(package_info->image_info,image,&length,&exception);
       if (blob != (char *) NULL)
         {
           PUSHs(sv_2mortal(newSVpv((const char *) blob,length)));
@@ -4808,6 +4852,12 @@ Mogrify(ref,...)
     ShadowImage        = 178
     Identify           = 179
     IdentifyImage      = 180
+    SepiaTone          = 181
+    SepiaToneImage     = 182
+    SigmoidalContrast  = 183
+    SigmoidalContrastImage = 184
+    Extent             = 185
+    ExtentImage        = 186
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -4847,8 +4897,7 @@ Mogrify(ref,...)
     long
       base,
       j,
-      number_images,
-      y;
+      number_images;
 
     MagickBooleanType
       status;
@@ -4864,8 +4913,7 @@ Mogrify(ref,...)
       region_info;
 
     register long
-      i,
-      x;
+      i;
 
     struct PackageInfo
       *info;
@@ -5075,8 +5123,8 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].string_reference=(char *) NULL;
-          (void) SetImageAttribute(image,"comment",(char *) NULL);
-          (void) SetImageAttribute(image,"comment",
+          (void) DeleteImageAttribute(image,"Comment");
+          (void) SetImageAttribute(image,"Comment",
             argument_list[0].string_reference);
           break;
         }
@@ -5084,8 +5132,8 @@ Mogrify(ref,...)
         {
           if (!attribute_flag[0])
             argument_list[0].string_reference=(char *) NULL;
-          (void) SetImageAttribute(image,"label",(char *) NULL);
-          (void) SetImageAttribute(image,"label",
+          (void) DeleteImageAttribute(image,"Label");
+          (void) SetImageAttribute(image,"Label",
             argument_list[0].string_reference);
           break;
         }
@@ -5188,7 +5236,7 @@ Mogrify(ref,...)
             geometry.y=argument_list[4].long_reference;
           if (attribute_flag[5])
             image->fuzz=
-              StringToDouble(argument_list[5].string_reference,MaxRGB);
+              StringToDouble(argument_list[5].string_reference,QuantumRange);
           image=CropImage(image,&geometry,&exception);
           break;
         }
@@ -5445,6 +5493,8 @@ Mogrify(ref,...)
             argument_list[3].long_reference=(long) UndefinedFilter;
           if (!attribute_flag[4])
             argument_list[4].real_reference=1.0;
+          if (attribute_flag[5])
+            argument_list[4].real_reference=argument_list[5].real_reference;
           image=ResizeImage(image,geometry.width,geometry.height,
             (FilterTypes) argument_list[3].long_reference,
             argument_list[4].real_reference,&exception);
@@ -5455,8 +5505,8 @@ Mogrify(ref,...)
           DrawInfo
             *draw_info;
 
-          draw_info=CloneDrawInfo(info ? info->image_info :
-            (ImageInfo *) NULL,info ? info->draw_info : (DrawInfo *) NULL);
+          draw_info=CloneDrawInfo(info ? info->image_info : (ImageInfo *) NULL,
+            info ? info->draw_info : (DrawInfo *) NULL);
           if (attribute_flag[0])
             (void) CloneString(&draw_info->text,
               argument_list[0].string_reference);
@@ -5649,7 +5699,7 @@ Mogrify(ref,...)
             target=fill_color;
           if (attribute_flag[5])
             image->fuzz=
-              StringToDouble(argument_list[5].string_reference,MaxRGB);
+              StringToDouble(argument_list[5].string_reference,QuantumRange);
           ColorFloodfillImage(image,draw_info,target,geometry.x,geometry.y,
             attribute_flag[4] ? FillToBorderMethod : FloodfillMethod);
           draw_info=DestroyDrawInfo(draw_info);
@@ -5678,12 +5728,49 @@ Mogrify(ref,...)
             compose=(CompositeOperator) argument_list[1].long_reference;
           if (attribute_flag[6])
             {
-              if (compose == DissolveCompositeOp)
-                (void) CloneString(&image->geometry,
-                  argument_list[6].string_reference);
+              if (compose != DissolveCompositeOp)
+                SetImageOpacity(composite_image,(Quantum) (QuantumRange-
+                  StringToDouble(argument_list[6].string_reference,
+                  QuantumRange)));
               else
-                SetImageOpacity(composite_image,(Quantum)
-                  StringToDouble(argument_list[6].string_reference,MaxRGB));
+                {
+                  double
+                    opacity;
+
+                  long
+                    y;
+
+                  register long
+                    x;
+
+                  register PixelPacket
+                    *q;
+
+                  /*
+                    Handle dissolve composite operator (patch by
+                    Kevin A. McGrail).
+                  */
+                  (void) CloneString(&image->geometry,
+                    argument_list[6].string_reference);
+                  opacity=(Quantum) (QuantumRange-
+                    StringToDouble(argument_list[6].string_reference,
+                    QuantumRange));
+                  if (composite_image->matte != MagickTrue)
+                    SetImageOpacity(composite_image,OpaqueOpacity);
+                  for (y=0; y < (long) composite_image->rows ; y++)
+                  {
+                    q=GetImagePixels(composite_image,0,y,(long)
+                      composite_image->columns,1);
+                    for (x=0; x < (long) composite_image->columns; x++)
+                    {
+                      if (q->opacity == OpaqueOpacity)
+                        q->opacity=opacity;
+                      q++;
+                    }
+                    if (SyncImagePixels(composite_image) == MagickFalse)
+                      break;
+                  }
+                }
             }
           if (attribute_flag[9])
             QueryColorDatabase(argument_list[9].string_reference,
@@ -5701,9 +5788,19 @@ Mogrify(ref,...)
             }
           if (attribute_flag[7] && argument_list[7].long_reference)
             {
+              long
+                x,
+                y;
+
               /*
-                Tile image on background.
+                Tile the composite image.
               */
+             if (attribute_flag[8])
+               (void) SetImageAttribute(rotate_image,
+                 "[modify-outside-overlay]","false");
+             else
+               (void) SetImageAttribute(composite_image,
+                 "[modify-outside-overlay]","false");
               for (y=0; y < (long) image->rows; y+=composite_image->rows)
                 for (x=0; x < (long) image->columns; x+=composite_image->columns)
                 {
@@ -6006,7 +6103,8 @@ Mogrify(ref,...)
               &exception);
           opacity=TransparentOpacity;
           if (attribute_flag[3])
-            opacity=StringToDouble(argument_list[3].string_reference,MaxRGB);
+            opacity=StringToDouble(argument_list[3].string_reference,
+              QuantumRange);
           if (image->matte == MagickFalse)
             SetImageOpacity(image,OpaqueOpacity);
           target=AcquireOnePixel(image,geometry.x,geometry.y,&exception);
@@ -6014,7 +6112,7 @@ Mogrify(ref,...)
             target=fill_color;
           if (attribute_flag[5])
             image->fuzz=
-              StringToDouble(argument_list[5].string_reference,MaxRGB);
+              StringToDouble(argument_list[5].string_reference,QuantumRange);
           MatteFloodfillImage(image,target,RoundToQuantum(opacity),geometry.x,
             geometry.y,attribute_flag[4] ? FillToBorderMethod : FloodfillMethod);
           break;
@@ -6094,7 +6192,7 @@ Mogrify(ref,...)
               &fill_color,&exception);
           if (attribute_flag[2])
             image->fuzz=StringToDouble(argument_list[2].string_reference,
-              MaxRGB);
+              QuantumRange);
           (void) PaintOpaqueImage(image,&target,&fill_color);
           break;
         }
@@ -6106,7 +6204,7 @@ Mogrify(ref,...)
           GetQuantizeInfo(&quantize_info);
           quantize_info.number_colors=
             attribute_flag[0] ? argument_list[0].long_reference : (info ?
-            info->quantize_info->number_colors : MaxRGB + 1);
+            info->quantize_info->number_colors : QuantumRange + 1);
           quantize_info.tree_depth=attribute_flag[1] ?
             argument_list[1].long_reference :
             (info ? info->quantize_info->tree_depth : 8);
@@ -6191,9 +6289,14 @@ Mogrify(ref,...)
         }
         case 52:  /* Solarize */
         {
+          double
+            threshold;
+
           if (!attribute_flag[0])
-            argument_list[0].real_reference=50.0;
-          SolarizeImage(image,argument_list[0].real_reference);
+            argument_list[0].string_reference="50%";
+          threshold=StringToDouble(argument_list[0].string_reference,
+           QuantumRange);
+          (void) SolarizeImage(image,threshold);
           break;
         }
         case 53:  /* Sync */
@@ -6238,10 +6341,11 @@ Mogrify(ref,...)
               &target,&exception);
           opacity=TransparentOpacity;
           if (attribute_flag[1])
-            opacity=StringToDouble(argument_list[1].string_reference,MaxRGB);
+            opacity=StringToDouble(argument_list[1].string_reference,
+              QuantumRange);
           if (attribute_flag[2])
-            image->fuzz=
-              StringToDouble(argument_list[2].string_reference,MaxRGB);
+            image->fuzz=StringToDouble(argument_list[2].string_reference,
+              QuantumRange);
           (void) PaintTransparentImage(image,&target,RoundToQuantum(opacity));
           break;
         }
@@ -6254,7 +6358,8 @@ Mogrify(ref,...)
             argument_list[0].string_reference="50%";
           if (attribute_flag[1])
             channel=(ChannelType) argument_list[1].long_reference;
-          threshold=StringToDouble(argument_list[0].string_reference,MaxRGB);
+          threshold=StringToDouble(argument_list[0].string_reference,
+            QuantumRange);
           (void) BilevelImageChannel(image,channel,threshold);
           break;
         }
@@ -6279,7 +6384,7 @@ Mogrify(ref,...)
         {
           if (attribute_flag[0])
             image->fuzz=
-              StringToDouble(argument_list[0].string_reference,MaxRGB);
+              StringToDouble(argument_list[0].string_reference,QuantumRange);
           image=TrimImage(image,&exception);
           break;
         }
@@ -6373,7 +6478,7 @@ Mogrify(ref,...)
             channel=(ChannelType) argument_list[1].long_reference;
           if (attribute_flag[2])
             image->bias=StringToDouble(argument_list[2].string_reference,
-              MaxRGB);
+              QuantumRange);
           av=(AV *) argument_list[0].array_reference;
           order=(unsigned long) sqrt(av_len(av)+1);
           kernel=(double *) AcquireMagickMemory(order*order*sizeof(*kernel));
@@ -6523,7 +6628,7 @@ Mogrify(ref,...)
           if (!attribute_flag[1])
             argument_list[1].real_reference=0.0;
           if (!attribute_flag[2])
-            argument_list[2].real_reference=MaxRGB;
+            argument_list[2].real_reference=QuantumRange;
           if (!attribute_flag[3])
             argument_list[3].real_reference=1.0;
           if (!attribute_flag[0])
@@ -6671,8 +6776,8 @@ Mogrify(ref,...)
             {
               flags=ParseGeometry(argument_list[0].string_reference,
                 &geometry_info);
-              if (flags & PercentValue)
-                geometry_info.xi=MaxRGB*geometry_info.xi/100.0;
+              if ((flags & PercentValue) != 0)
+                geometry_info.xi=QuantumRange*geometry_info.xi/100.0;
             }
           if (attribute_flag[1])
             geometry_info.rho=argument_list[1].long_reference;
@@ -6706,6 +6811,8 @@ Mogrify(ref,...)
             argument_list[3].long_reference=(long) UndefinedFilter;
           if (!attribute_flag[4])
             argument_list[4].real_reference=1.0;
+          if (attribute_flag[5])
+            argument_list[5].real_reference=argument_list[4].real_reference;
           width=(unsigned long) (geometry_info.rho*image->columns/
             (image->x_resolution == 0.0 ? 72.0 : image->x_resolution)+0.5);
           height=(unsigned long) (geometry_info.sigma*image->rows/
@@ -6745,8 +6852,17 @@ Mogrify(ref,...)
         case 82:  /* RadialBlur */
         {
           if (attribute_flag[0])
-            argument_list[0].real_reference=10.0;
-          image=RadialBlurImage(image,argument_list[0].real_reference,
+            {
+              flags=ParseGeometry(argument_list[0].string_reference,
+                &geometry_info);
+              if (!(flags & SigmaValue))
+                geometry_info.sigma=1.0;
+            }
+          if (attribute_flag[1])
+            geometry_info.rho=argument_list[1].real_reference;
+          if (attribute_flag[2])
+            channel=(ChannelType) argument_list[2].long_reference;
+          image=RadialBlurImageChannel(image,channel,geometry_info.rho,
             &exception);
           break;
         }
@@ -6804,7 +6920,7 @@ Mogrify(ref,...)
             geometry.y=argument_list[4].long_reference;
           if (attribute_flag[5])
             image->fuzz=
-              StringToDouble(argument_list[5].string_reference,MaxRGB);
+              StringToDouble(argument_list[5].string_reference,QuantumRange);
           image=SpliceImage(image,&geometry,&exception);
           break;
         }
@@ -6846,6 +6962,54 @@ Mogrify(ref,...)
             argument_list[0].file_reference=stdout;
           (void) IdentifyImage(image,argument_list[0].file_reference,
             MagickTrue);
+          break;
+        }
+        case 91:  /* SepiaTone */
+        {
+          if (!attribute_flag[0])
+            argument_list[0].real_reference=80.0*QuantumRange/100.0;
+          image=SepiaToneImage(image,argument_list[0].real_reference,
+            &exception);
+          break;
+        }
+        case 92:  /* SigmoidalContrast */
+        {
+          MagickBooleanType
+            sharpen;
+
+          if (attribute_flag[0])
+            {
+              flags=ParseGeometry(argument_list[0].string_reference,
+                &geometry_info);
+              if ((flags & SigmaValue) == 0)
+                geometry_info.sigma=QuantumRange/2.0;
+              if ((flags & PercentValue) != 0)
+                geometry_info.sigma=QuantumRange*geometry_info.sigma/100.0;
+            }
+          if (attribute_flag[1])
+            geometry_info.rho=argument_list[1].real_reference;
+          if (attribute_flag[2])
+            geometry_info.sigma=argument_list[2].real_reference;
+          if (attribute_flag[3])
+            channel=(ChannelType) argument_list[3].long_reference;
+          sharpen=MagickTrue;
+          if (attribute_flag[4])
+            sharpen=argument_list[4].long_reference != 0 ? MagickTrue :
+              MagickFalse;
+          (void) SigmoidalContrastImageChannel(image,channel,sharpen,
+            geometry_info.rho,geometry_info.sigma);
+          break;
+        }
+        case 93:  /* Extent */
+        {
+          if (attribute_flag[0])
+            flags=ParseAbsoluteGeometry(argument_list[0].string_reference,
+              &geometry);
+          if (attribute_flag[1])
+            geometry.width=argument_list[1].long_reference;
+          if (attribute_flag[2])
+            geometry.height=argument_list[2].long_reference;
+          (void) SetImageExtent(image,geometry.width,geometry.height);
           break;
         }
       }
@@ -7116,7 +7280,7 @@ Montage(ref,...)
           if (LocaleCompare(attribute,"label") == 0)
             {
               for (next=image; next; next=next->next)
-                (void) SetImageAttribute(next,"label",SvPV(ST(i),na));
+                (void) SetImageAttribute(next,"Label",SvPV(ST(i),na));
               break;
             }
           ThrowPerlException(&exception,OptionError,"UnrecognizedAttribute",
@@ -7624,16 +7788,16 @@ Ping(ref,...)
         list[n]=(char *) SvPV(ST(i+1),length[n]);
         if ((items >= 3) && strEQcase(list[n],"blob"))
           {
-            package_info->image_info->blob=(void *) (SvPV(ST(i+2),length[n]));
-            package_info->image_info->length=length[n];
+            SetImageInfoBlob(package_info->image_info,(void *)
+              (SvPV(ST(i+2),length[n])),length[n]);
             continue;
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            package_info->image_info->file=(FILE *)
-              PerlIO_findFILE(IoIFP(sv_2io(ST(i+2))));
+            SetImageInfoFile(package_info->image_info,(FILE *)
+              PerlIO_findFILE(IoIFP(sv_2io(ST(i+2)))));
             continue;
           }
         n++;
@@ -8981,16 +9145,16 @@ Read(ref,...)
         list[n]=(char *) SvPV(ST(i+1),length[n]);
         if ((items >= 3) && strEQcase(list[n],"blob"))
           {
-            package_info->image_info->blob=(void *) (SvPV(ST(i+2),length[n]));
-            package_info->image_info->length=length[n];
+            SetImageInfoBlob(package_info->image_info,(void *)
+              (SvPV(ST(i+2),length[n])),length[n]);
             continue;
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
           continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
-            package_info->image_info->file=(FILE *)
-              PerlIO_findFILE(IoIFP(sv_2io(ST(i+2))));
+            SetImageInfoFile(package_info->image_info,(FILE *)
+              PerlIO_findFILE(IoIFP(sv_2io(ST(i+2)))));
             continue;
           }
         n++;
@@ -9163,6 +9327,182 @@ Set(ref,...)
     SvPOK_on(perl_exception);
     ST(0)=sv_2mortal(perl_exception);
     XSRETURN(1);
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   S t a t i s t i c s                                                       #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+Statistics(ref,...)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    StatisticsImage = 1
+    statistics      = 2
+    statisticsimage = 3
+  PPCODE:
+  {
+    AV
+      *av;
+
+    char
+      message[MaxTextExtent];
+
+    ChannelStatistics
+      *channel_statistics;
+
+    ExceptionInfo
+      exception;
+
+    HV
+      *hv;
+
+    Image
+      *image;
+
+    ssize_t
+      count;
+
+    struct PackageInfo
+      *info;
+
+    unsigned long
+      scale;
+
+    SV
+      *av_reference,
+      *perl_exception,
+      *reference;
+
+    GetExceptionInfo(&exception);
+    perl_exception=newSVpv("",0);
+    av=NULL;
+    if (!sv_isobject(ST(0)))
+      {
+        ThrowPerlException(&exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+    hv=SvSTASH(reference);
+    av=newAV();
+    av_reference=sv_2mortal(sv_bless(newRV((SV *) av),hv));
+    SvREFCNT_dec(av);
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,&exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(&exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+    info=GetPackageInfo(aTHX_ (void *) av,info,&exception);
+    count=0;
+    for ( ; image; image=image->next)
+    {
+      channel_statistics=GetImageChannelStatistics(image,&image->exception);
+      if (channel_statistics == (ChannelStatistics *) NULL)
+        continue;
+      count++;
+      EXTEND(sp,25*count);
+      scale=QuantumRange/(QuantumRange >> (QuantumDepth-
+        channel_statistics[AllChannels].depth));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[RedChannel].depth);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[RedChannel].minima/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[RedChannel].maxima/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%g",
+        channel_statistics[RedChannel].mean/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%g",
+        channel_statistics[RedChannel].standard_deviation/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[GreenChannel].depth);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[GreenChannel].minima/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[GreenChannel].maxima/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%g",
+        channel_statistics[GreenChannel].mean/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%g",
+        channel_statistics[GreenChannel].standard_deviation/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[BlueChannel].depth);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[BlueChannel].minima/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%lu",
+        channel_statistics[BlueChannel].maxima/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%g",
+        channel_statistics[BlueChannel].mean/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      (void) FormatMagickString(message,MaxTextExtent,"%g",
+        channel_statistics[BlueChannel].standard_deviation/scale);
+      PUSHs(sv_2mortal(newSVpv(message,0)));
+      if (image->colorspace == CMYKColorspace)
+        {
+          (void) FormatMagickString(message,MaxTextExtent,"%lu",
+            channel_statistics[BlackChannel].depth);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%lu",
+            channel_statistics[BlackChannel].minima/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%lu",
+            channel_statistics[BlackChannel].maxima/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%g",
+            channel_statistics[BlackChannel].mean/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%g",
+            channel_statistics[BlackChannel].standard_deviation/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+        }
+      if (image->matte != MagickFalse)
+        {
+          (void) FormatMagickString(message,MaxTextExtent,"%lu",
+            channel_statistics[OpacityChannel].depth);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%lu",
+            channel_statistics[OpacityChannel].minima/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%lu",
+            channel_statistics[OpacityChannel].maxima/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%g",
+            channel_statistics[OpacityChannel].mean/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+          (void) FormatMagickString(message,MaxTextExtent,"%g",
+            channel_statistics[OpacityChannel].standard_deviation/scale);
+          PUSHs(sv_2mortal(newSVpv(message,0)));
+        }
+      channel_statistics=(ChannelStatistics *)
+        RelinquishMagickMemory(channel_statistics);
+    }
+
+  PerlException:
+    InheritPerlException(&exception,perl_exception);
+    DestroyExceptionInfo(&exception);
+    SvREFCNT_dec(perl_exception);
   }
 
 #

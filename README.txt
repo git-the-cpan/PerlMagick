@@ -8,7 +8,7 @@ Introduction
 
     See
 
-        http://www.imagemagick.org/www/perl.html
+        http://www.imagemagick.org/script/perl-magick.php
 
     for additional information about PerlMagick.  See
 

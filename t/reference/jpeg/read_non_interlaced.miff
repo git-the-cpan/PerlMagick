@@ -4,7 +4,7 @@ columns=70  rows=46  depth=8
 colorspace=RGB
 compression=JPEG  quality=75
 resolution=72x72
-compose=Over
+page=70x46+0+0
 JPEG-Colorspace={2}
 JPEG-Sampling-factors={1x1,1x1,1x1}
 

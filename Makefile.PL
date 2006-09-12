@@ -18,7 +18,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jng jpeg mpeg png ps tiff x xfig/) {
+foreach $delegate (qw/ bzlib jng jpeg lcms mpeg png ps tiff wmf x xfig zlib/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -38,31 +38,31 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.2.4',
+   'VERSION'   => '6.2.9',
 
    # Preprocessor defines
    'DEFINE'	=> ' -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
 
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2',
+   'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/include/libxml2',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/X11R6/include -I/usr/X11R6/include/X11 -I/usr/include/libxml2",
+   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
    'CCFLAGS'     => "$Config{'ccflags'} -O3 -g -Wall -pthread",
 
    # Linker flags for building an executable
-   'LDFLAGS'    =>  "-L/usr/lib $Config{'ldflags'}",
+   'LDFLAGS'    =>  "-L../magick/.libs -L/usr/lib $Config{'ldflags'}",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS'  => "-L/usr/lib $Config{'lddlflags'}",
+   'LDDLFLAGS'  => "-L../magick/.libs -L/usr/lib $Config{'lddlflags'}",
 
    # Install PerlMagick binary into ImageMagick bin directory
    'INSTALLBIN'	=> '/usr/bin',
 
    # Library specification
-   'LIBS'	=> ['-L/usr/lib -lMagick -L/usr/X11R6/lib64 -L/usr/lib -ltiff -ljpeg -lpng -ldpstk -ldps -lXext -lXt -lSM -lICE -lX11 -lbz2 -lxml2 -lpthread -lm -lpthread'],
+   'LIBS'	=> ['-lMagick -llcms -ltiff -lfreetype -ljpeg -lfontconfig -lXext -lSM -lICE -lX11 -lXt -lbz2 -lz -lpthread -lm -lpthread'],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',

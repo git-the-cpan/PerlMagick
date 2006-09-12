@@ -30,6 +30,24 @@ $smile->Set(background=>'white');
 print "Transform image...\n";
 $images=Image::Magick->new();
 
+print "Adaptive Blur...\n";
+$example=$model->Clone();
+$example->Label('Adaptive Blur');
+$example->AdaptiveBlur('0x1');
+push(@$images,$example);
+
+print "Adaptive Resize...\n";
+$example=$model->Clone();
+$example->Label('Adaptive Resize');
+$example->AdaptiveResize('60%');
+push(@$images,$example);
+
+print "Adaptive Sharpen...\n";
+$example=$model->Clone();
+$example->Label('Adaptive Sharpen');
+$example->AdaptiveSharpen('0x1');
+push(@$images,$example);
+
 print "Adaptive Threshold...\n";
 $example=$model->Clone();
 $example->Label('Adaptive Threshold');
@@ -85,6 +103,12 @@ $example->Label('Contrast');
 $example->Contrast();
 push(@$images,$example);
 
+print "Contrast Stretch...\n";
+$example=$model->Clone();
+$example->Label('Contrast Stretch');
+$example->ContrastStretch('5%');
+
+push(@$images,$example);
 print "Convolve...\n";
 $example=$model->Clone();
 $example->Label('Convolve');
@@ -360,6 +384,12 @@ $example->Label('Unsharp Mask');
 $example->UnsharpMask('0.0x1.0');
 push(@$images,$example);
 
+print "Vignette...\n";
+$example=$model->Clone();
+$example->Label('Vignette');
+$example->Vignette('0x20');
+push(@$images,$example);
+
 print "Wave...\n";
 $example=$model->Clone();
 $example->Label('Wave');
@@ -370,7 +400,7 @@ push(@$images,$example);
 #
 print "Montage...\n";
 $montage=$images->Montage(geometry=>'128x160+8+4>',gravity=>'Center',
-  tile=>'6x+10+200',compose=>'over',background=>'#ffffff',
+  tile=>'5x+10+200',compose=>'over',background=>'#ffffff',
   font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none');
 
 $logo=Image::Magick->new();

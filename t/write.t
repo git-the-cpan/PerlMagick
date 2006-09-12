@@ -8,7 +8,7 @@
 # Whenever a new test is added/removed, be sure to update the
 # 1..n ouput.
 
-BEGIN { $| = 1; $test=1; print "1..34\n"; }
+BEGIN { $| = 1; $test=1; print "1..33\n"; }
 END {print "not ok $test\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
@@ -57,7 +57,7 @@ print("Flexible Image Transport System ...\n");
 testReadWrite( 'FITS:input.fits',
   'FITS:output.fits',
   q//,
-  '66845081f2b5b025bcdd32f25a55a12d0e658a80f0381f2abdbf2b42dca20e44' );
+  'a28c3e10a294495bbe7e9d34e39640192f44010b228dee04aeaf6e6b2bfcd683' );
 
 print("CompuServe graphics interchange format ...\n");
 ++$test;
@@ -86,11 +86,6 @@ testReadWrite( 'MTV:input.mtv',
   'MTV:output.mtv',
   q//,
   '5a5f94a626ee1945ab1d4d2a621aeec4982cccb94e4d68afe4c784abece91b3e');
-
-print("Xv's visual schnauzer format ...\n");
-++$test;
-testReadWriteCompare( 'input.miff', 'P7:output_p7.p7', 'reference/write/output_p7.miff',
-  q/depth=>8/, q/dither=>0, depth=>8/, 0.0035, 0.0097);
 
 print("Portable bitmap format (black and white), ASCII format ...\n");
 ++$test;

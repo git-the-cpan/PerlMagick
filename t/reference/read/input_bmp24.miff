@@ -2,6 +2,7 @@ id=ImageMagick  version=1.0
 class=DirectClass  colors=0  matte=False
 columns=70  rows=46  depth=8
 colorspace=RGB
+units=PixelsPerCentimeter
 resolution=29.25x29.25
 page=70x46+0+0
 

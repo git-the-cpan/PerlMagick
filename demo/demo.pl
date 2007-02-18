@@ -270,6 +270,12 @@ warn "$x" if "$x";
 $plasma->Label('Plasma');
 push(@$images,$plasma);
 
+print "Polaroid...\n";
+$example=$model->Clone();
+$example->Label('Polaroid');
+$example->Polaroid(caption=>'Magick',rotate=>-5.0,gravity=>'center');
+push(@$images,$example);
+
 print "Quantize...\n";
 $example=$model->Clone();
 $example->Label('Quantize');
@@ -286,6 +292,13 @@ print "Raise...\n";
 $example=$model->Clone();
 $example->Label('Raise');
 $example->Raise('10x10');
+push(@$images,$example);
+
+push(@$images,$example);
+print "Recolor...\n";
+$example=$model->Clone();
+$example->Label('Recolor');
+$example->Recolor([1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0.5, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1]);
 push(@$images,$example);
 
 print "Reduce Noise...\n";
@@ -401,7 +414,8 @@ push(@$images,$example);
 print "Montage...\n";
 $montage=$images->Montage(geometry=>'128x160+8+4>',gravity=>'Center',
   tile=>'5x+10+200',compose=>'over',background=>'#ffffff',
-  font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none');
+  font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none',
+	shadow=>'true');
 
 $logo=Image::Magick->new();
 $logo->Read('logo:');

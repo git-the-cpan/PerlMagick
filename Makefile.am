@@ -45,11 +45,10 @@ $(PERLMAKEFILE): perl-sources $(PERLMAKEMAKER)
 	cd $(PERLMAGICK) && @PERL@ Makefile.PL $(PERL_MAKE_OPTIONS)
 
 install-exec-perl: $(PERLMAKEFILE)
-	( cd $(PERLMAGICK) && $(MAKE) CC='@CC@' && \
-	$(MAKE) CC='@CC@' install && \
-	$(MAKE) clean && rm -f  Makefile.old )
+	cd $(PERLMAGICK) && $(MAKE) CC='@CC@' install
 
-all-perl:
+all-perl: $(PERLMAKEFILE)
+	cd $(PERLMAGICK) && $(MAKE) CC='@CC@'
 
 uninstall-exec-perl: $(PERLMAKEFILE)
 	echo "Uninstall not supported for PerlMagick"

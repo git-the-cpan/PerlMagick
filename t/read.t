@@ -152,7 +152,7 @@ testReadCompare('input.viff', 'reference/read/input_viff.miff', q//, 0.15, 0.9);
 
 print("WBMP (Wireless Bitmap (level 0) image) ...\n");
 ++$test;
-testReadCompare('input.wbmp', 'reference/read/input_wbmp.miff', q//, 0.25, 1);
+testReadCompare('input.wbmp', 'reference/read/input_wbmp.miff', q//, 0.25, 1.1);
 
 print("X Windows system bitmap (black and white only) ...\n");
 ++$test;

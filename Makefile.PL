@@ -18,7 +18,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jng jpeg lcms mpeg png ps tiff wmf x xfig zlib/) {
+foreach $delegate (qw/ bzlib jpeg lcms mpeg png ps tiff x xfig zlib/) {
   if( -d "t/$delegate" ) {
     $delegate_tests .= " t/$delegate/*.t";
   }
@@ -38,31 +38,31 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.2.9',
+   'VERSION'   => '6.3.2',
 
    # Preprocessor defines
-   'DEFINE'	=> ' -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
+   'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
 
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I../ -I.. -I/usr/include/freetype2 -I/usr/include/libxml2',
+   'INC'	=> '-I../ -I.. -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/graphviz -I/usr/include/freetype2 -I/usr/include/libxml2',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/include/libxml2",
+   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/graphviz -I/usr/include/freetype2 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
-   'CCFLAGS'     => "$Config{'ccflags'} -O3 -g -Wall -pthread",
+   'CCFLAGS'     => "$Config{'ccflags'} -g -O2 -Wall -W -pthread",
 
    # Linker flags for building an executable
-   'LDFLAGS'    =>  "-L../magick/.libs -L/usr/lib $Config{'ldflags'}",
+   'LDFLAGS'    =>  "-L../magick/.libs -lMagick $Config{'ldflags'}",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS'  => "-L../magick/.libs -L/usr/lib $Config{'lddlflags'}",
+   'LDDLFLAGS'  => "-L../magick/.libs -lMagick $Config{'lddlflags'}",
 
    # Install PerlMagick binary into ImageMagick bin directory
-   'INSTALLBIN'	=> '/usr/bin',
+   'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> ['-lMagick -llcms -ltiff -lfreetype -ljpeg -lfontconfig -lXext -lSM -lICE -lX11 -lXt -lbz2 -lz -lpthread -lm -lpthread'],
+   'LIBS'	=> [ '-L/home/cristy/ImageMagick/ImageMagick/magick/.libs -L/usr/lib64 -lfreetype -llcms -ltiff -lfreetype -ljpeg -lgs -lpng -lXext -lXt -lSM -lICE -lX11 -lbz2 -lrsvg-2 -lgdk_pixbuf-2.0 -lpng12 -lm -lgobject-2.0 -lgmodule-2.0 -ldl -lglib-2.0 -lxml2 -lgvc -lz -lpthread -lm -lpthread' ],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -71,10 +71,10 @@ WriteMakefile
    # 'OPTIMIZE'	=> '',
 
    # Use same compiler as ImageMagick
-   'PERLMAINCC'	=> '',
+   'PERLMAINCC'	=> 'g++',
 
    # Set Perl installation prefix to ImageMagick installation prefix
-#   'PREFIX'	=> '/usr',
+#   'PREFIX'	=> '/usr/local',
 
    # Include delegate directories in tests
    test		=> { TESTS	=>	$delegate_tests},
@@ -96,7 +96,7 @@ sub MY::makeaperl {
      # tries to insert our library path first. Also, use the same compiler used
      # to build perlmain.c to link so that a C++ compiler may be used if
      # necessary.
-     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/lib: ;
+     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/home/cristy/ImageMagick/ImageMagick/magick/.libs: ;
      $inherited;
  }
 

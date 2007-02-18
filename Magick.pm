@@ -30,7 +30,7 @@ require AutoLoader;
       ConfigureError FatalErrorException
     );
 
-$VERSION = '6.2.9';
+$VERSION = '6.3.2';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -80,6 +80,8 @@ sub New
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
+END { UNLOAD () };
+
 1;
 __END__
 
@@ -106,7 +108,8 @@ It was originally developed to be used by CGI scripts for Web pages.
 
 A Web page has been set up for this extension. See:
 
-	http://www.imagemagick.org/script/perl-magick.php
+	 file:///usr/local/share/doc/ImageMagick-6.3.2/www/perl-magick.html
+	 http://www.imagemagick.org/script/perl-magick.php
 
 =head1 AUTHOR
 

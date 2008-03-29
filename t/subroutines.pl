@@ -142,8 +142,8 @@ sub testCompositeCompare {
   if ("$status")
     {
       $errorinfo = "Compare($refimage_name): $status";
-      print("  Computed:  ", $background->Get('columns'), "x", $background->Get('rows'), "\n");
       print("  Reference: ", $refimage->Get('columns'), "x", $refimage->Get('rows'), "\n");
+      print("  Computed:  ", $background->Get('columns'), "x", $background->Get('rows'), "\n");
       goto COMPARE_RUNTIME_ERROR;
     }
 
@@ -192,7 +192,7 @@ sub testCompositeCompare {
 # Test reading a 16-bit file in which two signatures are possible,
 # depending on whether 16-bit pixels data has been enabled
 #
-# Usage: testRead( read filename, expected ref_8 [, expected ref_16] );
+# Usage: testRead( read filename, expected ref_8 [, expected ref_16] [, expected ref_32] );
 #
 sub testRead {
   my( $infile, $ref_8, $ref_16, $ref_32 ) =  @_;
@@ -249,9 +249,9 @@ sub testRead {
       
       if ( $signature ne $ref_signature ) {
         print "ReadImage()\n";
-	print "Image: $infile, signatures do not match.\n";
-	print "     Computed: $signature\n";
-	print "     Expected: $ref_signature\n";
+       	print "Image: $infile, signatures do not match.\n";
+      	print "     Expected: $ref_signature\n";
+      	print "     Computed: $signature\n";
         print "     Depth:    $depth\n";
         ++$failure;
         $image->Display();
@@ -288,8 +288,8 @@ sub testRead {
             if ( $signature ne $ref_signature ) {
               print "BlobToImage()\n";
               print "Image: $infile, signatures do not match.\n";
-              print "     Computed: $signature\n";
               print "     Expected: $ref_signature\n";
+              print "     Computed: $signature\n";
               print "     Depth:    $depth\n";
               #$image->Display();
               ++$failure;
@@ -370,13 +370,26 @@ sub testReadCompare {
 #      goto COMPARE_RUNTIME_ERROR;
 #    }
 
-  $status=$srcimage->Compare($refimage);
-  if ("$status")
+  # Verify that $srcimage and $refimage contain the same number of frames.
+  if ( $#srcimage != $#refimage )
     {
-      $errorinfo = "Compare($refimage_name): $status";
+      $errorinfo = "Source and reference images contain different number of frames ($#srcimage != $#refimage)";
       warn("$errorinfo");
       goto COMPARE_RUNTIME_ERROR;
     }
+
+  # Compare each frame in the sequence.
+  for ($index = 0; $srcimage->[$index] && $refimage->[$index]; $index++)
+    {
+      $status=$srcimage->[$index]->Compare($refimage->[$index]);
+      if ("$status")
+        {
+          $errorinfo = "Compare($refimage_name)->[$index]: $status";
+          warn("$errorinfo");
+          goto COMPARE_RUNTIME_ERROR;
+        }
+    }
+
 
   $normalized_mean_error=0;
   $normalized_mean_error=$srcimage->GetAttribute('mean-error');
@@ -419,7 +432,7 @@ sub testReadCompare {
 # Test reading a file which requires a file size to read (GRAY, RGB, CMYK)
 # or supports multiple resolutions (JBIG, JPEG, PCD)
 #
-# Usage: testRead( read filename, size, depth, expected ref_8 [, expected ref_16] );
+# Usage: testRead( read filename, size, depth, expected ref_8 [, expected ref_16] [, expected ref_32] );
 #
 sub testReadSized {
   my( $infile, $size, $depth, $ref_8, $ref_16, $ref_32 ) =  @_;
@@ -469,9 +482,9 @@ sub testReadSized {
     $signature=$image->Get('signature');
       if ( $signature ne $ref_signature ) {
         print "ReadImage()\n";
-	print "Image: $infile, signatures do not match.\n";
-	print "     Computed: $signature\n";
-	print "     Expected: $ref_signature\n";
+      	print "Image: $infile, signatures do not match.\n";
+      	print "     Expected: $ref_signature\n";
+      	print "     Computed: $signature\n";
         print "     Depth:    $depth\n";
         print "not ok $test\n";
         #$image->Display();
@@ -558,8 +571,8 @@ sub testReadWrite {
         if ( $signature ne $ref_signature ) {
           print "ReadImage()\n";
           print "Image: $infile, signatures do not match.\n";
-          print "     Computed: $signature\n";
           print "     Expected: $ref_signature\n";
+          print "     Computed: $signature\n";
           print "     Depth:    $depth\n";
           print "not ok $test\n";
           $image->Display();
@@ -871,8 +884,8 @@ sub testReadWriteSized {
         if ( $signature ne $ref_signature ) {
           print "ReadImage()\n";
           print "Image: $infile, signatures do not match.\n";
-          print "     Computed: $signature\n";
           print "     Expected: $ref_signature\n";
+          print "     Computed: $signature\n";
           print "     Depth:    $depth\n";
           print "not ok $test\n";
           #$image->Display();
@@ -1052,14 +1065,14 @@ sub testMontage {
     print "not ok $test\n";
   } else {
     # Check REF_8 signature
-    #$montage->Display();
+    # $montage->Display();
     $signature=$montage->GetAttribute('signature');
     if ( defined( $signature ) ) {
       if ( $signature ne $ref_signature ) {
         print "ReadImage()\n";
         print "Test $test, signatures do not match.\n";
-	print "     Computed: $signature\n";
-	print "     Expected: $ref_signature\n";
+      	print "     Expected: $ref_signature\n";
+      	print "     Computed: $signature\n";
         print "     Depth:    $depth\n";
         $status = $montage->Write("test_${test}_out.miff");
         warn "Write: $status" if "$status";
@@ -1146,8 +1159,8 @@ sub testFilterSignature {
   if ( defined( $signature ) ) {
     if ( $signature ne $ref_signature ) {
       print "Test $test, signatures do not match.\n";
-      print "     Computed: $signature\n";
       print "     Expected: $ref_signature\n";
+      print "     Computed: $signature\n";
       print "     Depth:    $depth\n";
       #$image->Display();
       print "not ok $test\n";
@@ -1234,8 +1247,8 @@ sub testFilterCompare {
   if ("$status")
     {
       $errorinfo = "Compare($refimage_name): $status";
-      print("  Computed:  ", $srcimage->Get('columns'), "x", $srcimage->Get('rows'), "\n");
       print("  Reference: ", $refimage->Get('columns'), "x", $refimage->Get('rows'), "\n");
+      print("  Computed:  ", $srcimage->Get('columns'), "x", $srcimage->Get('rows'), "\n");
       goto COMPARE_RUNTIME_ERROR;
     }
 

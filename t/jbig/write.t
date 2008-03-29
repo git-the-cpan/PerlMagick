@@ -17,6 +17,6 @@ chdir 't/jbig' || die 'Cd failed';
 testReadWrite( 'input.jbig',
   'output.jbig',
   '',
-  '38e9b7c1b5b0eb3a8c95621ded1545b90f31f8962347489212de0a6ebd1bc8d4' );
+  'f7047e83432fbef872f3034a19efb95aa3b241d0be228ae0ccdc7814a9e27811' );
 
 $test=0; # Keep perl from complaining

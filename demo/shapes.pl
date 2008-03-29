@@ -20,7 +20,8 @@ $image->Draw(stroke=>'red',primitive=>'Ellipse',stroke=>'black',fill=>'red',
   strokewidth=>5,points=>'100,100 50,75 0,360');
 $image->Draw(primitive=>'Polygon',fill=>'none',stroke=>'black',strokewidth=>5,
   points=>'30,30 100,10 190,290 30,290');
-$image->ColorFloodfill(geometry=>'+132+62',fill=>'blue',bordercolor=>'black');
+$image->FloodfillPaint(geometry=>'+132+62',fill=>'blue',bordercolor=>'black',
+  invert=>'true');
 #
 # Draw text.
 #

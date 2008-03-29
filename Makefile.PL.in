@@ -1,4 +1,4 @@
-#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2008 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -11,6 +11,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#
+#  Exercise all regression tests:
+#  
+#    make test
+#
+#  Exersise one regression test:
+#
+#    make TEST_VERBOSE=1 TEST_FILES=t/filter.t test
+#
 
 use ExtUtils::MakeMaker;
 use Config;
@@ -19,7 +28,13 @@ use Config;
 my $delegate_tests='t/*.t';
 my $delegate;
 foreach $delegate (qw/@DELEGATES@/) {
-  if( -d "t/$delegate" ) {
+  if ( -d "t/$delegate" ) {
+    if ($delegate =~ /x11/) {
+      if ( defined $ENV{'DISPLAY'} ) {
+        $delegate_tests .= " t/$delegate/*.t";
+      }
+      next;
+    }
     $delegate_tests .= " t/$delegate/*.t";
   }
 }
@@ -53,16 +68,16 @@ WriteMakefile
    'CCFLAGS'     => "$Config{'ccflags'} @CFLAGS@",
 
    # Linker flags for building an executable
-   'LDFLAGS'    =>  "-L../magick/.libs -lMagick $Config{'ldflags'}",
+   'LDFLAGS'    =>  "-L../magick/.libs -lMagickCore -L../wand/.libs -lMagickWand $Config{'ldflags'} @LDFLAGS@",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS'  => "-L../magick/.libs -lMagick $Config{'lddlflags'}",
+   'LDDLFLAGS'  => "-L../magick/.libs -lMagickCore -L../wand/.libs -lMagickWand $Config{'lddlflags'} @LDFLAGS@",
 
    # Install PerlMagick binary into ImageMagick bin directory
    'INSTALLBIN'	=> '@BIN_DIR@',
 
    # Library specification
-   'LIBS'	=> [ '-L@MAGICKLIBDIR@ @LDFLAGS@ @MAGICK_DEP_LIBS@' ],
+   'LIBS'	=> [ '-L@MAGICKLIBDIR@ -L../magick/.libs -lMagickCore -L../wand/.libs -lMagickWand' ],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',

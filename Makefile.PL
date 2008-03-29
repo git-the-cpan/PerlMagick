@@ -1,4 +1,4 @@
-#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2008 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -11,6 +11,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#
+#  Exercise all regression tests:
+#  
+#    make test
+#
+#  Exersise one regression test:
+#
+#    make TEST_VERBOSE=1 TEST_FILES=t/filter.t test
+#
 
 use ExtUtils::MakeMaker;
 use Config;
@@ -18,8 +27,14 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/ bzlib jpeg lcms mpeg png ps tiff x xfig zlib/) {
-  if( -d "t/$delegate" ) {
+foreach $delegate (qw/bzlib fontconfig freetype gs gvc jpeg jp2 lcms openexr png tiff x11 xml wmf zlib/) {
+  if ( -d "t/$delegate" ) {
+    if ($delegate =~ /x11/) {
+      if ( defined $ENV{'DISPLAY'} ) {
+        $delegate_tests .= " t/$delegate/*.t";
+      }
+      next;
+    }
     $delegate_tests .= " t/$delegate/*.t";
   }
 }
@@ -38,31 +53,31 @@ WriteMakefile
    'AUTHOR'    => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.3.2',
+   'VERSION'   => '6.4.0',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
 
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I../ -I.. -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/graphviz -I/usr/include/freetype2 -I/usr/include/libxml2',
+   'INC'	=> '-I/usr/include/ImageMagick -I/usr/local/include/ImageMagick',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/graphviz -I/usr/include/freetype2 -I/usr/include/libxml2",
+   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
-   'CCFLAGS'     => "$Config{'ccflags'} -g -O2 -Wall -W -pthread",
+   'CCFLAGS'     => "$Config{'ccflags'} -O3 -g -Wall -W -pthread",
 
    # Linker flags for building an executable
-   'LDFLAGS'    =>  "-L../magick/.libs -lMagick $Config{'ldflags'}",
+   'LDFLAGS'    =>  "-L/usr/lib -L/usr/local/lib -lMagickCore -lMagickWand $Config{'ldflags'}",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS'  => "-L../magick/.libs -lMagick $Config{'lddlflags'}",
+   'LDDLFLAGS'  => "-L/usr/lib -L/usr/local/lib -lMagickCore -lMagickWand $Config{'lddlflags'}",
 
    # Install PerlMagick binary into ImageMagick bin directory
-   'INSTALLBIN'	=> '/usr/local/bin',
+   'INSTALLBIN'	=> '/usr/bin',
 
    # Library specification
-   'LIBS'	=> [ '-L/home/cristy/ImageMagick/ImageMagick/magick/.libs -L/usr/lib64 -lfreetype -llcms -ltiff -lfreetype -ljpeg -lgs -lpng -lXext -lXt -lSM -lICE -lX11 -lbz2 -lrsvg-2 -lgdk_pixbuf-2.0 -lpng12 -lm -lgobject-2.0 -lgmodule-2.0 -ldl -lglib-2.0 -lxml2 -lgvc -lz -lpthread -lm -lpthread' ],
+   'LIBS'	=> [ '-L/usr/lib -L/usr/local/lib -lMagickCore -lMagickWand' ],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
@@ -71,10 +86,10 @@ WriteMakefile
    # 'OPTIMIZE'	=> '',
 
    # Use same compiler as ImageMagick
-   'PERLMAINCC'	=> 'g++',
+   'PERLMAINCC'	=> '',
 
    # Set Perl installation prefix to ImageMagick installation prefix
-#   'PREFIX'	=> '/usr/local',
+#   'PREFIX'	=> '/usr',
 
    # Include delegate directories in tests
    test		=> { TESTS	=>	$delegate_tests},
@@ -96,7 +111,7 @@ sub MY::makeaperl {
      # tries to insert our library path first. Also, use the same compiler used
      # to build perlmain.c to link so that a C++ compiler may be used if
      # necessary.
-     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/home/cristy/ImageMagick/ImageMagick/magick/.libs: ;
+     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/lib: ;
      $inherited;
  }
 
@@ -108,6 +123,6 @@ sub MY::test {
      my $inherited = shift->SUPER::test(@_);
 
      # Run tests in our environment
-     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh ../magick.sh PERL_DL_NONLAZY=1:g ;
+     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh magick.sh PERL_DL_NONLAZY=1:g ;
      $inherited;
  }

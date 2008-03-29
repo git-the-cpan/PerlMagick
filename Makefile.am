@@ -1,4 +1,4 @@
-#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2008 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -41,7 +41,8 @@ PERLMAGICK_CHECK_LOCAL_TARGETS = check-perl
 
 if WITH_PERL_DYNAMIC
 
-$(PERLMAKEFILE): perl-sources $(PERLMAKEMAKER)
+# add LIBMAGICK in deps to fix parallel make issue
+$(PERLMAKEFILE): perl-sources $(LIBMAGICK) $(PERLMAKEMAKER)
 	cd $(PERLMAGICK) && @PERL@ Makefile.PL $(PERL_MAKE_OPTIONS)
 
 install-exec-perl: $(PERLMAKEFILE)
@@ -64,7 +65,7 @@ PERLSTATICNAME=PerlMagick
 $(PERLMAKEFILE): perl-sources $(PERLMAKEMAKER)
 	cd $(PERLMAGICK) && @PERL@ Makefile.PL MAP_TARGET=$(PERLSTATICNAME) $(PERL_MAKE_OPTIONS)
 
-$(PERLMAGICK)/$(PERLSTATICNAME): $(PERLMAKEFILE) magick/libMagick.la
+$(PERLMAGICK)/$(PERLSTATICNAME): $(PERLMAKEFILE) magick/libMagickCore.la
 	( rm -f $(PERLMAGICK)/$(PERLSTATICNAME) ; cd $(PERLMAGICK) && $(MAKE) CC='@CC@' $(PERLSTATICNAME) )
 
 all-perl: $(PERLMAGICK)/$(PERLSTATICNAME)

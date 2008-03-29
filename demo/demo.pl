@@ -128,6 +128,12 @@ $example->Label('Despeckle');
 $example->Despeckle();
 push(@$images,$example);
 
+print "Distort...\n";
+$example=$model->Clone();
+$example->Label('Distort');
+$example->Distort(type=>'arc',points=>[120],'virtual-pixel'=>'white');
+push(@$images,$example);
+
 print "Draw...\n";
 $example=$model->Clone();
 $example->Label('Draw');
@@ -217,7 +223,7 @@ push(@$images,$example);
 print "Level...\n";
 $example=$model->Clone();
 $example->Label('Level');
-$example->Level(level=>'20%');
+$example->Level('20%');
 push(@$images,$example);
 
 print "Median Filter...\n";

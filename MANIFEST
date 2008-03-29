@@ -75,7 +75,6 @@ t/input.tim
 t/input.viff
 t/input.xbm
 t/input.xpm
-t/input.xwd
 t/jbig/input.jbig
 t/jbig/read.t
 t/jbig/write.t
@@ -118,12 +117,13 @@ t/tiff/write.t
 t/ttf/input.ttf
 t/ttf/read.t
 t/write.t
-t/x/congrats.fig
-t/x/congrats.miff
+t/x11/congrats.fig
+t/x11/congrats.miff
+t/x11/input.xwd
 t/xfig/input.fig
 t/xfig/read.t
-t/x/read.t
-t/x/write.t
+t/x11/read.t
+t/x11/write.t
 t/zlib/input.miff
 t/zlib/read.t
 t/zlib/write.t

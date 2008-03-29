@@ -5,20 +5,20 @@
 # Contributed by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
 #
 
-BEGIN { $| = 1; $test=1; print "1..1\n"; }
+BEGIN { $| = 1; $test=1; print "1..2\n"; }
 END {print "not ok $test\n" unless $loaded;}
 use Image::Magick;
 $loaded=1;
 
 require 't/subroutines.pl';
 
-chdir 't/x' || die 'Cd failed';
+chdir 't/x11' || die 'Cd failed';
 
 #
 # 1) Test rendering text using common X11 font
 #
 
-$font   = '-*-courier-medium-*-*--14-*-*-*-*-*-*-*';
+$font   = '-*-courier-bold-r-normal-*-14-*-*-*-*-*-iso8859-1';
 
 # Ensure that Ghostscript is out of the picture
 $SAVEDPATH=$ENV{'PATH'};
@@ -51,5 +51,6 @@ undef $image;
 
 $ENV{'PATH'}=$SAVEDPATH;
 
-$test = 0;  # Quench PERL compliaint
-
+print("X Windows system window dump file (color) ...\n");
+++$test;
+testReadCompare('input.xwd', '../reference/read/input_xwd.miff', q//, 0.0, 0.0);

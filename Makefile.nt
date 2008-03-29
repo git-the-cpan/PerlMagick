@@ -1,4 +1,4 @@
-# Copyright (C) 1999-2005 ImageMagick Studio LLC
+# Copyright (C) 1999-2008 ImageMagick Studio LLC
 #
 # This program is covered by multiple licenses, which are described in
 # LICENSE.  You should have received a copy of LICENSE with this
@@ -152,12 +152,13 @@ sub MY::test
     " t/ps/read.t" .
     " t/ps/write.t" .
     " t/tiff/read.t" .
-    " t/tiff/write.t" .     " t/ttf/read.t" .
+    " t/tiff/write.t" .
+    " t/ttf/read.t" .
     " t/wmf/read.t" .
     " t/zlib/read.t" .
     " t/zlib/write.t";
    if ( defined $ENV{'DISPLAY'} ) {
-    $delegate_tests .= " t/x/write.t t/x/read.t";
+    $delegate_tests .= " t/x11/write.t t/x11/read.t";
    }
    $inherited =~ s:^TEST_FILES =.*:TEST_FILES = ${delegate_tests}:m;
    $inherited;

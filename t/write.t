@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#  Copyright 1999-2008 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2009 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -100,14 +100,14 @@ print("Portable bitmap format (black and white), ASCII format ...\n");
 testReadWrite( 'PBM:input_p1.pbm',
   'PBM:output_p1.pbm',
   q/compression=>'None'/,
-  '88d409c55676c4f9d87f1c987ee46af7dfd3c040b106003b0e533f93beb3bdde');
+  '83175f7bcc43fb71212dee254c85e355c18bcd25f35d3b9caba66fff7341fa64');
 
 print("Portable bitmap format (black and white), binary format ...\n");
 ++$test;
 testReadWrite( 'PBM:input_p4.pbm',
   'PBM:output_p4.pbm',
   q//,
-  '88d409c55676c4f9d87f1c987ee46af7dfd3c040b106003b0e533f93beb3bdde');
+  '83175f7bcc43fb71212dee254c85e355c18bcd25f35d3b9caba66fff7341fa64');
 
 print("ZSoft IBM PC Paintbrush file ...\n");
 ++$test;
@@ -170,7 +170,7 @@ print("SUN 1-bit Rasterfile ...\n");
 testReadWrite( 'SUN:input.im1',
   'SUN:output.im1',
   q//,
-  '4ada8cd8be3fafd6969bd6bae0ae0b8077db1ddf2d81ef962792a2b756aa331c');
+  '8922c9505ece06295a015d23e28da3727c3bc7ab22593f98e0fc8784aa16d0c2');
 
 print("SUN 8-bit Rasterfile ...\n");
 ++$test;

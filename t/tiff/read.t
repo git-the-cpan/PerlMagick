@@ -19,7 +19,7 @@ chdir 't/tiff' || die 'Cd failed';
 # 
 print("Monochrome ...\n");
 testRead ( 'input_mono.tiff',
-  '88d409c55676c4f9d87f1c987ee46af7dfd3c040b106003b0e533f93beb3bdde' );
+  '83175f7bcc43fb71212dee254c85e355c18bcd25f35d3b9caba66fff7341fa64' );
 
 #
 # 2) Test reading PseudoColor (16 color)
@@ -27,7 +27,7 @@ testRead ( 'input_mono.tiff',
 ++$test;
 print("PseudoColor (16 color)...\n");
 testRead( 'input_16.tiff',
-  'd5d455dd862d83f8a9abfa3d8e7968914f0fe9a7ad3801b762cccdbd7b244be1' );
+  'c33901f8a62814e6c2c1ecca0c7d1c95b3ecb089f4815ab630652e25cae85b44' );
 
 #
 # 3) Test reading PseudoColor (16 color + matte channel)
@@ -35,7 +35,7 @@ testRead( 'input_16.tiff',
 ++$test;
 print("PseudoColor (16 color + matte channel)...\n");
 testRead( 'input_16_matte.tiff',
-  'd5d455dd862d83f8a9abfa3d8e7968914f0fe9a7ad3801b762cccdbd7b244be1' );
+  'c33901f8a62814e6c2c1ecca0c7d1c95b3ecb089f4815ab630652e25cae85b44' );
 
 #
 # 4) Test reading PseudoColor (256 color)

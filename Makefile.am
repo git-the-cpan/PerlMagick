@@ -1,4 +1,4 @@
-#  Copyright 1999-2008 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2009 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -11,6 +11,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# 
+#  Copyright (C) 2003 - 2008 GraphicsMagick Group
 #
 #  Makefile for building PerlMagick.
 
@@ -37,19 +39,19 @@ PERLMAGICK_UNINSTALL_LOCAL_TARGETS = uninstall-exec-perl
 PERLMAGICK_CLEAN_LOCAL_TARGETS = clean-perl
 PERLMAGICK_DISTCLEAN_LOCAL_TARGETS = clean-perl
 PERLMAGICK_MAINTAINER_CLEAN_LOCAL_TARGETS = distclean-local
-PERLMAGICK_CHECK_LOCAL_TARGETS = check-perl
+PERLMAGICK_TESTS = PerlMagick/check.sh
 
 if WITH_PERL_DYNAMIC
 
-# add LIBMAGICK in deps to fix parallel make issue
-$(PERLMAKEFILE): perl-sources $(LIBMAGICK) $(PERLMAKEMAKER)
+$(PERLMAKEFILE): perl-sources $(MAGICKCORE_LIBS) $(MAGICKWAND_LIBS) $(PERLMAKEMAKER)
 	cd $(PERLMAGICK) && @PERL@ Makefile.PL $(PERL_MAKE_OPTIONS)
 
 install-exec-perl: $(PERLMAKEFILE)
-	cd $(PERLMAGICK) && $(MAKE) CC='@CC@' install
+	( cd $(PERLMAGICK) && $(MAKE) CC='@CC@' && \
+	$(MAKE) CC='@CC@' install && \
+	$(MAKE) clean && rm -f  Makefile.old )
 
-all-perl: $(PERLMAKEFILE)
-	cd $(PERLMAGICK) && $(MAKE) CC='@CC@'
+all-perl: perl-sources
 
 uninstall-exec-perl: $(PERLMAKEFILE)
 	echo "Uninstall not supported for PerlMagick"
@@ -57,16 +59,21 @@ uninstall-exec-perl: $(PERLMAKEFILE)
 check-perl: $(PERLMAKEFILE)
 	cd $(PERLMAGICK) && $(MAKE) CC='@CC@' test
 
+perl-build: $(PERLMAKEFILE)
+	( cd $(PERLMAGICK) && $(MAKE) CC='@CC@' )
+
 else
 if WITH_PERL_STATIC
 
 PERLSTATICNAME=PerlMagick
 
-$(PERLMAKEFILE): perl-sources $(PERLMAKEMAKER)
-	cd $(PERLMAGICK) && @PERL@ Makefile.PL MAP_TARGET=$(PERLSTATICNAME) $(PERL_MAKE_OPTIONS)
+PERLMAGICK_CHECKSCRIPTS = perl-build
 
-$(PERLMAGICK)/$(PERLSTATICNAME): $(PERLMAKEFILE) magick/libMagickCore.la
-	( rm -f $(PERLMAGICK)/$(PERLSTATICNAME) ; cd $(PERLMAGICK) && $(MAKE) CC='@CC@' $(PERLSTATICNAME) )
+$(PERLMAKEFILE): perl-sources $(MAGICKCORE_LIBS) $(MAGICKWAND_LIBS) $(PERLMAKEMAKER)
+	cd $(PERLMAGICK) && @PERL@ Makefile.PL MAP_TARGET=$(PERLSTATICNAME) $(PERL_MAKE_OPTIONS) && $(MAKE) Makefile ; $(MAKE) Makefile
+
+$(PERLMAGICK)/$(PERLSTATICNAME): $(MAGICKCORE_LIBS) $(MAGICKWAND_LIBS) $(PERLMAKEFILE)
+	( rm -f $(PERLMAGICK)/$(PERLSTATICNAME) ; cd $(PERLMAGICK) && $(MAKE) CC='@CC@' $(PERLSTATICNAME) ; $(MAKE) CC='@CC@' $(PERLSTATICNAME) )
 
 all-perl: $(PERLMAGICK)/$(PERLSTATICNAME)
 
@@ -90,14 +97,18 @@ uninstall-exec-perl:
 check-perl: $(PERLMAGICK)/$(PERLSTATICNAME)
 	cd $(PERLMAGICK) && $(MAKE) -f Makefile.aperl CC='@CC@' test
 
+perl-build: $(PERLMAGICK)/$(PERLSTATICNAME)
+
 endif # WITH_PERL_STATIC
 endif # WTIH_PERL_DYNAMIC
 
 
-clean-perl: $(PERLMAKEFILE)
+clean-perl:
 	(cd $(PERLMAGICK) && \
-	$(MAKE) CC='@CC@' clean && \
-	rm -f Makefile.old PerlMagick && \
+	( if test -f Makefile.old ; then $(MAKE) -f Makefile.old CC='@CC@' clean ; fi ) ; \
+	( if test -f Makefile ; then $(MAKE) CC='@CC@' clean ; fi ) ; \
+	( if test -f Makefile ; then $(MAKE) CC='@CC@' clean ; fi ) ; \
+	rm -f Makefile.old PerlMagick ; \
 	rm -f t/output* t/jng/*_tmp.jng t/*/output* )
 	rm -f perl-sources
 

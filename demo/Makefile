@@ -8,8 +8,9 @@ all:
 	perl shadow_text.pl
 	perl annotate.pl
 	perl composite.pl
+	perl pixel_get_set.pl
 	perl pixel_fx.pl
 
 clean:
 	/bin/rm -f demo.jpg button.gif model.png shadow.gif tree.gif \
-	  pixel_fx.gif
+	    pixel_get_set,gif  pixel_fx.gif

@@ -1,4 +1,4 @@
-#  Copyright 1999-2008 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2009 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -27,7 +27,7 @@ use Config;
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/bzlib fontconfig freetype gs gvc jpeg jp2 lcms openexr png tiff x11 xml wmf zlib/) {
+foreach $delegate (qw/bzlib jng jpeg png ps ttf zlib/) {
   if ( -d "t/$delegate" ) {
     if ($delegate =~ /x11/) {
       if ( defined $ENV{'DISPLAY'} ) {
@@ -50,49 +50,33 @@ WriteMakefile
    'NAME'	=> 'Image::Magick',
 
    # Module author
-   'AUTHOR'    => 'ImageMagick Studio LLC',
+   'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION'   => '6.4.0',
+   'VERSION' => '6.5.3',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
-
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I/usr/include/ImageMagick -I/usr/local/include/ImageMagick',
-
-   # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/include/libxml2",
-
-   # C compiler flags (e.g. -O -g)
-   'CCFLAGS'     => "$Config{'ccflags'} -O3 -g -Wall -W -pthread",
+   'INC'	=> '-I/usr/local/include/ImageMagick -I/usr/local/include -I/usr/include/ImageMagick',
 
    # Linker flags for building an executable
-   'LDFLAGS'    =>  "-L/usr/lib -L/usr/local/lib -lMagickCore -lMagickWand $Config{'ldflags'}",
+   'LDFLAGS' =>  "-L/usr/local/lib -lMagickCore -lMagickWand $Config{'ldflags'}",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS'  => "-L/usr/lib -L/usr/local/lib -lMagickCore -lMagickWand $Config{'lddlflags'}",
+   'LDDLFLAGS' => "-L/usr/local/lib -lMagickCore -lMagickWand $Config{'lddlflags'}",
 
    # Install PerlMagick binary into ImageMagick bin directory
-   'INSTALLBIN'	=> '/usr/bin',
+   'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS'	=> [ '-L/usr/lib -L/usr/local/lib -lMagickCore -lMagickWand' ],
+   'LIBS' => [ '-L/usr/local/lib -lMagickCore -lMagickWand -lm' ],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
 
-   # Let CFLAGS drive optimization flags by setting OPTIMIZE to empty
-   # 'OPTIMIZE'	=> '',
-
-   # Use same compiler as ImageMagick
-   'PERLMAINCC'	=> '',
-
-   # Set Perl installation prefix to ImageMagick installation prefix
-#   'PREFIX'	=> '/usr',
-
    # Include delegate directories in tests
-   test		=> { TESTS	=>	$delegate_tests},
+   test	=> { TESTS	=>	$delegate_tests},
 
    ($Config{'archname'} =~ /-object$/i ? ('CAPI' => 'TRUE') : ()),
 );
@@ -111,18 +95,6 @@ sub MY::makeaperl {
      # tries to insert our library path first. Also, use the same compiler used
      # to build perlmain.c to link so that a C++ compiler may be used if
      # necessary.
-     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/lib: ;
-     $inherited;
- }
-
-#
-# Substitutions for "test" section.
-#
-sub MY::test {
-     package MY; # so that "SUPER" works right
-     my $inherited = shift->SUPER::test(@_);
-
-     # Run tests in our environment
-     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh magick.sh PERL_DL_NONLAZY=1:g ;
+     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/local/lib: ;
      $inherited;
  }

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Copyright 1999-2005 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2009 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -28,10 +28,9 @@ use FileHandle;
 autoflush STDOUT 1;
 autoflush STDERR 1;
 
-#$QuantumDepth=quantumDepth();
-$fuzz=int($QuantumRange*0.05);
+$fuzz=int(0.05*QuantumRange);
 
-testFilterCompare('input.miff',  q//, 'reference/filter/AdaptiveThreshold.miff', 'AdaptiveThreshold', q/'5x5+5%'/, 0.02, 1.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/AdaptiveThreshold.miff', 'AdaptiveThreshold', q/'5x5+5%'/, 0.30, 1.02);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/Annotate.miff', 'Annotate', q/text=>'Magick',geometry=>'+0+20',font=>'Generic.ttf',fill=>'gold',gravity=>'North',pointsize=>14/, 0.02, 1.02);
@@ -52,10 +51,10 @@ testFilterCompare('input.miff',  q//, 'reference/filter/Chop.miff', 'Chop', q/ge
 testFilterCompare('input.miff',  q//, 'reference/filter/Charcoal.miff', 'Charcoal', q/'0x1'/, 0.2, 1.02);
 ++$test;
 
-testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/ColorFloodfill.miff', 'ColorFloodfill', q/geometry=>"+25+45"/, 0.002, 0.02);
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/ColorFloodfill.miff', 'ColorFloodfill', q/geometry=>"+25+45"/, 0.03, 1.02);
 ++$test;
 
-testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Colorize.miff', 'Colorize', q/fill=>"red", opacity=>"50%"/, 0.002, 0.02 );
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Colorize.miff', 'Colorize', q/fill=>"red", opacity=>"50%"/, 0.02, 0.5 );
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/Contrast.miff', 'Contrast', q//, 0.06, 0.6);
@@ -97,7 +96,7 @@ testFilterCompare('input.miff',  q//, 'reference/filter/Flop.miff', 'Flop', q//,
 testFilterCompare('input.miff',  q//, 'reference/filter/Frame.miff', 'Frame', q/'15x15+3+3'/, 0.4, 1.04);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/Gamma.miff', 'Gamma', q/1.6/, 0.002, 0.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/Gamma.miff', 'Gamma', q/1.6/, 0.02, 0.2);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/GaussianBlur.miff', 'GaussianBlur', q/'0.0x1.5'/, 0.004, 0.4);
@@ -124,7 +123,7 @@ testFilterCompare('input.miff',  q//, 'reference/filter/Minify.miff', 'Minify', 
 testFilterCompare('input.miff',  q//, 'reference/filter/Modulate.miff', 'Modulate', q/brightness=>110,saturation=>110,hue=>110/, 0.005, 0.5);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/QuantizeMono.miff', 'Quantize', q/colorspace=>'gray',colors=>2,dither=>'false'/, 0.002, 1.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/QuantizeMono.miff', 'Quantize', q/colorspace=>'gray',colors=>2,dither=>'false'/, 0.3, 1.03);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/MotionBlur.miff', 'MotionBlur', q/'0x13+10-10'/, 0.003, 0.03);
@@ -133,16 +132,16 @@ testFilterCompare('input.miff',  q//, 'reference/filter/MotionBlur.miff', 'Motio
 testFilterCompare('input.miff',  q//, 'reference/filter/Negate.miff', 'Negate', q//, 0.002, 0.02);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/Normalize.miff', 'Normalize', q//, 0.002, 0.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/Normalize.miff', 'Normalize', q//, 0.004, 0.04);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/OilPaint.miff', 'OilPaint', q//, 0.02, 1.02);
 ++$test;
 
-testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Opaque.miff', 'Opaque', q/color=>"#e23834", fill=>"green"/, 0.002, 1.02);
+testFilterCompare('input.miff', "fuzz=>$fuzz", 'reference/filter/Opaque.miff', 'Opaque', q/color=>"#e23834", fill=>"green"/, 0.03, 1.02);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/Quantize.miff', 'Quantize', q//, 0.002, 1.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/Quantize.miff', 'Quantize', q//, 0.03, 1.03);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/RadialBlur.miff', 'RadialBlur', q/10/, 0.002, 0.02);
@@ -175,7 +174,7 @@ testFilterCompare('input.miff',  q//, 'reference/filter/Segment.miff', 'Segment'
 testFilterCompare('input.miff',  q//, 'reference/filter/Shade.miff', 'Shade', q/geometry=>'30x30',gray=>'true'/, 0.002, 0.02);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/Sharpen.miff', 'Sharpen', q/'0.0x1.0'/, 0.002, 0.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/Sharpen.miff', 'Sharpen', q/'0.0x1.0'/, 0.02, 0.2);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/Shave.miff', 'Shave', q/'10x10'/, 0.002, 0.02);

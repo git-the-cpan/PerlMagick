@@ -39,16 +39,17 @@ sub AUTOLOAD {
 
     my $constname;
     ($constname = $AUTOLOAD) =~ s/.*:://;
+    die "&${AUTOLOAD} not defined. The required ImageMagick libraries are not installed or not installed properly.\n" if $constname eq 'constant';
     my $val = constant($constname, @_ ? $_[0] : 0);
     if ($! != 0) {
-	if ($! =~ /Invalid/) {
-	    $AutoLoader::AUTOLOAD = $AUTOLOAD;
-	    goto &AutoLoader::AUTOLOAD;
-	}
-	else {
-	    my($pack,$file,$line) = caller;
-	    die "Your vendor has not defined PerlMagick macro $pack\:\:$constname, used at $file line $line.\n";
-	}
+    	if ($! =~ /Invalid/) {
+	        $AutoLoader::AUTOLOAD = $AUTOLOAD;
+	        goto &AutoLoader::AUTOLOAD;
+    	}
+    	else {
+	        my($pack,$file,$line) = caller;
+	        die "Your vendor has not defined PerlMagick macro $pack\:\:$constname, used at $file line $line.\n";
+    	}
     }
     eval "sub $AUTOLOAD { $val }";
     goto &$AUTOLOAD;

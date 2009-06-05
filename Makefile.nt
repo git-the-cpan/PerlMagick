@@ -1,4 +1,4 @@
-# Copyright (C) 1999-2008 ImageMagick Studio LLC
+# Copyright (C) 1999-2009 ImageMagick Studio LLC
 #
 # This program is covered by multiple licenses, which are described in
 # LICENSE.  You should have received a copy of LICENSE with this
@@ -30,12 +30,15 @@ use Config;
 #  Visual Studio 7.1 default install:
 #   libpth='"C:\Program Files\Microsoft Visual Studio .NET 2003\Vc7\lib" "C:\Perl\lib\CORE"'
 #
+#  Visual Studio 9.0 default install (C:\Perl\lib\Config.pm):
+#  libpth='"C:\Program Files\Microsoft Visual Studio 9.0\VC\lib" "C:\Perl\lib\CORE"'
+#
 WriteMakefile(
     'ABSTRACT'  => 'ImageMagick PERL Extension',
     'AUTHOR'    => 'ImageMagick Studio',
     'NAME'      => 'Image::Magick',
     'VERSION_FROM' => 'Magick.pm', # finds $VERSION
-    'LIBS'      => ['-L..\VisualMagick\lib -L..\VisualMagick\bin -lCORE_RL_magick_.lib'],
+    'LIBS'      => ['-L..\VisualMagick\lib -L..\VisualMagick\bin -lCORE_RL_magick_.lib -lCORE_DB_magick_.lib'],
     'DEFINE'    => '-D_VISUALC_ -D_WINDOWS',     # e.g., '-DHAVE_SOMETHING' 
     'INC'       => '-I.. -I..\xlib\include',
     'BINARY_LOCATION'  => 'x86/Image-Magick.tar.gz',
@@ -118,7 +121,7 @@ sub MY::test
    #   hdf	HDF format		HDF library
    #   jbig	JBIG format		JBIG library
    #   jpeg 	JPEG format		JPEG library
-   #   mpeg	MPEG format		'mpeg2decode' & 'mpeg2encode' programs
+   #   mpeg	MPEG format		'ffmpeg' program
    #   png	PNG format		PNG and Zlib libraries
    #   ps	Postscript format	'gs' program and/or DPS library
    #   rad	Radiance format		'ra_ppm' program
@@ -137,6 +140,7 @@ sub MY::test
     " t/getattribute.t" .
     " t/filter.t" .
     " t/read.t" .
+    " t/ping.t" .
     " t/montage.t" .
     " t/write.t" .
     " t/hpgl/read.t" .

@@ -17,19 +17,23 @@ chdir 't/x11' || die 'Cd failed';
 
 # 1) Test reading and displaying an image
 #
-$image=Image::Magick->new;
-$x=$image->ReadImage('congrats.miff');
-if( "$x" ) {
-  print "not ok $test\n";
-} else {
-  $x = $image->Display(delay=>800);
+if ( defined($ENV{'DISPLAY'}) ) {
+  $image=Image::Magick->new;
+  $x=$image->ReadImage('congrats.miff');
   if( "$x" ) {
     print "not ok $test\n";
   } else {
-    print "ok $test\n";
+    $x = $image->Display(delay=>800);
+    if( "$x" ) {
+      print "not ok $test\n";
+    } else {
+      print "ok $test\n";
+    }
   }
+  undef $image;
+} else {
+  print "ok $test\n";
 }
-undef $image;
 
 # 2) Test XWD image file
 #

@@ -107,8 +107,8 @@ print "Contrast Stretch...\n";
 $example=$model->Clone();
 $example->Label('Contrast Stretch');
 $example->ContrastStretch('5%');
-
 push(@$images,$example);
+
 print "Convolve...\n";
 $example=$model->Clone();
 $example->Label('Convolve');
@@ -131,7 +131,7 @@ push(@$images,$example);
 print "Distort...\n";
 $example=$model->Clone();
 $example->Label('Distort');
-$example->Distort(type=>'arc',points=>[120],'virtual-pixel'=>'white');
+$example->Distort(method=>'arc',points=>[60],'virtual-pixel'=>'white');
 push(@$images,$example);
 
 print "Draw...\n";
@@ -300,7 +300,6 @@ $example->Label('Raise');
 $example->Raise('10x10');
 push(@$images,$example);
 
-push(@$images,$example);
 print "Recolor...\n";
 $example=$model->Clone();
 $example->Label('Recolor');
@@ -371,6 +370,13 @@ print "Shear...\n";
 $example=$model->Clone();
 $example->Label('Shear');
 $example->Shear('-20x20');
+push(@$images,$example);
+
+print "Sketch...\n";
+$example=$model->Clone();
+$example->Label('Sketch');
+$example->Set(colorspace=>'Gray');
+$example->Sketch('0x20+120');
 push(@$images,$example);
 
 print "Sigmoidal Contrast...\n";

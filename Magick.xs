@@ -2260,6 +2260,157 @@ constant(name,argument)
 #                                                                             #
 #                                                                             #
 #                                                                             #
+#   A c q u i r e I m a g e P i x e l s                                       #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void *
+AcquireImagePixels(ref,...)
+  Image::Magick ref = NO_INIT
+  ALIAS:
+    acquireimagepixels = 1
+  CODE:
+  {
+    char
+      *attribute;
+
+    const void
+      *blob = NULL;
+
+    ExceptionInfo
+      *exception;
+
+    Image
+      *image;
+
+    long
+      i;
+
+    RectangleInfo
+      region;
+
+    struct PackageInfo
+      *info;
+
+    SV
+      *perl_exception,
+      *reference;
+
+    exception=AcquireExceptionInfo();
+    perl_exception=newSVpv("",0);
+    if (sv_isobject(ST(0)) == 0)
+      {
+        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+
+    region.x=0;
+    region.y=0;
+    region.width=image->columns;
+    region.height=1;
+    if (items == 1)
+      (void) ParseAbsoluteGeometry(SvPV(ST(1),na),&region);
+    for (i=2; i < items; i+=2)
+    {
+      attribute=(char *) SvPV(ST(i-1),na);
+      switch (*attribute)
+      {
+        case 'g':
+        case 'G':
+        {
+          if (LocaleCompare(attribute,"geometry") == 0)
+            {
+              (void) ParseAbsoluteGeometry(SvPV(ST(i),na),&region);
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'H':
+        case 'h':
+        {
+          if (LocaleCompare(attribute,"height") == 0)
+            {
+              region.height=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+        case 'X':
+        case 'x':
+        {
+          if (LocaleCompare(attribute,"x") == 0)
+            {
+              region.x=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+        case 'Y':
+        case 'y':
+        {
+          if (LocaleCompare(attribute,"y") == 0)
+            {
+              region.y=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+        case 'W':
+        case 'w':
+        {
+          if (LocaleCompare(attribute,"width") == 0)
+            {
+              region.width=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+      }
+    }
+    blob=(const void *) GetVirtualPixels(image,region.x,region.y,region.width,
+      region.height,exception);
+    if (blob != (void *) NULL)
+      goto PerlEnd;
+
+  PerlException:
+    InheritPerlException(exception,perl_exception);
+    exception=DestroyExceptionInfo(exception);
+    SvREFCNT_dec(perl_exception);  /* throw away all errors */
+
+  PerlEnd:
+    RETVAL = (void *) blob;
+  }
+  OUTPUT:
+    RETVAL
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
 #   A n i m a t e                                                             #
 #                                                                             #
 #                                                                             #
@@ -4747,7 +4898,7 @@ Get(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   G e t A u t h e n t i c P i x e l s                                       #
+#   G e t I m a g e P i x e l s                                               #
 #                                                                             #
 #                                                                             #
 #                                                                             #
@@ -4755,12 +4906,10 @@ Get(ref,...)
 #
 #
 void *
-GetAuthenticPixels(ref,...)
+GetImagePixels(ref,...)
   Image::Magick ref = NO_INIT
   ALIAS:
-    getauthenticpixels = 1
-    GetImagePixels = 2
-    getimagepixels = 3
+    getimagepixels = 1
   CODE:
   {
     char
@@ -4900,7 +5049,7 @@ GetAuthenticPixels(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   G e t V i r t u a l P i x e l s                                           #
+#   G e t I n d e x e s                                                       #
 #                                                                             #
 #                                                                             #
 #                                                                             #
@@ -4908,165 +5057,10 @@ GetAuthenticPixels(ref,...)
 #
 #
 void *
-GetVirtualPixels(ref,...)
+GetIndexes(ref,...)
   Image::Magick ref = NO_INIT
   ALIAS:
-    getvirtualpixels = 1
-    AcquireImagePixels = 2
-    acquireimagepixels = 3
-  CODE:
-  {
-    char
-      *attribute;
-
-    const void
-      *blob = NULL;
-
-    ExceptionInfo
-      *exception;
-
-    Image
-      *image;
-
-    long
-      i;
-
-    RectangleInfo
-      region;
-
-    struct PackageInfo
-      *info;
-
-    SV
-      *perl_exception,
-      *reference;
-
-    exception=AcquireExceptionInfo();
-    perl_exception=newSVpv("",0);
-    if (sv_isobject(ST(0)) == 0)
-      {
-        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
-          PackageName);
-        goto PerlException;
-      }
-    reference=SvRV(ST(0));
-
-    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
-    if (image == (Image *) NULL)
-      {
-        ThrowPerlException(exception,OptionError,"NoImagesDefined",
-          PackageName);
-        goto PerlException;
-      }
-
-    region.x=0;
-    region.y=0;
-    region.width=image->columns;
-    region.height=1;
-    if (items == 1)
-      (void) ParseAbsoluteGeometry(SvPV(ST(1),na),&region);
-    for (i=2; i < items; i+=2)
-    {
-      attribute=(char *) SvPV(ST(i-1),na);
-      switch (*attribute)
-      {
-        case 'g':
-        case 'G':
-        {
-          if (LocaleCompare(attribute,"geometry") == 0)
-            {
-              (void) ParseAbsoluteGeometry(SvPV(ST(i),na),&region);
-              break;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
-            attribute);
-          break;
-        }
-        case 'H':
-        case 'h':
-        {
-          if (LocaleCompare(attribute,"height") == 0)
-            {
-              region.height=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-        case 'X':
-        case 'x':
-        {
-          if (LocaleCompare(attribute,"x") == 0)
-            {
-              region.x=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-        case 'Y':
-        case 'y':
-        {
-          if (LocaleCompare(attribute,"y") == 0)
-            {
-              region.y=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-        case 'W':
-        case 'w':
-        {
-          if (LocaleCompare(attribute,"width") == 0)
-            {
-              region.width=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-      }
-    }
-    blob=(const void *) GetVirtualPixels(image,region.x,region.y,region.width,
-      region.height,exception);
-    if (blob != (void *) NULL)
-      goto PerlEnd;
-
-  PerlException:
-    InheritPerlException(exception,perl_exception);
-    exception=DestroyExceptionInfo(exception);
-    SvREFCNT_dec(perl_exception);  /* throw away all errors */
-
-  PerlEnd:
-    RETVAL = (void *) blob;
-  }
-  OUTPUT:
-    RETVAL
-
-#
-###############################################################################
-#                                                                             #
-#                                                                             #
-#                                                                             #
-#   G e t A u t h e n t i c I n d e x Q u e u e                               #
-#                                                                             #
-#                                                                             #
-#                                                                             #
-###############################################################################
-#
-#
-void *
-GetAuthenticIndexQueue(ref,...)
-  Image::Magick ref = NO_INIT
-  ALIAS:
-    getauthenticindexqueue = 1
-    GetIndexes = 2
-    getindexes = 3
+    getindexes = 1
   CODE:
   {
     ExceptionInfo
@@ -5104,74 +5098,6 @@ GetAuthenticIndexQueue(ref,...)
       }
 
     blob=(void *) GetAuthenticIndexQueue(image);
-    if (blob != (void *) NULL)
-      goto PerlEnd;
-
-  PerlException:
-    InheritPerlException(exception,perl_exception);
-    exception=DestroyExceptionInfo(exception);
-    SvREFCNT_dec(perl_exception);  /* throw away all errors */
-
-  PerlEnd:
-    RETVAL = blob;
-  }
-  OUTPUT:
-    RETVAL
-
-#
-###############################################################################
-#                                                                             #
-#                                                                             #
-#                                                                             #
-#   G e t V i r t u a l I n d e x Q u e u e                                   #
-#                                                                             #
-#                                                                             #
-#                                                                             #
-###############################################################################
-#
-#
-void *
-GetVirtualIndexQueue(ref,...)
-  Image::Magick ref = NO_INIT
-  ALIAS:
-    getvirtualindexqueue = 1
-  CODE:
-  {
-    ExceptionInfo
-      *exception;
-
-    Image
-      *image;
-
-    struct PackageInfo
-      *info;
-
-    SV
-      *perl_exception,
-      *reference;
-
-    void
-      *blob = NULL;
-
-    exception=AcquireExceptionInfo();
-    perl_exception=newSVpv("",0);
-    if (sv_isobject(ST(0)) == 0)
-      {
-        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
-          PackageName);
-        goto PerlException;
-      }
-    reference=SvRV(ST(0));
-
-    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
-    if (image == (Image *) NULL)
-      {
-        ThrowPerlException(exception,OptionError,"NoImagesDefined",
-          PackageName);
-        goto PerlException;
-      }
-
-    blob=(void *) GetVirtualIndexQueue(image);
     if (blob != (void *) NULL)
       goto PerlEnd;
 
@@ -10322,13 +10248,15 @@ Ping(ref,...)
             void
               *blob;
 
-            blob=(void *) (SvPV(ST(i+2),length[n]));
+            i++;
+            blob=(void *) (SvPV(ST(i+1),length[n]));
             SetImageInfoBlob(package_info->image_info,blob,(size_t) length[n]);
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
           {
+            i++;
             (void) CopyMagickString(package_info->image_info->filename,
-              SvPV(ST(i+2),length[n]),MaxTextExtent);
+              SvPV(ST(i+1),length[n]),MaxTextExtent);
             continue;
           }
         if ((items >= 3) && strEQcase(list[n],"file"))
@@ -10339,7 +10267,8 @@ Ping(ref,...)
             PerlIO
               *io_info;
 
-            io_info=IoIFP(sv_2io(ST(i+2)));
+            i++;
+            io_info=IoIFP(sv_2io(ST(i+1)));
             if (io_info == (PerlIO *) NULL)
               {
                 ThrowPerlException(exception,BlobError,"UnableToOpenFile",
@@ -10357,8 +10286,9 @@ Ping(ref,...)
           }
         if ((items >= 3) && strEQcase(list[n],"magick"))
           {
+            i++;
             (void) FormatMagickString(package_info->image_info->filename,
-              MaxTextExtent,"%.1024s:",SvPV(ST(i+2),length[n]));
+              MaxTextExtent,"%.1024s:",SvPV(ST(i+1),length[n]));
             continue;
           }
         n++;
@@ -11819,13 +11749,15 @@ Read(ref,...)
             void
               *blob;
 
-            blob=(void *) (SvPV(ST(i+2),length[n]));
+            i++;
+            blob=(void *) (SvPV(ST(i+1),length[n]));
             SetImageInfoBlob(package_info->image_info,blob,(size_t) length[n]);
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
           {
+            i++;
             (void) CopyMagickString(package_info->image_info->filename,
-              SvPV(ST(i+2),length[n]),MaxTextExtent);
+              SvPV(ST(i+1),length[n]),MaxTextExtent);
             continue;
           }
         if ((items >= 3) && strEQcase(list[n],"file"))
@@ -11836,7 +11768,8 @@ Read(ref,...)
             PerlIO
               *io_info;
 
-            io_info=IoIFP(sv_2io(ST(i+2)));
+            i++;
+            io_info=IoIFP(sv_2io(ST(i+1)));
             if (io_info == (PerlIO *) NULL)
               {
                 ThrowPerlException(exception,BlobError,"UnableToOpenFile",
@@ -11854,8 +11787,9 @@ Read(ref,...)
           }
         if ((items >= 3) && strEQcase(list[n],"magick"))
           {
+            i++;
             (void) FormatMagickString(package_info->image_info->filename,
-              MaxTextExtent,"%.1024s:",SvPV(ST(i+2),length[n]));
+              MaxTextExtent,"%.1024s:",SvPV(ST(i+1),length[n]));
             continue;
           }
         n++;
@@ -12489,7 +12423,7 @@ Statistics(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   S y n c A u t h e n t i c P i x e l s                                     #
+#   S y n c I m a g e P i x e l s                                             #
 #                                                                             #
 #                                                                             #
 #                                                                             #
@@ -12497,12 +12431,11 @@ Statistics(ref,...)
 #
 #
 void
-SyncAuthenticPixels(ref,...)
+SyncImagePixels(ref,...)
   Image::Magick ref = NO_INIT
   ALIAS:
-    Syncauthenticpixels = 1
-    SyncImagePixels = 2
-    syncimagepixels = 3
+    SyncImagePixels = 1
+    syncimagepixels = 2
   CODE:
   {
     ExceptionInfo

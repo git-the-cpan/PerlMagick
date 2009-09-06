@@ -84,7 +84,7 @@ testFilterCompare('input.miff',  q//, 'reference/filter/Emboss.miff', 'Emboss', 
 testFilterCompare('input.miff',  q//, 'reference/filter/Equalize.miff', 'Equalize', q//, 0.002, 0.02);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/Implode.miff', 'Implode', q/0.5/, 0.002, 0.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/Implode.miff', 'Implode', q/0.5/, 0.002, 0.2);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/Flip.miff', 'Flip', q//, 0.002, 0.02);
@@ -189,7 +189,7 @@ testFilterCompare('input.miff',  q//, 'reference/filter/SigmoidalContrast.miff',
 testFilterCompare('input.miff',  q//, 'reference/filter/Solarize.miff', 'Solarize', q//, 0.002, 0.02);
 ++$test;
 
-testFilterCompare('input.miff',  q//, 'reference/filter/Swirl.miff', 'Swirl', q/90/, 0.002, 0.02);
+testFilterCompare('input.miff',  q//, 'reference/filter/Swirl.miff', 'Swirl', q/90/, 0.002, 0.2);
 ++$test;
 
 testFilterCompare('input.miff',  q//, 'reference/filter/Threshold.miff', 'Threshold', q/90%/, 0.002, 0.02);

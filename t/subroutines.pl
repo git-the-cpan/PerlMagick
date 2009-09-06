@@ -109,10 +109,10 @@ sub testCompositeCompare {
       goto COMPARE_RUNTIME_ERROR;
     }
 
-  $status=$background->Compare($refimage);
+  $status=$background->Difference($refimage);
   if ("$status")
     {
-      $errorinfo = "Compare($refimage_name): $status";
+      $errorinfo = "Difference($refimage_name): $status";
       print("  Reference: ", $refimage->Get('columns'), "x", $refimage->Get('rows'), "\n");
       print("  Computed:  ", $background->Get('columns'), "x", $background->Get('rows'), "\n");
       goto COMPARE_RUNTIME_ERROR;
@@ -351,10 +351,10 @@ sub testReadCompare {
   # Compare each frame in the sequence.
   for ($index = 0; $srcimage->[$index] && $refimage->[$index]; $index++)
     {
-      $status=$srcimage->[$index]->Compare($refimage->[$index]);
+      $status=$srcimage->[$index]->Difference($refimage->[$index]);
       if ("$status")
         {
-          $errorinfo = "Compare($refimage_name)->[$index]: $status";
+          $errorinfo = "Difference($refimage_name)->[$index]: $status";
           warn("$errorinfo");
           goto COMPARE_RUNTIME_ERROR;
         }
@@ -649,10 +649,10 @@ sub testReadWriteCompare {
 #      goto COMPARE_RUNTIME_ERROR;
 #    }
 
-  $status=$image->Compare($refimage);
+  $status=$image->Difference($refimage);
   if ("$status")
     {
-      $errorinfo = "Compare($refimage_name): $status";
+      $errorinfo = "Difference($refimage_name): $status";
       goto COMPARE_RUNTIME_ERROR;
     }
 
@@ -1208,10 +1208,10 @@ sub testFilterCompare {
 #      goto COMPARE_RUNTIME_ERROR;
 #    }
 
-  $status=$srcimage->Compare($refimage);
+  $status=$srcimage->Difference($refimage);
   if ("$status")
     {
-      $errorinfo = "Compare($refimage_name): $status";
+      $errorinfo = "Difference($refimage_name): $status";
       print("  Reference: ", $refimage->Get('columns'), "x", $refimage->Get('rows'), "\n");
       print("  Computed:  ", $srcimage->Get('columns'), "x", $srcimage->Get('rows'), "\n");
       goto COMPARE_RUNTIME_ERROR;

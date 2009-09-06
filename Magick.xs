@@ -97,6 +97,26 @@ extern "C" {
 #define sv_undef  PL_sv_undef
 #endif
 
+#define AddImageToRegistry(image) \
+{ \
+  if (magick_registry != (SplayTreeInfo *) NULL) \
+    { \
+      (void) AddValueToSplayTree(magick_registry,image,image); \
+      sv=newSViv((IV) image); \
+    } \
+}
+
+#define DeleteImageFromRegistry(reference,image) \
+{ \
+  if (magick_registry != (SplayTreeInfo *) NULL) \
+    { \
+      if (GetImageReferenceCount(image) == 1) \
+       (void) DeleteNodeByValueFromSplayTree(magick_registry,image); \
+      image=DestroyImage(image); \
+      sv_setiv(reference,0); \
+    } \
+}
+
 #define InheritPerlException(exception,perl_exception) \
 { \
   char \
@@ -277,8 +297,9 @@ static struct
       {"gravity", MagickGravityOptions}, {"opacity", StringReference},
       {"tile", MagickBooleanOptions}, {"rotate", RealReference},
       {"color", StringReference}, {"mask", ImageReference},
-      {"blend", StringReference}, {"channel", MagickChannelOptions},
-      {"interpolate", MagickInterpolateOptions} } },
+      {"channel", MagickChannelOptions},
+      {"interpolate", MagickInterpolateOptions}, {"args", StringReference},
+      {"blend", StringReference} } },
     { "Contrast", { {"sharpen", MagickBooleanOptions} } },
     { "CycleColormap", { {"display", IntegerReference} } },
     { "Draw", { {"primitive", MagickPrimitiveOptions},
@@ -383,7 +404,7 @@ static struct
       {"rotate", RealReference}, {"skewX", RealReference},
       {"skewY", RealReference}, {"interpolate", MagickInterpolateOptions},
       {"background", StringReference} } },
-    { "Compare", { {"image", ImageReference}, {"fuzz", StringReference} } },
+    { "Difference", { {"image", ImageReference}, {"fuzz", StringReference} } },
     { "AdaptiveThreshold", { {"geometry", StringReference},
       {"width", IntegerReference}, {"height", IntegerReference},
       {"offset", IntegerReference} } },
@@ -448,8 +469,8 @@ static struct
     { "ClipMask", { {"mask", ImageReference} } },
     { "LinearStretch", { {"levels", StringReference},
       {"black-point", RealReference},{"white-point", RealReference} } },
-    { "Mask", { {"mask", ImageReference} } },
     { "Recolor", { {"matrix", ArrayReference} } },
+    { "Mask", { {"mask", ImageReference} } },
     { "Polaroid", { {"caption", StringReference}, {"angle", RealReference},
       {"font", StringReference}, {"stroke", StringReference},
       {"fill", StringReference}, {"strokewidth", RealReference},
@@ -473,7 +494,7 @@ static struct
     { "Deskew", { {"geometry", StringReference},
       {"threshold", StringReference} } },
     { "Remap", { {"image", ImageReference},
-      {"method", MagickDitherOptions} } },
+      {"dither-method", MagickDitherOptions} } },
     { "SparseColor", { {"points", ArrayReference},
       {"method", MagickSparseColorOptions},
       {"virtual-pixel", MagickVirtualPixelOptions},
@@ -484,7 +505,19 @@ static struct
     { "SelectiveBlur", { {"geometry", StringReference},
       {"radius", RealReference}, {"sigma", RealReference},
       {"threshold", RealReference}, {"channel", MagickChannelOptions} } },
+    { "HaldClut", { {"image", ImageReference},
+      {"channel", MagickChannelOptions} } },
+    { "BlueShift", {"factor", StringReference} },
+    { "ForwardFourierTransform", {"magnitude", MagickBooleanOptions} },
+    { "InverseFourierTransform", {"magnitude", MagickBooleanOptions} },
+    { "ColorDecisionList", {
+      {"color-correction-collection", StringReference} } },
+    { "AutoGamma", { {"channel", MagickChannelOptions} } },
+    { "AutoLevel", { {"channel", MagickChannelOptions} } },
   };
+
+static SplayTreeInfo
+  *magick_registry = (SplayTreeInfo *) NULL;
 
 /*
   Forward declarations.
@@ -1147,7 +1180,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             items=sscanf(attribute,"%*[^[][%ld",&i);
             if (i > (long) image->colors)
               i%=image->colors;
-            if (strchr(SvPV(sval,na),',') == 0)
+            if ((strchr(SvPV(sval,na),',') == 0) ||
+                (strchr(SvPV(sval,na),')') != 0))
               QueryColorDatabase(SvPV(sval,na),image->colormap+i,exception);
             else
               {
@@ -1459,6 +1493,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleNCompare(attribute,"index",5) == 0)
         {
+          CacheView
+            *image_view;
+
           IndexPacket
             *indexes;
 
@@ -1470,9 +1507,6 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           register PixelPacket
             *p;
-
-          ViewInfo
-            *image_view;
 
           for ( ; image; image=image->next)
           {
@@ -1689,6 +1723,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleNCompare(attribute,"pixel",5) == 0)
         {
+          CacheView
+            *image_view;
+
           int
             items;
 
@@ -1700,9 +1737,6 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           register PixelPacket
             *p;
-
-          ViewInfo
-            *image_view;
 
           for ( ; image; image=image->next)
           {
@@ -1716,7 +1750,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             indexes=GetCacheViewIndexes(image_view);
             if (p != (PixelPacket *) NULL)
               {
-                if (strchr(SvPV(sval,na),',') == 0)
+                if ((strchr(SvPV(sval,na),',') == 0) ||
+                    (strchr(SvPV(sval,na),')') != 0))
                   QueryMagickColor(SvPV(sval,na),&pixel,exception);
                 else
                   {
@@ -1957,6 +1992,17 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             (void) ParsePageGeometry(image,geometry,&image->tile_offset,
               exception);
           geometry=(char *) RelinquishMagickMemory(geometry);
+          break;
+        }
+      if (LocaleCompare(attribute,"time-limit") == 0)
+        {
+          MagickSizeType
+            limit;
+
+          limit=MagickResourceInfinity;
+          if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
+            limit=(MagickSizeType) StringToDouble(SvPV(sval,na),100.0);
+          (void) SetMagickResourceLimit(TimeResource,limit);
           break;
         }
       if (LocaleCompare(attribute,"transparent-color") == 0)
@@ -2244,167 +2290,22 @@ BOOT:
   MagickCoreGenesis("PerlMagick",MagickFalse);
   SetWarningHandler(NULL);
   SetErrorHandler(NULL);
+  magick_registry=NewSplayTree((int (*)(const void *,const void *))
+    NULL,(void *(*)(void *)) NULL,(void *(*)(void *)) NULL);
 
 void
 UNLOAD()
-PPCODE:
-  MagickCoreTerminus();
+  PPCODE:
+  {
+    if (magick_registry != (SplayTreeInfo *) NULL)
+      magick_registry=DestroySplayTree(magick_registry);
+    MagickCoreTerminus();
+  }
 
 double
 constant(name,argument)
   char *name
   long argument
-
-#
-###############################################################################
-#                                                                             #
-#                                                                             #
-#                                                                             #
-#   A c q u i r e I m a g e P i x e l s                                       #
-#                                                                             #
-#                                                                             #
-#                                                                             #
-###############################################################################
-#
-#
-void *
-AcquireImagePixels(ref,...)
-  Image::Magick ref = NO_INIT
-  ALIAS:
-    acquireimagepixels = 1
-  CODE:
-  {
-    char
-      *attribute;
-
-    const void
-      *blob = NULL;
-
-    ExceptionInfo
-      *exception;
-
-    Image
-      *image;
-
-    long
-      i;
-
-    RectangleInfo
-      region;
-
-    struct PackageInfo
-      *info;
-
-    SV
-      *perl_exception,
-      *reference;
-
-    exception=AcquireExceptionInfo();
-    perl_exception=newSVpv("",0);
-    if (sv_isobject(ST(0)) == 0)
-      {
-        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
-          PackageName);
-        goto PerlException;
-      }
-    reference=SvRV(ST(0));
-
-    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
-    if (image == (Image *) NULL)
-      {
-        ThrowPerlException(exception,OptionError,"NoImagesDefined",
-          PackageName);
-        goto PerlException;
-      }
-
-    region.x=0;
-    region.y=0;
-    region.width=image->columns;
-    region.height=1;
-    if (items == 1)
-      (void) ParseAbsoluteGeometry(SvPV(ST(1),na),&region);
-    for (i=2; i < items; i+=2)
-    {
-      attribute=(char *) SvPV(ST(i-1),na);
-      switch (*attribute)
-      {
-        case 'g':
-        case 'G':
-        {
-          if (LocaleCompare(attribute,"geometry") == 0)
-            {
-              (void) ParseAbsoluteGeometry(SvPV(ST(i),na),&region);
-              break;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
-            attribute);
-          break;
-        }
-        case 'H':
-        case 'h':
-        {
-          if (LocaleCompare(attribute,"height") == 0)
-            {
-              region.height=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-        case 'X':
-        case 'x':
-        {
-          if (LocaleCompare(attribute,"x") == 0)
-            {
-              region.x=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-        case 'Y':
-        case 'y':
-        {
-          if (LocaleCompare(attribute,"y") == 0)
-            {
-              region.y=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-        case 'W':
-        case 'w':
-        {
-          if (LocaleCompare(attribute,"width") == 0)
-            {
-              region.width=SvIV(ST(i));
-              continue;
-            }
-          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
-            attribute);
-          break;
-        }
-      }
-    }
-    blob=(const void *) GetVirtualPixels(image,region.x,region.y,region.width,
-      region.height,exception);
-    if (blob != (void *) NULL)
-      goto PerlEnd;
-
-  PerlException:
-    InheritPerlException(exception,perl_exception);
-    exception=DestroyExceptionInfo(exception);
-    SvREFCNT_dec(perl_exception);  /* throw away all errors */
-
-  PerlEnd:
-    RETVAL = (void *) blob;
-  }
-  OUTPUT:
-    RETVAL
 
 #
 ###############################################################################
@@ -2600,7 +2501,7 @@ Append(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -2690,7 +2591,7 @@ Average(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    sv=newSViv((IV) image);
+    AddImageToRegistry(image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -2835,7 +2736,7 @@ BlobToImage(ref,...)
         break;
       for ( ; image; image=image->next)
       {
-        sv=newSViv((IV) image);
+        AddImageToRegistry(image);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);
@@ -2880,7 +2781,7 @@ BlobToImage(ref,...)
 #
 #
 void
-Copy(ref)
+Clone(ref)
   Image::Magick ref=NO_INIT
   ALIAS:
     CopyImage   = 1
@@ -2942,7 +2843,7 @@ Copy(ref)
       clone=CloneImage(image,0,0,MagickTrue,exception);
       if ((clone == (Image *) NULL) || (exception->severity >= ErrorException))
         break;
-      sv=newSViv((IV) clone);
+      AddImageToRegistry(clone);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -2958,6 +2859,38 @@ Copy(ref)
     SvPOK_on(perl_exception);
     ST(0)=sv_2mortal(perl_exception);
     XSRETURN(1);
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   C L O N E                                                                 #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+CLONE(ref,...)
+  SV *ref;
+  CODE:
+  {
+    if (magick_registry != (SplayTreeInfo *) NULL)
+      {
+        register Image
+          *p;
+
+        ResetSplayTreeIterator(magick_registry);
+        p=(Image *) GetNextKeyInSplayTree(magick_registry);
+        while (p != (Image *) NULL)
+        {
+          ReferenceImage(p);
+          p=(Image *) GetNextKeyInSplayTree(magick_registry);
+        }
+      }
   }
 
 #
@@ -3028,7 +2961,7 @@ Coalesce(ref)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -3036,6 +2969,201 @@ Coalesce(ref)
     exception=DestroyExceptionInfo(exception);
     ST(0)=av_reference;
     SvREFCNT_dec(perl_exception);
+    XSRETURN(1);
+
+  PerlException:
+    InheritPerlException(exception,perl_exception);
+    exception=DestroyExceptionInfo(exception);
+    sv_setiv(perl_exception,(IV) SvCUR(perl_exception) != 0);
+    SvPOK_on(perl_exception);
+    ST(0)=sv_2mortal(perl_exception);
+    XSRETURN(1);
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   C o m p a r e                                                             #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+Compare(ref,...)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    CompareImage = 1
+    compare      = 2
+    compareimage = 3
+  PPCODE:
+  {
+    AV
+      *av;
+
+    char
+      *attribute;
+
+    ChannelType
+      channel;
+
+    double
+      distortion;
+
+    ExceptionInfo
+      *exception;
+
+    HV
+      *hv;
+
+    Image
+      *difference_image,
+      *image,
+      *reconstruct_image;
+
+    long
+      option;
+
+    MetricType
+      metric;
+
+    register long
+      i;
+
+    struct PackageInfo
+      *info;
+
+    SV
+      *av_reference,
+      *perl_exception,
+      *reference,
+      *rv,
+      *sv;
+
+    exception=AcquireExceptionInfo();
+    perl_exception=newSVpv("",0);
+    av=NULL;
+    attribute=NULL;
+    if (sv_isobject(ST(0)) == 0)
+      {
+        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+    hv=SvSTASH(reference);
+    av=newAV();
+    av_reference=sv_2mortal(sv_bless(newRV((SV *) av),hv));
+    SvREFCNT_dec(av);
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+    info=GetPackageInfo(aTHX_ (void *) av,info,exception);
+    /*
+      Get attribute.
+    */
+    channel=DefaultChannels;
+    reconstruct_image=image;
+    metric=RootMeanSquaredErrorMetric;
+    for (i=2; i < items; i+=2)
+    {
+      attribute=(char *) SvPV(ST(i-1),na);
+      switch (*attribute)
+      {
+        case 'C':
+        case 'c':
+        {
+          if (LocaleCompare(attribute,"channel") == 0)
+            {
+              long
+                option;
+
+              option=ParseChannelOption(SvPV(ST(i),na));
+              if (option < 0)
+                {
+                  ThrowPerlException(exception,OptionError,
+                    "UnrecognizedType",SvPV(ST(i),na));
+                  return;
+                }
+              channel=(ChannelType) option;
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'F':
+        case 'f':
+        {
+          if (LocaleCompare(attribute,"fuzz") == 0)
+            {
+              image->fuzz=StringToDouble(SvPV(ST(i),na),100.0);
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'I':
+        case 'i':
+        {
+          if (LocaleCompare(attribute,"image") == 0)
+            {
+              reconstruct_image=SetupList(aTHX_ SvRV(ST(i)),
+                (struct PackageInfo **) NULL,(SV ***) NULL,exception);
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'M':
+        case 'm':
+        {
+          if (LocaleCompare(attribute,"metric") == 0)
+            {
+              option=ParseMagickOption(MagickMetricOptions,MagickFalse,
+                SvPV(ST(i),na));
+              if (option < 0)
+                {
+                  ThrowPerlException(exception,OptionError,"UnrecognizedType",
+                    SvPV(ST(i),na));
+                  break;
+                }
+               metric=(MetricType) option;
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        default:
+        {
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+      }
+    }
+    difference_image=CompareImageChannels(image,reconstruct_image,channel,
+      metric,&distortion,exception);
+    if (difference_image != (Image *) NULL)
+      {
+        difference_image->error.mean_error_per_pixel=distortion;
+        AddImageToRegistry(difference_image);
+        rv=newRV(sv);
+        av_push(av,sv_bless(rv,hv));
+        SvREFCNT_dec(sv);
+      }
+    exception=DestroyExceptionInfo(exception);
+    ST(0)=av_reference;
+    SvREFCNT_dec(perl_exception);  /* can't return warning messages */
     XSRETURN(1);
 
   PerlException:
@@ -3161,7 +3289,7 @@ CompareLayers(ref)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -3252,10 +3380,7 @@ DESTROY(ref)
         */
         image=(Image *) SvIV(reference);
         if (image != (Image *) NULL)
-          {
-            image=DestroyImage(image);
-            sv_setiv(reference,0);
-          }
+          DeleteImageFromRegistry(reference,image);
         break;
       }
       default:
@@ -3451,7 +3576,7 @@ Flatten(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    sv=newSViv((IV) image);
+    AddImageToRegistry(image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -3612,7 +3737,7 @@ Fx(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -3871,7 +3996,7 @@ Get(ref,...)
                     ClipImage(image);
                   if (image->mask != (Image *) NULL)
                     {
-                      sv=newSViv((IV) image->mask);
+                      AddImageToRegistry(image->mask);
                       s=sv_bless(newRV(sv),SvSTASH(reference));
                     }
                 }
@@ -3889,7 +4014,7 @@ Get(ref,...)
                     ClipImage(image);
                   if (image->clip_mask != (Image *) NULL)
                     {
-                      sv=newSViv((IV) image->clip_mask);
+                      AddImageToRegistry(image->clip_mask);
                       s=sv_bless(newRV(sv),SvSTASH(reference));
                     }
                 }
@@ -4243,6 +4368,9 @@ Get(ref,...)
             }
           if (LocaleNCompare(attribute,"index",5) == 0)
             {
+              CacheView
+                *image_view;
+
               char
                 name[MaxTextExtent];
 
@@ -4258,9 +4386,6 @@ Get(ref,...)
 
               register const PixelPacket
                 *p;
-
-              ViewInfo
-                *image_view;
 
               if (image == (Image *) NULL)
                 break;
@@ -4898,7 +5023,7 @@ Get(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   G e t I m a g e P i x e l s                                               #
+#   G e t A u t h e n t i c P i x e l s                                       #
 #                                                                             #
 #                                                                             #
 #                                                                             #
@@ -4906,10 +5031,12 @@ Get(ref,...)
 #
 #
 void *
-GetImagePixels(ref,...)
+GetAuthenticPixels(ref,...)
   Image::Magick ref = NO_INIT
   ALIAS:
-    getimagepixels = 1
+    getauthenticpixels = 1
+    GetImagePixels = 2
+    getimagepixels = 3
   CODE:
   {
     char
@@ -5049,7 +5176,7 @@ GetImagePixels(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   G e t I n d e x e s                                                       #
+#   G e t V i r t u a l P i x e l s                                           #
 #                                                                             #
 #                                                                             #
 #                                                                             #
@@ -5057,10 +5184,165 @@ GetImagePixels(ref,...)
 #
 #
 void *
-GetIndexes(ref,...)
+GetVirtualPixels(ref,...)
   Image::Magick ref = NO_INIT
   ALIAS:
-    getindexes = 1
+    getvirtualpixels = 1
+    AcquireImagePixels = 2
+    acquireimagepixels = 3
+  CODE:
+  {
+    char
+      *attribute;
+
+    const void
+      *blob = NULL;
+
+    ExceptionInfo
+      *exception;
+
+    Image
+      *image;
+
+    long
+      i;
+
+    RectangleInfo
+      region;
+
+    struct PackageInfo
+      *info;
+
+    SV
+      *perl_exception,
+      *reference;
+
+    exception=AcquireExceptionInfo();
+    perl_exception=newSVpv("",0);
+    if (sv_isobject(ST(0)) == 0)
+      {
+        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+
+    region.x=0;
+    region.y=0;
+    region.width=image->columns;
+    region.height=1;
+    if (items == 1)
+      (void) ParseAbsoluteGeometry(SvPV(ST(1),na),&region);
+    for (i=2; i < items; i+=2)
+    {
+      attribute=(char *) SvPV(ST(i-1),na);
+      switch (*attribute)
+      {
+        case 'g':
+        case 'G':
+        {
+          if (LocaleCompare(attribute,"geometry") == 0)
+            {
+              (void) ParseAbsoluteGeometry(SvPV(ST(i),na),&region);
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'H':
+        case 'h':
+        {
+          if (LocaleCompare(attribute,"height") == 0)
+            {
+              region.height=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+        case 'X':
+        case 'x':
+        {
+          if (LocaleCompare(attribute,"x") == 0)
+            {
+              region.x=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+        case 'Y':
+        case 'y':
+        {
+          if (LocaleCompare(attribute,"y") == 0)
+            {
+              region.y=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+        case 'W':
+        case 'w':
+        {
+          if (LocaleCompare(attribute,"width") == 0)
+            {
+              region.width=SvIV(ST(i));
+              continue;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedOption",
+            attribute);
+          break;
+        }
+      }
+    }
+    blob=(const void *) GetVirtualPixels(image,region.x,region.y,region.width,
+      region.height,exception);
+    if (blob != (void *) NULL)
+      goto PerlEnd;
+
+  PerlException:
+    InheritPerlException(exception,perl_exception);
+    exception=DestroyExceptionInfo(exception);
+    SvREFCNT_dec(perl_exception);  /* throw away all errors */
+
+  PerlEnd:
+    RETVAL = (void *) blob;
+  }
+  OUTPUT:
+    RETVAL
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   G e t A u t h e n t i c I n d e x Q u e u e                               #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void *
+GetAuthenticIndexQueue(ref,...)
+  Image::Magick ref = NO_INIT
+  ALIAS:
+    getauthenticindexqueue = 1
+    GetIndexes = 2
+    getindexes = 3
   CODE:
   {
     ExceptionInfo
@@ -5098,6 +5380,74 @@ GetIndexes(ref,...)
       }
 
     blob=(void *) GetAuthenticIndexQueue(image);
+    if (blob != (void *) NULL)
+      goto PerlEnd;
+
+  PerlException:
+    InheritPerlException(exception,perl_exception);
+    exception=DestroyExceptionInfo(exception);
+    SvREFCNT_dec(perl_exception);  /* throw away all errors */
+
+  PerlEnd:
+    RETVAL = blob;
+  }
+  OUTPUT:
+    RETVAL
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   G e t V i r t u a l I n d e x Q u e u e                                   #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void *
+GetVirtualIndexQueue(ref,...)
+  Image::Magick ref = NO_INIT
+  ALIAS:
+    getvirtualindexqueue = 1
+  CODE:
+  {
+    ExceptionInfo
+      *exception;
+
+    Image
+      *image;
+
+    struct PackageInfo
+      *info;
+
+    SV
+      *perl_exception,
+      *reference;
+
+    void
+      *blob = NULL;
+
+    exception=AcquireExceptionInfo();
+    perl_exception=newSVpv("",0);
+    if (sv_isobject(ST(0)) == 0)
+      {
+        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+
+    blob=(void *) GetVirtualIndexQueue(image);
     if (blob != (void *) NULL)
       goto PerlEnd;
 
@@ -6088,7 +6438,7 @@ Layers(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -6301,8 +6651,8 @@ Mogrify(ref,...)
     ClipImage          = 148
     AffineTransform    = 149
     AffineTransformImage = 150
-    Compare            = 151
-    CompareImage       = 152
+    Difference         = 151
+    DifferenceImage    = 152
     AdaptiveThreshold  = 153
     AdaptiveThresholdImage = 154
     Resample           = 155
@@ -6365,10 +6715,10 @@ Mogrify(ref,...)
     ClipMaskImage      = 212
     LinearStretch      = 213
     LinearStretchImage = 214
-    Mask               = 215
-    MaskImage          = 216
-    RecolorImage       = 217
-    Recolor            = 218
+    RecolorImage       = 215
+    Recolor            = 216
+    Mask               = 217
+    MaskImage          = 218
     Polaroid           = 219
     PolaroidImage      = 220
     FloodfillPaint     = 221
@@ -6393,6 +6743,20 @@ Mogrify(ref,...)
     FunctionImage      = 240
     SelectiveBlur      = 241
     SelectiveBlurImage = 242
+    HaldClut           = 243
+    HaldClutImage      = 244
+    BlueShift          = 245
+    BlueShiftImage     = 246
+    ForwardFourierTransform  = 247
+    ForwardFourierTransformImage = 248
+    InverseFourierTransform = 249
+    InverseFourierTransformImage = 250
+    ColorDecisionList  = 251
+    ColorDecisionListImage = 252
+    AutoGamma          = 253
+    AutoGammaImage     = 254
+    AutoLevel          = 255
+    AutoLevelImage     = 256
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -7345,9 +7709,12 @@ Mogrify(ref,...)
                 "CompositeImageRequired",PackageName);
               goto PerlException;
             }
-          if (attribute_flag[1] != 0)
+          /*
+            Parameter Handling used for BOTH normal and tiled composition.
+          */
+          if (attribute_flag[1] != 0) /* compose */
             compose=(CompositeOperator) argument_list[1].long_reference;
-          if (attribute_flag[6] != 0)
+          if (attribute_flag[6] != 0) /* opacity  */
             {
               if (compose != DissolveCompositeOp)
                 (void) SetImageOpacity(composite_image,(Quantum) (QuantumRange-
@@ -7355,20 +7722,23 @@ Mogrify(ref,...)
                   QuantumRange)));
               else
                 {
+                  CacheView
+                    *composite_view;
+
                   double
                     opacity;
 
                   long
                     y;
 
+                  MagickBooleanType
+                    sync;
+
                   register long
                     x;
 
                   register PixelPacket
                     *q;
-
-                  ViewInfo
-                    *composite_view;
 
                   /*
                     Handle dissolve composite operator (patch by
@@ -7391,17 +7761,30 @@ Mogrify(ref,...)
                         q->opacity=RoundToQuantum(opacity);
                       q++;
                     }
-                    if (SyncCacheViewAuthenticPixels(composite_view,exception) == MagickFalse)
+                    sync=SyncCacheViewAuthenticPixels(composite_view,exception);
+                    if (sync == MagickFalse)
                       break;
                   }
                   composite_view=CloseCacheView(composite_view);
                 }
             }
-          if (attribute_flag[9] != 0)
+          if (attribute_flag[9] != 0)    /* "color=>" */
             QueryColorDatabase(argument_list[9].string_reference,
               &composite_image->background_color,exception);
+          if (attribute_flag[12] != 0) /* "interpolate=>" */
+            image->interpolate=(InterpolatePixelMethod)
+              argument_list[12].long_reference;
+          if (attribute_flag[13] != 0)   /* "args=>" */
+            (void) SetImageArtifact(composite_image,"compose:args",
+              argument_list[13].string_reference);
+          if (attribute_flag[14] != 0)   /* "blend=>"  depreciated */
+            (void) SetImageArtifact(composite_image,"compose:args",
+              argument_list[14].string_reference);
+          /*
+            Tiling Composition (with orthogonal rotate).
+          */
           rotate_image=(Image *) NULL;
-          if (attribute_flag[8] != 0)
+          if (attribute_flag[8] != 0)   /* "rotate=>" */
             {
                /*
                  Rotate image.
@@ -7411,7 +7794,7 @@ Mogrify(ref,...)
                if (rotate_image == (Image *) NULL)
                  break;
             }
-          if (attribute_flag[7] && argument_list[7].long_reference)
+          if (attribute_flag[7] && argument_list[7].long_reference) /* tile */
             {
               long
                 x,
@@ -7420,27 +7803,30 @@ Mogrify(ref,...)
               /*
                 Tile the composite image.
               */
-             if (attribute_flag[8] != 0)
-               (void) SetImageArtifact(rotate_image,"modify-outside-overlay",
+             if (attribute_flag[8] != 0)   /* "tile=>" */
+               (void) SetImageArtifact(rotate_image,"compose:outside-overlay",
                  "false");
              else
                (void) SetImageArtifact(composite_image,
-                 "modify-outside-overlay","false");
-              for (y=0; y < (long) image->rows; y+=composite_image->rows)
+                 "compose:outside-overlay","false");
+             for (y=0; y < (long) image->rows; y+=composite_image->rows)
                 for (x=0; x < (long) image->columns; x+=composite_image->columns)
                 {
-                  if (attribute_flag[8] != 0)
+                  if (attribute_flag[8] != 0) /* rotate */
                     (void) CompositeImage(image,compose,rotate_image,x,y);
                   else
                     (void) CompositeImage(image,compose,composite_image,x,y);
                 }
-              if (attribute_flag[8] != 0)
+              if (attribute_flag[8] != 0) /* rotate */
                 rotate_image=DestroyImage(rotate_image);
               break;
             }
-          if (attribute_flag[5] != 0)
+          /*
+            Parameter Handling used used ONLY for normal composition.
+          */
+          if (attribute_flag[5] != 0) /* gravity */
             image->gravity=(GravityType) argument_list[5].long_reference;
-          if (attribute_flag[2] != 0)
+          if (attribute_flag[2] != 0) /* geometry offset */
             {
               SetGeometry(image,&geometry);
               (void) ParseAbsoluteGeometry(argument_list[2].string_reference,
@@ -7448,49 +7834,66 @@ Mogrify(ref,...)
               GravityAdjustGeometry(image->columns,image->rows,image->gravity,
                 &geometry);
             }
-          if (attribute_flag[3] != 0)
+          if (attribute_flag[3] != 0) /* x offset */
             geometry.x=argument_list[3].long_reference;
-          if (attribute_flag[4] != 0)
+          if (attribute_flag[4] != 0) /* y offset */
             geometry.y=argument_list[4].long_reference;
-          if (attribute_flag[10] != 0)
+          if (attribute_flag[10] != 0) /* mask */
             {
-              image->mask=CloneImage(argument_list[10].image_reference,0,0,
-                MagickTrue,&image->exception);
-              (void) NegateImage(image->mask,MagickFalse);
+              if ((image->compose == DisplaceCompositeOp) ||
+                  (image->compose == DistortCompositeOp))
+                {
+                  /*
+                    Merge Y displacement into X displacement image.
+                  */
+                  composite_image=CloneImage(composite_image,0,0,MagickTrue,
+                    &image->exception);
+                  (void) CompositeImage(composite_image,CopyGreenCompositeOp,
+                    argument_list[10].image_reference,0,0);
+                }
+              else
+                {
+                  /*
+                    Set a blending mask for the composition.
+                  */
+                  image->mask=CloneImage(argument_list[10].image_reference,0,0,
+                    MagickTrue,&image->exception);
+                  (void) NegateImage(image->mask,MagickFalse);
+                }
             }
-          if (attribute_flag[11] != 0)
-            (void) CloneString(&composite_image->geometry,
-              argument_list[11].string_reference);
-          if (attribute_flag[12] != 0)
-            channel=(ChannelType) argument_list[12].long_reference;
-          if (attribute_flag[13] != 0)
-            image->interpolate=(InterpolatePixelMethod)
-              argument_list[13].long_reference;
+          if (attribute_flag[11] != 0) /* channel */
+            channel=(ChannelType) argument_list[11].long_reference;
           /*
-            Composite image.
+            Composite two images (normal composition).
           */
           (void) FormatMagickString(composite_geometry,MaxTextExtent,
             "%lux%lu%+ld%+ld",composite_image->columns,composite_image->rows,
             geometry.x,geometry.y);
           flags=ParseGravityGeometry(image,composite_geometry,&geometry,
             exception);
-          if (attribute_flag[8] == 0)
+          if (attribute_flag[8] == 0) /* no rotate */
             CompositeImageChannel(image,channel,compose,composite_image,
               geometry.x,geometry.y);
           else
             {
               /*
-                Rotate image.
+                Position adjust rotated image then composite.
               */
-              geometry.x-=(long)
-                (rotate_image->columns-composite_image->columns)/2;
+              geometry.x-=(long) (rotate_image->columns-
+                composite_image->columns)/2;
               geometry.y-=(long) (rotate_image->rows-composite_image->rows)/2;
               CompositeImageChannel(image,channel,compose,rotate_image,
                 geometry.x,geometry.y);
               rotate_image=DestroyImage(rotate_image);
             }
-          if ((attribute_flag[10] != 0) && (image->mask != (Image *) NULL))
-            image->mask=DestroyImage(image->mask);
+          if (attribute_flag[10] != 0) /* mask */
+            {
+              if ((image->compose == DisplaceCompositeOp) ||
+                  (image->compose == DistortCompositeOp))
+                composite_image=DestroyImage(composite_image);
+              else
+                image->mask=DestroyImage(image->mask);
+            }
           break;
         }
         case 36:  /* Contrast */
@@ -8567,7 +8970,7 @@ Mogrify(ref,...)
           draw_info=DestroyDrawInfo(draw_info);
           break;
         }
-        case 76:  /* Compare */
+        case 76:  /* Difference */
         {
           if (attribute_flag[0] == 0)
             {
@@ -8829,8 +9232,12 @@ Mogrify(ref,...)
         }
         case 93:  /* Extent */
         {
+          GravityType
+            gravity;
+
+          gravity=image->gravity;
           if (attribute_flag[7] != 0)
-            image->gravity=(GravityType) argument_list[7].long_reference;
+            gravity=(GravityType) argument_list[7].long_reference;
           if (attribute_flag[0] != 0)
             {
               SetGeometry(image,&geometry);
@@ -8853,6 +9260,7 @@ Mogrify(ref,...)
           if (attribute_flag[6] != 0)
             (void) QueryColorDatabase(argument_list[6].string_reference,
               &image->background_color,exception);
+          GravityAdjustGeometry(image->columns,image->rows,gravity,&geometry);
           image=ExtentImage(image,&geometry,exception);
           break;
         }
@@ -9106,20 +9514,7 @@ Mogrify(ref,...)
           (void) LinearStretchImage(image,black_point,white_point);
           break;
         }
-        case 108:  /* Mask */
-        {
-          if (attribute_flag[0] == 0)
-            {
-              ThrowPerlException(exception,OptionError,"MaskImageRequired",
-                PackageName);
-              goto PerlException;
-            }
-          image->mask=CloneImage(argument_list[0].image_reference,0,0,
-            MagickTrue,exception);
-          (void) NegateImage(image->mask,MagickFalse);
-          break;
-        }
-        case 109:  /* TransformColor */
+        case 108:  /* Recolor */
         {
           AV
             *av;
@@ -9148,6 +9543,19 @@ Mogrify(ref,...)
             color_matrix[j]=0.0;
           image=RecolorImage(image,order,color_matrix,exception);
           color_matrix=(double *) RelinquishMagickMemory(color_matrix);
+          break;
+        }
+        case 109:  /* Mask */
+        {
+          if (attribute_flag[0] == 0)
+            {
+              ThrowPerlException(exception,OptionError,"MaskImageRequired",
+                PackageName);
+              goto PerlException;
+            }
+          image->mask=CloneImage(argument_list[0].image_reference,0,0,
+            MagickTrue,exception);
+          (void) NegateImage(image->mask,MagickFalse);
           break;
         }
         case 110:  /* Polaroid */
@@ -9467,6 +9875,64 @@ Mogrify(ref,...)
             geometry_info.sigma,geometry_info.xi,exception);
           break;
         }
+        case 122:  /* HaldClut */
+        {
+          if (attribute_flag[0] == 0)
+            {
+              ThrowPerlException(exception,OptionError,"ClutImageRequired",
+                PackageName);
+              goto PerlException;
+            }
+          if (attribute_flag[1] != 0)
+            channel=(ChannelType) argument_list[1].long_reference;
+          (void) HaldClutImageChannel(image,channel,
+            argument_list[0].image_reference);
+          break;
+        }
+        case 123:  /* BlueShift */
+        {
+          if (attribute_flag[0] != 0)
+            (void) ParseGeometry(argument_list[0].string_reference,
+              &geometry_info);
+          image=BlueShiftImage(image,geometry_info.rho,exception);
+          break;
+        }
+        case 124:  /* ForwardFourierTransformImage */
+        {
+          image=ForwardFourierTransformImage(image,
+            argument_list[0].long_reference != 0 ? MagickTrue : MagickFalse,
+            exception);
+          break;
+        }
+        case 125:  /* InverseFourierTransformImage */
+        {
+          image=InverseFourierTransformImage(image,
+            argument_list[0].long_reference != 0 ? MagickTrue : MagickFalse,
+            exception);
+          break;
+        }
+        case 126:  /* ColorDecisionList */
+        {
+          if (attribute_flag[0] == 0)
+            argument_list[0].string_reference=(char *) NULL;
+          (void) ColorDecisionListImage(image,
+            argument_list[0].string_reference);
+          break;
+        }
+        case 127:  /* AutoGamma */
+        {
+          if (attribute_flag[0] != 0)
+            channel=(ChannelType) argument_list[0].long_reference;
+          (void) AutoGammaImageChannel(image,channel);
+          break;
+        }
+        case 128:  /* AutoLevel */
+        {
+          if (attribute_flag[0] != 0)
+            channel=(ChannelType) argument_list[0].long_reference;
+          (void) AutoLevelImageChannel(image,channel);
+          break;
+        }
       }
       if (next != (Image *) NULL)
         (void) CatchImageException(next);
@@ -9487,7 +9953,7 @@ Mogrify(ref,...)
           if (next && (next != image))
             {
               image->next=next->next;
-              next=DestroyImage(next);
+              DeleteImageFromRegistry(*pv,next);
             }
           sv_setiv(*pv,(IV) image);
           next=image;
@@ -9895,7 +10361,7 @@ Montage(ref,...)
           TransparentOpacity,MagickFalse);
     for (  ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -10023,7 +10489,7 @@ Morph(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      sv=newSViv((IV) image);
+      AddImageToRegistry(image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -10108,7 +10574,7 @@ Mosaic(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    sv=newSViv((IV) image);
+    AddImageToRegistry(image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -10253,12 +10719,7 @@ Ping(ref,...)
             SetImageInfoBlob(package_info->image_info,blob,(size_t) length[n]);
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
-          {
-            i++;
-            (void) CopyMagickString(package_info->image_info->filename,
-              SvPV(ST(i+1),length[n]),MaxTextExtent);
-            continue;
-          }
+          continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
             FILE
@@ -10285,12 +10746,7 @@ Ping(ref,...)
             SetImageInfoFile(package_info->image_info,file);
           }
         if ((items >= 3) && strEQcase(list[n],"magick"))
-          {
-            i++;
-            (void) FormatMagickString(package_info->image_info->filename,
-              MaxTextExtent,"%.1024s:",SvPV(ST(i+1),length[n]));
-            continue;
-          }
+          continue;
         n++;
       }
     list[n]=(char *) NULL;
@@ -10428,7 +10884,7 @@ Preview(ref,...)
       preview_image=PreviewImage(image,preview_type,exception);
       if (preview_image == (Image *) NULL)
         goto PerlException;
-      sv=newSViv((IV) preview_image);
+      AddImageToRegistry(preview_image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -11754,12 +12210,7 @@ Read(ref,...)
             SetImageInfoBlob(package_info->image_info,blob,(size_t) length[n]);
           }
         if ((items >= 3) && strEQcase(list[n],"filename"))
-          {
-            i++;
-            (void) CopyMagickString(package_info->image_info->filename,
-              SvPV(ST(i+1),length[n]),MaxTextExtent);
-            continue;
-          }
+          continue;
         if ((items >= 3) && strEQcase(list[n],"file"))
           {
             FILE
@@ -11786,12 +12237,7 @@ Read(ref,...)
             SetImageInfoFile(package_info->image_info,file);
           }
         if ((items >= 3) && strEQcase(list[n],"magick"))
-          {
-            i++;
-            (void) FormatMagickString(package_info->image_info->filename,
-              MaxTextExtent,"%.1024s:",SvPV(ST(i+1),length[n]));
-            continue;
-          }
+          continue;
         n++;
       }
     list[n]=(char *) NULL;
@@ -11810,7 +12256,8 @@ Read(ref,...)
           (package_info->image_info->blob != (void *) NULL))
         {
           image=ReadImages(package_info->image_info,exception);
-          DisassociateImageStream(image);
+          if (image != (Image *) NULL)
+            DisassociateImageStream(image);
         }
       else
         {
@@ -11822,7 +12269,7 @@ Read(ref,...)
         break;
       for ( ; image; image=image->next)
       {
-        sv=newSViv((IV) image);
+        AddImageToRegistry(image);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);
@@ -12423,7 +12870,7 @@ Statistics(ref,...)
 #                                                                             #
 #                                                                             #
 #                                                                             #
-#   S y n c I m a g e P i x e l s                                             #
+#   S y n c A u t h e n t i c P i x e l s                                     #
 #                                                                             #
 #                                                                             #
 #                                                                             #
@@ -12431,11 +12878,12 @@ Statistics(ref,...)
 #
 #
 void
-SyncImagePixels(ref,...)
+SyncAuthenticPixels(ref,...)
   Image::Magick ref = NO_INIT
   ALIAS:
-    SyncImagePixels = 1
-    syncimagepixels = 2
+    Syncauthenticpixels = 1
+    SyncImagePixels = 2
+    syncimagepixels = 3
   CODE:
   {
     ExceptionInfo
@@ -12629,7 +13077,7 @@ Transform(ref,...)
       TransformImage(&clone,crop_geometry,geometry);
       for ( ; clone; clone=clone->next)
       {
-        sv=newSViv((IV) clone);
+        AddImageToRegistry(clone);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);

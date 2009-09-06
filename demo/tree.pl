@@ -1,4 +1,8 @@
 #!/usr/bin/perl
+#
+# Example of using a lsys fractal,
+# which in turm used Turtle Graphics
+#
 require "lsys.pl";
 
 %rule = (

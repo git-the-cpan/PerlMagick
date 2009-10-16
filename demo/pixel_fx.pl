@@ -1,6 +1,13 @@
 #!/usr/bin/perl
 #
-# Example: Modify all the pixels in an image (like -fx)
+# Example of modifying all the pixels in an image (like -fx).
+#
+# Currently this is slow as each pixel is being one one by one. The better
+# technique of extracting and modifing a whole row of pixels at a time has not
+# been figured out, though functions are provided for this.
+#
+# Also access and controls for Area Re-sampling (EWA), beyond single pixel
+# lookup (interpolated unscaled lookup), is also not available at this time.
 #
 # Anthony Thyssen   5 October 2007
 #
@@ -18,6 +25,8 @@ exit  if $w =~ /^Exception/;
 my $dest = $orig->Clone();
 
 # You could enlarge destination image here if you like.
+# And it is posible to modify the existing image directly
+# rather than modifying a clone as FX does.
 
 # Iterate over destination image...
 my ($width, $height) = $dest->Get('width', 'height');

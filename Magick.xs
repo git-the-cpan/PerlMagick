@@ -79,7 +79,7 @@ extern "C" {
 #define DegreesToRadians(x)  (MagickPI*(x)/180.0)
 #define EndOf(array)  (&array[NumberOf(array)])
 #define MagickPI  3.14159265358979323846264338327950288419716939937510
-#define MaxArguments  31
+#define MaxArguments  32
 #ifndef na
 #define na  PL_na
 #endif
@@ -286,6 +286,7 @@ static struct
       {"encoding", StringReference}, {"affine", ArrayReference},
       {"fill-pattern", ImageReference}, {"stroke-pattern", ImageReference},
       {"tile", ImageReference}, {"kerning", RealReference},
+      {"interline-spacing", RealReference},
       {"interword-spacing", RealReference} } },
     { "ColorFloodfill", { {"geometry", StringReference},
       {"x", IntegerReference}, {"y", IntegerReference},
@@ -319,6 +320,7 @@ static struct
       {"origin", StringReference}, {"text", StringReference},
       {"fill-pattern", ImageReference}, {"stroke-pattern", ImageReference},
       {"vector-graphics", StringReference}, {"kerning", RealReference},
+      {"interline-spacing", RealReference},
       {"interword-spacing", RealReference} } },
     { "Equalize", { {"channel", MagickChannelOptions} } },
     { "Gamma", { {"gamma", StringReference}, {"channel", MagickChannelOptions},
@@ -514,6 +516,10 @@ static struct
       {"color-correction-collection", StringReference} } },
     { "AutoGamma", { {"channel", MagickChannelOptions} } },
     { "AutoLevel", { {"channel", MagickChannelOptions} } },
+    { "LevelColors", { {"invert", MagickBooleanOptions},
+      {"black-point", RealReference}, {"white-point", RealReference},
+      {"channel", MagickChannelOptions}, {"invert", MagickBooleanOptions} } },
+    { "Clamp", { {"channel", MagickChannelOptions} } },
   };
 
 static SplayTreeInfo
@@ -1493,9 +1499,6 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
     {
       if (LocaleNCompare(attribute,"index",5) == 0)
         {
-          CacheView
-            *image_view;
-
           IndexPacket
             *indexes;
 
@@ -1508,6 +1511,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           register PixelPacket
             *p;
 
+          CacheView
+            *image_view;
+
           for ( ; image; image=image->next)
           {
             if (image->storage_class != PseudoClass)
@@ -1515,17 +1521,17 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             x=0;
             y=0;
             items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
-            image_view=OpenCacheView(image);
-            p=GetCacheViewPixels(image_view,x,y,1,1);
+            image_view=AcquireCacheView(image);
+            p=GetCacheViewAuthenticPixels(image_view,x,y,1,1,exception);
             if (p != (PixelPacket *) NULL)
               {
-                indexes=GetCacheViewIndexes(image_view);
+                indexes=GetCacheViewAuthenticIndexQueue(image_view);
                 items=sscanf(SvPV(sval,na),"%ld",&index);
                 if ((index >= 0) && (index < (long) image->colors))
                   *indexes=(IndexPacket) index;
                 (void) SyncCacheViewAuthenticPixels(image_view,exception);
               }
-            image_view=CloseCacheView(image_view);
+            image_view=DestroyCacheView(image_view);
           }
           break;
         }
@@ -1723,9 +1729,6 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         }
       if (LocaleNCompare(attribute,"pixel",5) == 0)
         {
-          CacheView
-            *image_view;
-
           int
             items;
 
@@ -1738,6 +1741,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
           register PixelPacket
             *p;
 
+          CacheView
+            *image_view;
+
           for ( ; image; image=image->next)
           {
             if (SetImageStorageClass(image,DirectClass) == MagickFalse)
@@ -1745,9 +1751,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             x=0;
             y=0;
             items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
-            image_view=OpenCacheView(image);
-            p=GetCacheViewPixels(image_view,x,y,1,1);
-            indexes=GetCacheViewIndexes(image_view);
+            image_view=AcquireCacheView(image);
+            p=GetCacheViewAuthenticPixels(image_view,x,y,1,1,exception);
+            indexes=GetCacheViewAuthenticIndexQueue(image_view);
             if (p != (PixelPacket *) NULL)
               {
                 if ((strchr(SvPV(sval,na),',') == 0) ||
@@ -1777,7 +1783,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
                   *indexes=RoundToQuantum(pixel.index);
                 (void) SyncCacheViewAuthenticPixels(image_view,exception);
               }
-            image_view=CloseCacheView(image_view);
+            image_view=DestroyCacheView(image_view);
           }
           break;
         }
@@ -4361,16 +4367,26 @@ Get(ref,...)
           if (LocaleCompare(attribute,"id") == 0)
             {
               if (image != (Image *) NULL)
-                s=newSViv(SetMagickRegistry(ImageRegistryType,image,0,
-                  &image->exception));
+                {
+                  char
+                    key[MaxTextExtent];
+
+                  MagickBooleanType
+                    status;
+
+                  static long
+                    id = 0;
+
+                  (void) FormatMagickString(key,MaxTextExtent,"%ld\n",id);
+                  status=SetImageRegistry(ImageRegistryType,key,image,
+                    &image->exception);
+                  s=newSViv(id++);
+                }
               PUSHs(s ? sv_2mortal(s) : &sv_undef);
               continue;
             }
           if (LocaleNCompare(attribute,"index",5) == 0)
             {
-              CacheView
-                *image_view;
-
               char
                 name[MaxTextExtent];
 
@@ -4387,6 +4403,9 @@ Get(ref,...)
               register const PixelPacket
                 *p;
 
+              CacheView
+                *image_view;
+
               if (image == (Image *) NULL)
                 break;
               if (image->storage_class != PseudoClass)
@@ -4394,17 +4413,17 @@ Get(ref,...)
               x=0;
               y=0;
               items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
-              image_view=OpenCacheView(image);
-              p=AcquireCacheViewPixels(image_view,x,y,1,1,&image->exception);
+              image_view=AcquireCacheView(image);
+              p=GetCacheViewVirtualPixels(image_view,x,y,1,1,&image->exception);
               if (p != (const PixelPacket *) NULL)
                 {
-                  indexes=AcquireCacheViewIndexes(image_view);
+                  indexes=GetCacheViewVirtualIndexQueue(image_view);
                   (void) FormatMagickString(name,MaxTextExtent,QuantumFormat,
                     *indexes);
                   s=newSVpv(name,0);
                   PUSHs(s ? sv_2mortal(s) : &sv_undef);
                 }
-              image_view=CloseCacheView(image_view);
+              image_view=DestroyCacheView(image_view);
               continue;
             }
           if (LocaleCompare(attribute,"iptc") == 0)
@@ -4654,7 +4673,7 @@ Get(ref,...)
               y=0;
               items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               p=GetVirtualPixels(image,x,y,1,1,exception);
-              indexes=AcquireIndexes(image);
+              indexes=GetVirtualIndexQueue(image);
               if (image->colorspace != CMYKColorspace)
                 (void) FormatMagickString(tuple,MaxTextExtent,QuantumFormat ","
                   QuantumFormat "," QuantumFormat "," QuantumFormat,
@@ -5761,7 +5780,7 @@ GetPixel(ref,...)
         double
           scale;
 
-        indexes=AcquireIndexes(image);
+        indexes=GetVirtualIndexQueue(image);
         scale=1.0;
         if (normalize != MagickFalse)
           scale=1.0/QuantumRange;
@@ -6757,6 +6776,10 @@ Mogrify(ref,...)
     AutoGammaImage     = 254
     AutoLevel          = 255
     AutoLevelImage     = 256
+    LevelColors        = 257
+    LevelColorsImage   = 258
+    Clamp              = 259
+    ClampImage         = 260
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -7644,7 +7667,9 @@ Mogrify(ref,...)
           if (attribute_flag[29] != 0)
             draw_info->kerning=argument_list[29].real_reference;
           if (attribute_flag[30] != 0)
-            draw_info->interword_spacing=argument_list[30].real_reference;
+            draw_info->interline_spacing=argument_list[30].real_reference;
+          if (attribute_flag[31] != 0)
+            draw_info->interword_spacing=argument_list[31].real_reference;
           (void) AnnotateImage(image,draw_info);
           draw_info=DestroyDrawInfo(draw_info);
           break;
@@ -7722,9 +7747,6 @@ Mogrify(ref,...)
                   QuantumRange)));
               else
                 {
-                  CacheView
-                    *composite_view;
-
                   double
                     opacity;
 
@@ -7740,6 +7762,9 @@ Mogrify(ref,...)
                   register PixelPacket
                     *q;
 
+                  CacheView
+                    *composite_view;
+
                   /*
                     Handle dissolve composite operator (patch by
                     Kevin A. McGrail).
@@ -7750,11 +7775,11 @@ Mogrify(ref,...)
                     argument_list[6].string_reference,QuantumRange));
                   if (composite_image->matte != MagickTrue)
                     (void) SetImageOpacity(composite_image,OpaqueOpacity);
-                  composite_view=OpenCacheView(composite_image);
+                  composite_view=AcquireCacheView(composite_image);
                   for (y=0; y < (long) composite_image->rows ; y++)
                   {
-                    q=GetCacheViewPixels(composite_view,0,y,(long)
-                      composite_image->columns,1);
+                    q=GetCacheViewAuthenticPixels(composite_view,0,y,(long)
+                      composite_image->columns,1,exception);
                     for (x=0; x < (long) composite_image->columns; x++)
                     {
                       if (q->opacity == OpaqueOpacity)
@@ -7765,7 +7790,7 @@ Mogrify(ref,...)
                     if (sync == MagickFalse)
                       break;
                   }
-                  composite_view=CloseCacheView(composite_view);
+                  composite_view=DestroyCacheView(composite_view);
                 }
             }
           if (attribute_flag[9] != 0)    /* "color=>" */
@@ -8142,7 +8167,9 @@ Mogrify(ref,...)
           if (attribute_flag[29] != 0)
             draw_info->kerning=argument_list[29].real_reference;
           if (attribute_flag[30] != 0)
-            draw_info->interword_spacing=argument_list[30].real_reference;
+            draw_info->interline_spacing=argument_list[30].real_reference;
+          if (attribute_flag[31] != 0)
+            draw_info->interword_spacing=argument_list[31].real_reference;
           DrawImage(image,draw_info);
           draw_info=DestroyDrawInfo(draw_info);
           break;
@@ -9933,6 +9960,34 @@ Mogrify(ref,...)
           (void) AutoLevelImageChannel(image,channel);
           break;
         }
+        case 129:  /* LevelColors */
+        {
+          MagickPixelPacket
+            black_point,
+            white_point;
+
+          (void) QueryMagickColor("#000000",&black_point,exception);
+          (void) QueryMagickColor("#ffffff",&black_point,exception);
+          if (attribute_flag[1] != 0)
+             (void) QueryMagickColor(argument_list[1].string_reference,
+               &black_point,exception);
+          if (attribute_flag[2] != 0)
+             (void) QueryMagickColor(argument_list[2].string_reference,
+               &white_point,exception);
+          if (attribute_flag[3] != 0)
+            channel=(ChannelType) argument_list[3].long_reference;
+          (void) LevelColorsImageChannel(image,channel,&black_point,
+            &white_point,argument_list[0].long_reference != 0 ? MagickTrue :
+            MagickFalse);
+          break;
+        }
+        case 130:  /* Clamp */
+        {
+          if (attribute_flag[0] != 0)
+            channel=(ChannelType) argument_list[0].long_reference;
+          (void) ClampImageChannel(image,channel);
+          break;
+        }
       }
       if (next != (Image *) NULL)
         (void) CatchImageException(next);
@@ -11354,6 +11409,12 @@ QueryFontMetrics(ref,...)
         case 'i':
         case 'I':
         {
+          if (LocaleCompare(attribute,"interline-spacing") == 0)
+            {
+              flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);
+              draw_info->interline_spacing=geometry_info.rho;
+              break;
+            }
           if (LocaleCompare(attribute,"interword-spacing") == 0)
             {
               flags=ParseGeometry(SvPV(ST(i),na),&geometry_info);

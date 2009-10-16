@@ -23,11 +23,110 @@
 
 use ExtUtils::MakeMaker;
 use Config;
+use File::Spec::Functions qw/catfile catdir devnull catpath splitpath/;
+use Cwd;
+
+sub AutodetectWin32gcc {
+  my $wrkdir = getcwd();
+  my $devnull = devnull();
+ 
+  my @incdir = ();
+  my @libdir = ($wrkdir);
+  my @bindir = ();
+ 
+  #try to get configuration info via identify or convert utilities
+  my $conf = `identify -list Configure 2>$devnull` || `convert -list Configure 2>$devnull`;
+  foreach my $line (split '\n', $conf) {
+    if ($line =~ /^Path:\s+(.*)/) {
+      my ($vol,$dir,$file) = splitpath($1);
+      next unless $dir;
+      my $dirpath = catpath( $vol, $dir);
+      my (@l,@b,@i) = ( (),(),() );
+
+      # try to detect 'lib' dir
+      push @l, catfile($dirpath,'..','lib');
+      push @l, catfile($dirpath,'..','..','lib');
+      push @l, catfile($dirpath,'..','..','..','lib');
+      foreach (@l) { push @libdir, $_ if (-d $_) };
+
+      # try to detect 'bin' dir
+      push @b, catfile($dirpath,'..');
+      push @b, catfile($dirpath,'..','bin');
+      push @b, catfile($dirpath,'..','..');
+      push @b, catfile($dirpath,'..','..','bin');
+      push @b, catfile($dirpath,'..','..','..');
+      push @b, catfile($dirpath,'..','..','..','bin');
+      foreach (@b) { push @bindir, $_ if (-e "$_/convert.exe" || -e "$_/identify.exe") };
+
+      # try to detect 'include' dir
+      push @i, catfile($dirpath,'..','include');
+      push @i, catfile($dirpath,'..','include','ImageMagick');
+      push @i, catfile($dirpath,'..','..','include');
+      push @i, catfile($dirpath,'..','..','include','ImageMagick');
+      push @i, catfile($dirpath,'..','..','..','include');
+      push @i, catfile($dirpath,'..','..','..','include','ImageMagick');
+      foreach (@i) { push @incdir, $_ if (-e "$_/magick/MagickCore.h") };
+    }
+  };
+ 
+  foreach my $bin (@bindir) {
+    opendir(my $bindir, $bin) or die qq{Cannot opendir $bin: $!};
+    my @dlls = map {catfile($bin, $_)} grep /^\S*magick[^\+]\S*?\.dll$/i, readdir $bindir;
+    foreach my $d (@dlls) {
+      unlink "$wrkdir/libMagickCore.def", "$wrkdir/libMagickCore.a";
+      system("pexports \"$d\" >\"$wrkdir/libMagickCore.def\" 2>$devnull");
+      open(DEF, "<$wrkdir/libMagickCore.def");
+      my @found = grep(/InitializeMagickResources/, <DEF>); #checking if we have taken the right DLL
+      close(DEF);
+      next unless(@found);
+      print STDERR "Gonna create 'libMagickCore.a' from '$d'\n";
+      system("dlltool -D \"$d\" -d \"$wrkdir/libMagickCore.def\" -l \"$wrkdir/libMagickCore.a\" 2>$devnull");
+      last if -s "$wrkdir/libMagickCore.a";
+    }
+    last if -s "$wrkdir/libMagickCore.a";
+  }
+ 
+  unless(@incdir && @libdir && @bindir && (-s "$wrkdir/libMagickCore.a")) {
+    print STDERR <<EOF
+################################### WARNING! ###################################
+# It seems that you are trying to install Perl::Magick on a MS Windows box with
+# perl + gcc compiler (e.g. strawberry perl), however we cannot find ImageMagick
+# binaries installed on your system.
+#
+# Please check the following prerequisites:
+#
+# 1) You need to have installed ImageMagick Windows binaries from
+#    http://www.imagemagick.org/script/binary-releases.php#windows
+#
+# 2) We only support dynamic (DLL) ImageMagick binaries
+#    note: it is not possible to mix 32/64-bit binaries of perl and ImageMagick
+#
+# 3) During installation select that you want to install ImageMagick's
+#    development files (libraries+headers)
+#
+# 4) You also need to have ImageMagick's directory in your PATH
+#    note: we are checking the presence of convert.exe and/or identify.exe tools
+#
+# 5) You might need Visual C++ Redistributable Package installed on your system
+#    see instructions on ImageMagick's Binary Release webpage
+#
+# We are gonna continue, but chances for successful build are very low!
+################################################################################
+EOF
+  }
+   
+  my $inc = join ' ', map "-I\"$_\"", @incdir;
+  my $lib = join ' ', map "-L\"$_\"", @libdir;
+  $lib .= " -lMagickCore";
+
+  return ($inc, $lib, '-O2');
+}
+
 
 # Compute test specification
 my $delegate_tests='t/*.t';
 my $delegate;
-foreach $delegate (qw/bzlib jng jpeg png ps ttf zlib/) {
+foreach $delegate (qw/bzlib djvu fftw fontconfig freetype jpeg jng jp2 lcms mpeg png rsvg tiff x11 xml wmf zlib/) {
   if ( -d "t/$delegate" ) {
     if ($delegate =~ /x11/) {
       if ( defined $ENV{'DISPLAY'} ) {
@@ -37,6 +136,16 @@ foreach $delegate (qw/bzlib jng jpeg png ps ttf zlib/) {
     }
     $delegate_tests .= " t/$delegate/*.t";
   }
+}
+
+# defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
+my $INC_magick = '-I"' . $Config{'usrinc'} . '/ImageMagick" -I/usr/local/include/ImageMagick';
+my $LIBS_magick = '-L"' . $Config{'usrlib'} . '" -L/usr/local/lib -lMagickCore -lperl -lm';
+my $CCFLAGS_magick = "$Config{'ccflags'}";
+
+if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
+  # a special setup for strawberry perl
+  ($INC_magick, $LIBS_magick, $CCFLAGS_magick) = AutodetectWin32gcc();
 }
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
@@ -53,27 +162,49 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.5.5',
+   'VERSION' => '6.5.7',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
+
    # Header search specfication and preprocessor flags
-   'INC'	=> '-I/usr/local/include/ImageMagick -I/usr/local/include -I/usr/include/ImageMagick',
+   'INC'	=> $INC_magick,
+
+   # C compiler
+   #'CC' => 'gcc -std=gnu99',
+
+   # C pre-processor flags (e.g. -I & -D options)
+   # 'CPPFLAGS' => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/include/libxml2",
+
+   # C compiler flags (e.g. -O -g)
+   'CCFLAGS' => $CCFLAGS_magick,
+
+   # Linker
+   #'LD' => $Config{'ld'} == $Config{'cc'} ? 'gcc -std=gnu99' : $Config{'ld'},
 
    # Linker flags for building an executable
-   'LDFLAGS' =>  "-L/usr/local/lib -lMagickCore -lMagickWand $Config{'ldflags'}",
+   'LDFLAGS' =>  "-lMagickCore $Config{'ldflags'} ",
 
    # Linker flags for building a dynamically loadable module
-   'LDDLFLAGS' => "-L/usr/local/lib -lMagickCore -lMagickWand $Config{'lddlflags'}",
+   'LDDLFLAGS' => "-lMagickCore $Config{'lddlflags'} ",
 
    # Install PerlMagick binary into ImageMagick bin directory
    'INSTALLBIN'	=> '/usr/local/bin',
 
    # Library specification
-   'LIBS' => [ '-L/usr/local/lib -lMagickCore -lMagickWand -lm' ],
+   'LIBS' => [ $LIBS_magick ],
 
    # Perl binary name (if a Perl binary is built)
    'MAP_TARGET'	=> 'PerlMagick',
+
+   # Let CFLAGS drive optimization flags by setting OPTIMIZE to empty
+   # 'OPTIMIZE'	=> '',
+
+   # Use same compiler as ImageMagick
+   'PERLMAINCC'	=> ' -fopenmp',
+
+   # Set Perl installation prefix to ImageMagick installation prefix
+#   'PREFIX'	=> '/usr/local',
 
    # Include delegate directories in tests
    test	=> { TESTS	=>	$delegate_tests},

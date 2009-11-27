@@ -326,14 +326,15 @@ static struct
     { "Gamma", { {"gamma", StringReference}, {"channel", MagickChannelOptions},
       {"red", RealReference}, {"green", RealReference},
       {"blue", RealReference} } },
-    { "Map", { {"image", ImageReference}, {"dither", MagickBooleanOptions} } },
+    { "Map", { {"image", ImageReference}, {"dither", MagickBooleanOptions},
+      {"dither-method", MagickDitherOptions} } },
     { "MatteFloodfill", { {"geometry", StringReference},
       {"x", IntegerReference}, {"y", IntegerReference},
       {"opacity", StringReference}, {"bordercolor", StringReference},
       {"fuzz", StringReference}, {"invert", MagickBooleanOptions} } },
     { "Modulate", { {"factor", StringReference}, {"hue", RealReference},
       {"saturation", RealReference}, {"whiteness", RealReference},
-      {"brightness", RealReference}, {"luminosity", RealReference},
+      {"brightness", RealReference}, {"lightness", RealReference},
       {"blackness", RealReference} } },
     { "Negate", { {"gray", MagickBooleanOptions},
       {"channel", MagickChannelOptions} } },
@@ -495,7 +496,7 @@ static struct
     { "Decipher", { {"passphrase", StringReference} } },
     { "Deskew", { {"geometry", StringReference},
       {"threshold", StringReference} } },
-    { "Remap", { {"image", ImageReference},
+    { "Remap", { {"image", ImageReference}, {"dither", MagickBooleanOptions},
       {"dither-method", MagickDitherOptions} } },
     { "SparseColor", { {"points", ArrayReference},
       {"method", MagickSparseColorOptions},
@@ -8221,6 +8222,9 @@ Mogrify(ref,...)
           if (attribute_flag[1] != 0)
             quantize_info->dither=(MagickBooleanType)
               argument_list[1].long_reference;
+          if (attribute_flag[2] != 0)
+            quantize_info->dither_method=(DitherMethod)
+              argument_list[2].long_reference;
           (void) RemapImages(quantize_info,image,
             argument_list[0].image_reference);
           quantize_info=DestroyQuantizeInfo(quantize_info);
@@ -9259,19 +9263,21 @@ Mogrify(ref,...)
         }
         case 93:  /* Extent */
         {
-          GravityType
-            gravity;
-
-          gravity=image->gravity;
           if (attribute_flag[7] != 0)
-            gravity=(GravityType) argument_list[7].long_reference;
+            image->gravity=(GravityType) argument_list[7].long_reference;
           if (attribute_flag[0] != 0)
             {
-              SetGeometry(image,&geometry);
-              (void) ParseAbsoluteGeometry(argument_list[0].string_reference,
-                &geometry);
-              GravityAdjustGeometry(image->columns,image->rows,image->gravity,
-                &geometry);
+              int
+                flags;
+
+              flags=ParseGravityGeometry(image,
+                argument_list[0].string_reference,&geometry,exception);
+              if (geometry.width == 0)
+                geometry.width=image->columns;
+              if (geometry.height == 0)
+                geometry.height=image->rows;
+              geometry.x=(-geometry.x);
+              geometry.y=(-geometry.y);
             }
           if (attribute_flag[1] != 0)
             geometry.width=argument_list[1].long_reference;
@@ -9287,7 +9293,6 @@ Mogrify(ref,...)
           if (attribute_flag[6] != 0)
             (void) QueryColorDatabase(argument_list[6].string_reference,
               &image->background_color,exception);
-          GravityAdjustGeometry(image->columns,image->rows,gravity,&geometry);
           image=ExtentImage(image,&geometry,exception);
           break;
         }
@@ -9779,9 +9784,12 @@ Mogrify(ref,...)
               goto PerlException;
             }
           quantize_info=AcquireQuantizeInfo(info->image_info);
-          if (attribute_flag[1] == 0)
-            quantize_info->dither_method=(DitherMethod)
+          if (attribute_flag[1] != 0)
+            quantize_info->dither=(MagickBooleanType)
               argument_list[1].long_reference;
+          if (attribute_flag[2] != 0)
+            quantize_info->dither_method=(DitherMethod)
+              argument_list[2].long_reference;
           (void) RemapImages(quantize_info,image,
             argument_list[0].image_reference);
           quantize_info=DestroyQuantizeInfo(quantize_info);
@@ -9933,7 +9941,7 @@ Mogrify(ref,...)
         }
         case 125:  /* InverseFourierTransformImage */
         {
-          image=InverseFourierTransformImage(image,
+          image=InverseFourierTransformImage(image,image->next,
             argument_list[0].long_reference != 0 ? MagickTrue : MagickFalse,
             exception);
           break;

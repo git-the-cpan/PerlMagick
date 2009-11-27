@@ -12,17 +12,17 @@
 
 #     ABSTRACT => q[ImageMagick PERL Extension]
 #     AUTHOR => q[ImageMagick Studio LLC]
-#     CCFLAGS => q[-D_REENTRANT -D_GNU_SOURCE -DPERL_USE_SAFE_PUTENV -DDEBUGGING -fno-strict-aliasing -pipe -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/usr/include/gdbm]
+#     CCFLAGS => q[-D_REENTRANT -D_GNU_SOURCE -DPERL_USE_SAFE_PUTENV -DDEBUGGING -fno-strict-aliasing -pipe -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/usr/include/gdbm -fopenmp -g -O2 -Wall -W -pthread]
 #     DEFINE => q[ -D_LARGE_FILES=1 -DHAVE_CONFIG_H]
-#     INC => q[-I"/usr/include/ImageMagick" -I/usr/local/include/ImageMagick]
+#     INC => q[-I../ -I.. -I/usr/include/freetype2 -I/usr/include/libxml2 -I"/usr/include/ImageMagick"]
 #     INSTALLBIN => q[/usr/local/bin]
-#     LDDLFLAGS => q[-lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic ]
-#     LDFLAGS => q[-lMagickCore  ]
-#     LIBS => [q[-L"" -L/usr/local/lib -lMagickCore -lperl -lm]]
+#     LDDLFLAGS => q[-L../magick/.libs -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic ]
+#     LDFLAGS => q[-L../magick/.libs -lMagickCore  ]
+#     LIBS => [q[-L../magick/.libs -lMagickCore -lperl -lm]]
 #     MAP_TARGET => q[PerlMagick]
 #     NAME => q[Image::Magick]
 #     PERLMAINCC => q[ -fopenmp]
-#     VERSION => q[6.5.7]
+#     VERSION => q[6.5.8]
 #     test => { TESTS=>q[t/*.t t/bzlib/*.t t/jpeg/*.t t/jng/*.t t/jp2/*.t t/mpeg/*.t t/png/*.t t/tiff/*.t t/x11/*.t t/wmf/*.t t/zlib/*.t] }
 
 # --- MakeMaker post_initialize section:
@@ -42,13 +42,13 @@ DLSRC = dl_dlopen.xs
 EXE_EXT = 
 FULL_AR = /usr/bin/ar
 LD = gcc
-LDDLFLAGS = -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic 
-LDFLAGS = -lMagickCore  
+LDDLFLAGS = -L../magick/.libs -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic 
+LDFLAGS = -L../magick/.libs -lMagickCore  
 LIBC = 
 LIB_EXT = .a
 OBJ_EXT = .o
 OSNAME = linux
-OSVERS = 2.6.18-128.4.1.el5xen
+OSVERS = 2.6.18-164.el5
 RANLIB = :
 SITELIBEXP = /usr/local/lib/perl5/site_perl/5.10.0
 SITEARCHEXP = /usr/local/lib64/perl5/site_perl/5.10.0/x86_64-linux-thread-multi
@@ -63,11 +63,11 @@ DIRFILESEP = /
 DFSEP = $(DIRFILESEP)
 NAME = Image::Magick
 NAME_SYM = Image_Magick
-VERSION = 6.5.7
+VERSION = 6.5.8
 VERSION_MACRO = VERSION
-VERSION_SYM = 6_5_7
+VERSION_SYM = 6_5_8
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = 6.5.7
+XS_VERSION = 6.5.8
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib/arch
@@ -155,7 +155,7 @@ BASEEXT = Magick
 PARENT_NAME = Image
 DLBASE = $(BASEEXT)
 VERSION_FROM = 
-INC = -I"/usr/include/ImageMagick" -I/usr/local/include/ImageMagick
+INC = -I../ -I.. -I/usr/include/freetype2 -I/usr/include/libxml2 -I"/usr/include/ImageMagick"
 DEFINE =  -D_LARGE_FILES=1 -DHAVE_CONFIG_H
 OBJECT = $(BASEEXT)$(OBJ_EXT)
 LDFROM = $(OBJECT)
@@ -268,7 +268,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = Image-Magick
-DISTVNAME = Image-Magick-6.5.7
+DISTVNAME = Image-Magick-6.5.8
 
 
 # --- MakeMaker macro section:
@@ -279,7 +279,7 @@ DISTVNAME = Image-Magick-6.5.7
 
 # --- MakeMaker cflags section:
 
-CCFLAGS = -D_REENTRANT -D_GNU_SOURCE -DPERL_USE_SAFE_PUTENV -DDEBUGGING -fno-strict-aliasing -pipe -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/usr/include/gdbm
+CCFLAGS = -D_REENTRANT -D_GNU_SOURCE -DPERL_USE_SAFE_PUTENV -DDEBUGGING -fno-strict-aliasing -pipe -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/usr/include/gdbm -fopenmp -g -O2 -Wall -W -pthread
 OPTIMIZE = -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic
 PERLTYPE = 
 MPOLLUTE = 
@@ -290,10 +290,10 @@ MPOLLUTE =
 # Image::Magick might depend on some other libraries:
 # See ExtUtils::Liblist for details
 #
-EXTRALIBS = -L/usr/local/lib -lMagickCore
-LDLOADLIBS = -L/usr/local/lib -lMagickCore -lm
+EXTRALIBS = -lMagickCore
+LDLOADLIBS = -lMagickCore -lm
 BSLOADLIBS = 
-LD_RUN_PATH = /usr/local/lib
+LD_RUN_PATH = /usr/lib64
 
 
 # --- MakeMaker const_cccmd section:
@@ -575,7 +575,7 @@ metafile : create_distdir
 	$(NOECHO) $(ECHO) Generating META.yml
 	$(NOECHO) $(ECHO) '--- #YAML:1.0' > META_new.yml
 	$(NOECHO) $(ECHO) 'name:                Image-Magick' >> META_new.yml
-	$(NOECHO) $(ECHO) 'version:             6.5.7' >> META_new.yml
+	$(NOECHO) $(ECHO) 'version:             6.5.8' >> META_new.yml
 	$(NOECHO) $(ECHO) 'abstract:            ImageMagick PERL Extension' >> META_new.yml
 	$(NOECHO) $(ECHO) 'license:             ~' >> META_new.yml
 	$(NOECHO) $(ECHO) 'author:              ' >> META_new.yml
@@ -930,7 +930,7 @@ testdb_static :: pure_all $(MAP_TARGET)
 # --- MakeMaker ppd section:
 # Creates a PPD (Perl Package Description) for a binary distribution.
 ppd :
-	$(NOECHO) $(ECHO) '<SOFTPKG NAME="$(DISTNAME)" VERSION="6,5,7,0">' > $(DISTNAME).ppd
+	$(NOECHO) $(ECHO) '<SOFTPKG NAME="$(DISTNAME)" VERSION="6,5,8,0">' > $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <TITLE>$(DISTNAME)</TITLE>' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <ABSTRACT>ImageMagick PERL Extension</ABSTRACT>' >> $(DISTNAME).ppd
 	$(NOECHO) $(ECHO) '    <AUTHOR>ImageMagick Studio LLC</AUTHOR>' >> $(DISTNAME).ppd

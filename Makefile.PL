@@ -1,4 +1,4 @@
-#  Copyright 1999-2009 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2010 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -76,7 +76,7 @@ sub AutodetectWin32gcc {
       unlink "$wrkdir/libMagickCore.def", "$wrkdir/libMagickCore.a";
       system("pexports \"$d\" >\"$wrkdir/libMagickCore.def\" 2>$devnull");
       open(DEF, "<$wrkdir/libMagickCore.def");
-      my @found = grep(/InitializeMagickResources/, <DEF>); #checking if we have taken the right DLL
+      my @found = grep(/MagickCoreGenesis/, <DEF>); #checking if we have taken the right DLL
       close(DEF);
       next unless(@found);
       print STDERR "Gonna create 'libMagickCore.a' from '$d'\n";
@@ -138,7 +138,7 @@ foreach $delegate (qw/bzlib djvu fftw fontconfig freetype jpeg jng jp2 lcms mpeg
 }
 
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
-my $INC_magick = '-I../ -I.. -I/usr/include/freetype2 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
+my $INC_magick = '-I../ -I.. -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -pthread -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
 my $LIBS_magick = '-L../magick/.libs -lMagickCore -lperl -lm';
 my $CCFLAGS_magick = "$Config{'ccflags'} -fopenmp -g -O2 -Wall -W -pthread";
 my $LDFLAGS_magick   = "-L../magick/.libs -lMagickCore $Config{'ldflags'} ";
@@ -171,7 +171,7 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.5.8',
+   'VERSION' => '6.5.9',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
@@ -183,7 +183,7 @@ WriteMakefile
    #'CC' => 'gcc -std=gnu99',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS' => "$Config{'cppflags'} -I/usr/include/freetype2 -I/usr/include/libxml2",
+   # 'CPPFLAGS' => "$Config{'cppflags'} -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -pthread -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
    'CCFLAGS' => $CCFLAGS_magick,

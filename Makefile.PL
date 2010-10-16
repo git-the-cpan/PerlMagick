@@ -13,7 +13,7 @@
 #  limitations under the License.
 #
 #  Exercise all regression tests:
-#  
+#
 #    make test
 #
 #  Exersise one regression test:
@@ -29,11 +29,11 @@ use Cwd;
 sub AutodetectWin32gcc {
   my $wrkdir = getcwd();
   my $devnull = devnull();
- 
+
   my @incdir = ();
   my @libdir = ($wrkdir);
   my @bindir = ();
- 
+
   #try to get configuration info via identify or convert utilities
   my $conf = `identify -list Configure 2>$devnull` || `convert -list Configure 2>$devnull`;
   foreach my $line (split '\n', $conf) {
@@ -68,7 +68,7 @@ sub AutodetectWin32gcc {
       foreach (@i) { push @incdir, $_ if (-e "$_/magick/MagickCore.h") };
     }
   };
- 
+
   foreach my $bin (@bindir) {
     opendir(my $bindir, $bin) or die qq{Cannot opendir $bin: $!};
     my @dlls = map {catfile($bin, $_)} grep /^\S*magick[^\+]\S*?\.dll$/i, readdir $bindir;
@@ -85,7 +85,7 @@ sub AutodetectWin32gcc {
     }
     last if -s "$wrkdir/libMagickCore.a";
   }
- 
+
   unless(@incdir && @libdir && @bindir && (-s "$wrkdir/libMagickCore.a")) {
     print STDERR <<EOF
 ################################### WARNING! ###################################
@@ -114,33 +114,51 @@ sub AutodetectWin32gcc {
 ################################################################################
 EOF
   }
-   
+
   my $inc = join ' ', map "-I\"$_\"", @incdir;
   my $lib = join ' ', map "-L\"$_\"", @libdir;
 
   return ($inc, $lib);
 }
 
+sub AutodetectDelegates {
+  #try to get configuration info via identify or convert utilities
+  my $devnull = devnull();
+  my $conf = `identify -list Configure 2>$devnull` || `convert -list Configure 2>$devnull`;
+  my @delegates = ();
+  foreach my $line (split '\n', $conf) {
+    next unless $line =~ /^DELEGATES\s+/;
+    (undef, @delegates) = split /\s+/, $line;
+    last;
+  };
+  return @delegates;
+}
 
 # Compute test specification
 my $delegate_tests='t/*.t';
-my $delegate;
-foreach $delegate (qw/bzlib djvu fftw fontconfig freetype jpeg jng jp2 lcms mpeg png rsvg tiff x11 xml wmf zlib/) {
-  if ( -d "t/$delegate" ) {
-    if ( defined($ENV{'DISPLAY'}) && ($^O ne 'MSWin32') ) {
-      if ( defined $ENV{'DISPLAY'} ) {
-        $delegate_tests .= " t/$delegate/*.t";
+my @tested_delegates = qw/bzlib djvu fftw fontconfig freetype jpeg jng jp2 lcms mpeg png rsvg tiff x11 xml wmf zlib/;
+my @supported_delegates = AutodetectDelegates();
+# find the intersection of tested and supported delegates
+my %seen_delegates = ();
+$seen_delegates{$_}++ for @supported_delegates;
+foreach my $delegate (@tested_delegates) {
+  if ( $seen_delegates{$delegate} ) {
+    if ( -d "t/$delegate" ) {
+      if ( defined($ENV{'DISPLAY'}) && ($^O ne 'MSWin32') ) {
+        if ( defined $ENV{'DISPLAY'} ) {
+          $delegate_tests .= " t/$delegate/*.t";
+        }
+        next;
       }
-      next;
+      $delegate_tests .= " t/$delegate/*.t";
     }
-    $delegate_tests .= " t/$delegate/*.t";
   }
 }
 
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
-my $INC_magick = '-I../ -I.. -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -pthread -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
+my $INC_magick = '-I../ -I.. -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
 my $LIBS_magick = '-L../magick/.libs -lMagickCore -lperl -lm';
-my $CCFLAGS_magick = "$Config{'ccflags'} -fopenmp -g -O2 -Wall -W -pthread";
+my $CCFLAGS_magick = "$Config{'ccflags'} -fopenmp -g -O2 -Wall -pthread";
 my $LDFLAGS_magick   = "-L../magick/.libs -lMagickCore $Config{'ldflags'} ";
 my $LDDLFLAGS_magick = "-L../magick/.libs -lMagickCore $Config{'lddlflags'} ";
 
@@ -171,25 +189,25 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.5.9',
+   'VERSION' => '6.6.5',
 
    # Preprocessor defines
-   'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
+   'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING'
 
    # Header search specfication and preprocessor flags
    'INC'	=> $INC_magick,
 
    # C compiler
-   #'CC' => 'gcc -std=gnu99',
+   #'CC' => 'gcc -std=gnu99 -std=gnu99',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS' => "$Config{'cppflags'} -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -pthread -I/usr/include/librsvg-2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/gtk-2.0 -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2",
+   # 'CPPFLAGS' => "$Config{'cppflags'} -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
    'CCFLAGS' => $CCFLAGS_magick,
 
    # Linker
-   #'LD' => $Config{'ld'} == $Config{'cc'} ? 'gcc -std=gnu99' : $Config{'ld'},
+   #'LD' => $Config{'ld'} == $Config{'cc'} ? 'gcc -std=gnu99 -std=gnu99' : $Config{'ld'},
 
    # Linker flags for building an executable
    'LDFLAGS' =>  $LDFLAGS_magick,

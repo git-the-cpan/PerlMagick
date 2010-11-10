@@ -134,6 +134,15 @@ sub AutodetectDelegates {
   return @delegates;
 }
 
+sub trim($)
+{
+  my $string = shift;
+  $string =~ s/^\s+//;
+  $string =~ s/\s+$//;
+  return $string;
+}
+
+
 # Compute test specification
 my $delegate_tests='t/*.t';
 my @tested_delegates = qw/bzlib djvu fftw fontconfig freetype jpeg jng jp2 lcms mpeg png rsvg tiff x11 xml wmf zlib/;
@@ -156,11 +165,11 @@ foreach my $delegate (@tested_delegates) {
 }
 
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
-my $INC_magick = '-I../ -I.. -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -I/usr/include/freetype2 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
+my $INC_magick = trim(`MagickCore-config --cppflags`) . ' -I../ -I.. -I"' . $Config{'usrinc'} . '/ImageMagick" ';
 my $LIBS_magick = '-L../magick/.libs -lMagickCore -lperl -lm';
-my $CCFLAGS_magick = "$Config{'ccflags'} -fopenmp -g -O2 -Wall -pthread";
-my $LDFLAGS_magick   = "-L../magick/.libs -lMagickCore $Config{'ldflags'} ";
-my $LDDLFLAGS_magick = "-L../magick/.libs -lMagickCore $Config{'lddlflags'} ";
+my $CCFLAGS_magick = trim(`MagickCore-config --cflags`) . ' -fopenmp -g -O2 -Wall -pthread' . $Config{'ccflags'};
+my $LDFLAGS_magick   = trim(`MagickCore-config --ldflags `) . ' -L../magick/.libs -lMagickCore ' . $Config{'ldflags'};
+my $LDDLFLAGS_magick = '-L../magick/.libs -lMagickCore ' . $Config{'lddlflags'};
 
 if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
   my($Ipaths, $Lpaths) = AutodetectWin32gcc();

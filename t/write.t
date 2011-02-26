@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#  Copyright 1999-2010 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2011 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -218,7 +218,7 @@ print("X Windows system bitmap (black and white only) ...\n");
 testReadWrite( 'XBM:input.xbm',
   'XBM:output.xbm',
   q//,
-  'c0e7d770445314ea4990484553b8a05e7653a8f8eff874ad4daa28ea4c8df6fe');
+  '4cc91a24ddcbe4a9563b1ca063f765ec1ca4514cc3e3ba3e710f1226e49a8dd5');
 
 print("X Windows system pixmap file (color) ...\n");
 ++$test;

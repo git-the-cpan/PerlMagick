@@ -1,4 +1,4 @@
-#  Copyright 1999-2010 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2011 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -142,7 +142,6 @@ sub trim($)
   return $string;
 }
 
-
 # Compute test specification
 my $delegate_tests='t/*.t';
 my @tested_delegates = qw/bzlib djvu fftw fontconfig freetype jpeg jng jp2 lcms mpeg png rsvg tiff x11 xml wmf zlib/;
@@ -167,7 +166,7 @@ foreach my $delegate (@tested_delegates) {
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
 my $INC_magick = trim(`MagickCore-config --cppflags`) . ' -I../ -I.. -I"' . $Config{'usrinc'} . '/ImageMagick" ';
 my $LIBS_magick = '-L../magick/.libs -lMagickCore -lperl -lm';
-my $CCFLAGS_magick = trim(`MagickCore-config --cflags`) . ' -fopenmp -g -O2 -Wall -pthread' . $Config{'ccflags'};
+my $CCFLAGS_magick = trim(`MagickCore-config --cflags`) . ' -fopenmp -g -O2 -Wall -pthread ' . $Config{'ccflags'};
 my $LDFLAGS_magick   = trim(`MagickCore-config --ldflags `) . ' -L../magick/.libs -lMagickCore ' . $Config{'ldflags'};
 my $LDDLFLAGS_magick = '-L../magick/.libs -lMagickCore ' . $Config{'lddlflags'};
 
@@ -198,7 +197,7 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.6.5',
+   'VERSION' => '6.6.7',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING'

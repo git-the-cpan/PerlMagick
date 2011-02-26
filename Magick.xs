@@ -23,7 +23,7 @@
 %                             February 1997                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2010 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2011 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
@@ -94,12 +94,12 @@ extern "C" {
 #define sv_undef  PL_sv_undef
 #endif
 
-#define AddImageToRegistry(image) \
+#define AddImageToRegistry(sv,image) \
 { \
   if (magick_registry != (SplayTreeInfo *) NULL) \
     { \
       (void) AddValueToSplayTree(magick_registry,image,image); \
-      sv=newSViv((IV) image); \
+      (sv)=newSViv((IV) image); \
     } \
 }
 
@@ -970,8 +970,8 @@ static struct PackageInfo *GetPackageInfo(pTHX_ void *reference,
   SV
     *sv;
 
-  (void) FormatMagickString(message,MaxTextExtent,"%s::package%s%lx",
-    PackageName,XS_VERSION,(long) reference);
+  (void) FormatMagickString(message,MaxTextExtent,"%s::package%s%p",
+    PackageName,XS_VERSION,reference);
   sv=perl_get_sv(message,(TRUE | 0x02));
   if (sv == (SV *) NULL)
     {
@@ -1645,7 +1645,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
         {
           if (info)
             (void) FormatMagickString(info->image_info->filename,MaxTextExtent,
-              "%.1024s:",SvPV(sval,na));
+              "%s:",SvPV(sval,na));
           for ( ; image; image=image->next)
             (void) CopyMagickString(image->magick,SvPV(sval,na),MaxTextExtent);
           break;
@@ -2417,6 +2417,8 @@ Animate(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     package_info=(struct PackageInfo *) NULL;
@@ -2509,6 +2511,8 @@ Append(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -2574,7 +2578,7 @@ Append(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -2638,6 +2642,8 @@ Average(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -2665,7 +2671,7 @@ Average(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    AddImageToRegistry(image);
+    AddImageToRegistry(sv,image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -2749,6 +2755,8 @@ BlobToImage(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -2811,7 +2819,7 @@ BlobToImage(ref,...)
         break;
       for ( ; image; image=image->next)
       {
-        AddImageToRegistry(image);
+        AddImageToRegistry(sv,image);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);
@@ -2890,6 +2898,8 @@ Clone(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -2919,7 +2929,7 @@ Clone(ref)
       clone=CloneImage(image,0,0,MagickTrue,exception);
       if ((clone == (Image *) NULL) || (exception->severity >= ErrorException))
         break;
-      AddImageToRegistry(clone);
+      AddImageToRegistry(sv,clone);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -2954,6 +2964,7 @@ CLONE(ref,...)
   SV *ref;
   CODE:
   {
+    PERL_UNUSED_VAR(ref);
     if (magick_registry != (SplayTreeInfo *) NULL)
       {
         register Image
@@ -3012,6 +3023,8 @@ Coalesce(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -3038,7 +3051,7 @@ Coalesce(ref)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -3120,6 +3133,8 @@ Compare(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -3196,6 +3211,7 @@ Compare(ref,...)
             {
               reconstruct_image=SetupList(aTHX_ SvRV(ST(i)),
                 (struct PackageInfo **) NULL,(SV ***) NULL,exception);
+              break;
             }
           ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
             attribute);
@@ -3214,7 +3230,7 @@ Compare(ref,...)
                     SvPV(ST(i),na));
                   break;
                 }
-               metric=(MetricType) option;
+              metric=(MetricType) option;
               break;
             }
           ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
@@ -3234,7 +3250,7 @@ Compare(ref,...)
     if (difference_image != (Image *) NULL)
       {
         difference_image->error.mean_error_per_pixel=distortion;
-        AddImageToRegistry(difference_image);
+        AddImageToRegistry(sv,difference_image);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);
@@ -3308,6 +3324,8 @@ CompareLayers(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -3368,7 +3386,7 @@ CompareLayers(ref)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -3407,6 +3425,7 @@ DESTROY(ref)
     SV
       *reference;
 
+    PERL_UNUSED_VAR(ref);
     if (sv_isobject(ST(0)) == 0)
       croak("ReferenceIsNotMyType");
     reference=SvRV(ST(0));
@@ -3417,8 +3436,8 @@ DESTROY(ref)
         char
           message[MaxTextExtent];
 
-        struct PackageInfo
-          *info;
+        const SV
+          *key;
 
         HV
           *hv;
@@ -3426,14 +3445,17 @@ DESTROY(ref)
         GV
           **gvp;
 
+        struct PackageInfo
+          *info;
+
         SV
           *sv;
 
         /*
           Array (AV *) reference
         */
-        (void) FormatMagickString(message,MaxTextExtent,"package%s%lx",
-          XS_VERSION,(unsigned long) reference);
+        (void) FormatMagickString(message,MaxTextExtent,"package%s%p",
+          XS_VERSION,reference);
         hv=gv_stashpv(PackageName, FALSE);
         if (!hv)
           break;
@@ -3446,7 +3468,7 @@ DESTROY(ref)
             info=(struct PackageInfo *) SvIV(sv);
             DestroyPackageInfo(info);
           }
-        hv_delete(hv,message,(long) strlen(message),G_DISCARD);
+        key=hv_delete(hv,message,(long) strlen(message),G_DISCARD);
         break;
       }
       case SVt_PVMG:
@@ -3505,6 +3527,8 @@ Display(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     package_info=(struct PackageInfo *) NULL;
@@ -3596,6 +3620,8 @@ EvaluateImages(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -3676,7 +3702,7 @@ EvaluateImages(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    AddImageToRegistry(image);
+    AddImageToRegistry(sv,image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -3803,6 +3829,8 @@ Features(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     av=NULL;
@@ -3932,6 +3960,8 @@ Flatten(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -3991,7 +4021,7 @@ Flatten(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    AddImageToRegistry(image);
+    AddImageToRegistry(sv,image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -4068,6 +4098,8 @@ Fx(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -4153,7 +4185,7 @@ Fx(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -4222,6 +4254,8 @@ Get(ref,...)
       *reference,
       *s;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (sv_isobject(ST(0)) == 0)
@@ -4414,7 +4448,7 @@ Get(ref,...)
                     ClipImage(image);
                   if (image->mask != (Image *) NULL)
                     {
-                      AddImageToRegistry(image->mask);
+                      AddImageToRegistry(sv,image->mask);
                       s=sv_bless(newRV(sv),SvSTASH(reference));
                     }
                 }
@@ -4433,7 +4467,7 @@ Get(ref,...)
                     ClipImage(image);
                   if (image->clip_mask != (Image *) NULL)
                     {
-                      AddImageToRegistry(image->clip_mask);
+                      AddImageToRegistry(sv,image->clip_mask);
                       s=sv_bless(newRV(sv),SvSTASH(reference));
                     }
                 }
@@ -5515,6 +5549,8 @@ GetAuthenticPixels(ref,...)
     void
       *blob = NULL;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (sv_isobject(ST(0)) == 0)
@@ -5668,6 +5704,8 @@ GetVirtualPixels(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (sv_isobject(ST(0)) == 0)
@@ -5812,6 +5850,8 @@ GetAuthenticIndexQueue(ref,...)
     void
       *blob = NULL;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (sv_isobject(ST(0)) == 0)
@@ -5880,6 +5920,8 @@ GetVirtualIndexQueue(ref,...)
     void
       *blob = NULL;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (sv_isobject(ST(0)) == 0)
@@ -5969,6 +6011,8 @@ Histogram(ref,...)
     size_t
       number_colors;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     av=NULL;
@@ -6092,6 +6136,8 @@ GetPixel(ref,...)
       *perl_exception,
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     reference=SvRV(ST(0));
@@ -6290,6 +6336,8 @@ GetPixels(ref,...)
       *perl_exception,
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     reference=SvRV(ST(0));
@@ -6533,6 +6581,8 @@ ImageToBlob(ref,...)
     void
       *blob;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     package_info=(struct PackageInfo *) NULL;
@@ -6650,6 +6700,8 @@ Layers(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -6891,7 +6943,7 @@ Layers(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -6933,6 +6985,8 @@ MagickToMime(ref,name)
     char
       *mime;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     mime=MagickToMime(name);
     RETVAL=newSVpv(mime,0);
     mime=(char *) RelinquishMagickMemory(mime);
@@ -7295,6 +7349,8 @@ Mogrify(ref,...)
     struct ArgumentList
       argument_list[MaxArguments];
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     reference_vector=NULL;
@@ -10654,6 +10710,8 @@ Montage(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -10984,7 +11042,7 @@ Montage(ref,...)
           TransparentOpacity,MagickFalse);
     for (  ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -11055,6 +11113,8 @@ Morph(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -11113,7 +11173,7 @@ Morph(ref,...)
       goto PerlException;
     for ( ; image; image=image->next)
     {
-      AddImageToRegistry(image);
+      AddImageToRegistry(sv,image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -11174,6 +11234,8 @@ Mosaic(ref)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -11199,7 +11261,7 @@ Mosaic(ref)
     av=newAV();
     ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
     SvREFCNT_dec(av);
-    AddImageToRegistry(image);
+    AddImageToRegistry(sv,image);
     rv=newRV(sv);
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
@@ -11287,6 +11349,8 @@ Ping(ref,...)
     size_t
       count;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     package_info=(struct PackageInfo *) NULL;
@@ -11478,6 +11542,8 @@ Preview(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -11510,7 +11576,7 @@ Preview(ref,...)
       preview_image=PreviewImage(image,preview_type,exception);
       if (preview_image == (Image *) NULL)
         goto PerlException;
-      AddImageToRegistry(preview_image);
+      AddImageToRegistry(sv,preview_image);
       rv=newRV(sv);
       av_push(av,sv_bless(rv,hv));
       SvREFCNT_dec(sv);
@@ -11563,6 +11629,8 @@ QueryColor(ref,...)
     SV
       *perl_exception;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (items == 1)
@@ -11651,6 +11719,8 @@ QueryColorname(ref,...)
       *perl_exception,
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     reference=SvRV(ST(0));
@@ -11714,6 +11784,8 @@ QueryFont(ref,...)
     volatile const TypeInfo
       *type_info;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (items == 1)
@@ -11865,6 +11937,8 @@ QueryFontMetrics(ref,...)
     TypeMetric
       metrics;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     package_info=(struct PackageInfo *) NULL;
     perl_exception=newSVpv("",0);
@@ -12274,6 +12348,8 @@ QueryMultilineFontMetrics(ref,...)
     TypeMetric
       metrics;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     package_info=(struct PackageInfo *) NULL;
     perl_exception=newSVpv("",0);
@@ -12611,6 +12687,8 @@ QueryFormat(ref,...)
     volatile const MagickInfo
       *magick_info;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (items == 1)
@@ -12702,6 +12780,8 @@ QueryOption(ref,...)
     SV
       *perl_exception;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     EXTEND(sp,8*items);
@@ -12720,7 +12800,6 @@ QueryOption(ref,...)
         }
     }
 
-  PerlException:
     InheritPerlException(exception,perl_exception);
     exception=DestroyExceptionInfo(exception);
     SvREFCNT_dec(perl_exception);
@@ -12792,6 +12871,8 @@ Read(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -12909,7 +12990,7 @@ Read(ref,...)
         break;
       for ( ; image; image=image->next)
       {
-        AddImageToRegistry(image);
+        AddImageToRegistry(sv,image);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);
@@ -12982,6 +13063,8 @@ Remote(ref,...)
     struct PackageInfo
       *info;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     reference=SvRV(ST(0));
@@ -13035,6 +13118,8 @@ Set(ref,...)
       *perl_exception,
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     if (sv_isobject(ST(0)) == 0)
@@ -13120,6 +13205,8 @@ SetPixel(ref,...)
       *perl_exception,
       *reference;  /* reference is the SV* of ref=SvIV(reference) */
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     reference=SvRV(ST(0));
@@ -13250,7 +13337,8 @@ SetPixel(ref,...)
     }
     (void) SetImageStorageClass(image,DirectClass);
     q=GetAuthenticPixels(image,region.x,region.y,1,1,exception);
-    if ((q == (PixelPacket *) NULL) || (av == (AV *) NULL))
+    if ((q == (PixelPacket *) NULL) || (av == (AV *) NULL) ||
+        (SvTYPE(av) != SVt_PVAV))
       PUSHs(&sv_undef);
     else
       {
@@ -13298,6 +13386,159 @@ SetPixel(ref,...)
     InheritPerlException(exception,perl_exception);
     exception=DestroyExceptionInfo(exception);
     SvREFCNT_dec(perl_exception);
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   S m u s h                                                                 #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+Smush(ref,...)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    SmushImage  = 1
+    smush       = 2
+    smushimage  = 3
+  PPCODE:
+  {
+    AV
+      *av;
+
+    char
+      *attribute;
+
+    ExceptionInfo
+      *exception;
+
+    HV
+      *hv;
+
+    Image
+      *image;
+
+    register ssize_t
+      i;
+
+    ssize_t
+      offset,
+      stack;
+
+    struct PackageInfo
+      *info;
+
+    SV
+      *av_reference,
+      *perl_exception,
+      *reference,
+      *rv,
+      *sv;
+
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
+    exception=AcquireExceptionInfo();
+    perl_exception=newSVpv("",0);
+    sv=NULL;
+    attribute=NULL;
+    av=NULL;
+    if (sv_isobject(ST(0)) == 0)
+      {
+        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+    hv=SvSTASH(reference);
+    av=newAV();
+    av_reference=sv_2mortal(sv_bless(newRV((SV *) av),hv));
+    SvREFCNT_dec(av);
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+    info=GetPackageInfo(aTHX_ (void *) av,info,exception);
+    /*
+      Get options.
+    */
+    offset=0;
+    stack=MagickTrue;
+    for (i=2; i < items; i+=2)
+    {
+      attribute=(char *) SvPV(ST(i-1),na);
+      switch (*attribute)
+      {
+        case 'O':
+        case 'o':
+        {
+          if (LocaleCompare(attribute,"offset") == 0)
+            {
+              offset=(ssize_t) StringToLong((char *) SvPV(ST(1),na));
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        case 'S':
+        case 's':
+        {
+          if (LocaleCompare(attribute,"stack") == 0)
+            {
+              stack=ParseMagickOption(MagickBooleanOptions,MagickFalse,
+                SvPV(ST(i),na));
+              if (stack < 0)
+                {
+                  ThrowPerlException(exception,OptionError,"UnrecognizedType",
+                    SvPV(ST(i),na));
+                  return;
+                }
+              break;
+            }
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+        default:
+        {
+          ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+            attribute);
+          break;
+        }
+      }
+    }
+    image=SmushImages(image,stack != 0 ? MagickTrue : MagickFalse,offset,
+      exception);
+    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+      goto PerlException;
+    for ( ; image; image=image->next)
+    {
+      AddImageToRegistry(sv,image);
+      rv=newRV(sv);
+      av_push(av,sv_bless(rv,hv));
+      SvREFCNT_dec(sv);
+    }
+    exception=DestroyExceptionInfo(exception);
+    ST(0)=av_reference;
+    SvREFCNT_dec(perl_exception);
+    XSRETURN(1);
+
+  PerlException:
+    InheritPerlException(exception,perl_exception);
+    exception=DestroyExceptionInfo(exception);
+    sv_setiv(perl_exception,(IV) SvCUR(perl_exception) != 0);
+    SvPOK_on(perl_exception);
+    ST(0)=sv_2mortal(perl_exception);
+    XSRETURN(1);
   }
 
 #
@@ -13378,6 +13619,8 @@ Statistics(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     av=NULL;
@@ -13463,9 +13706,10 @@ SyncAuthenticPixels(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
-
     if (sv_isobject(ST(0)) == 0)
       {
         ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
@@ -13545,6 +13789,8 @@ Transform(ref,...)
       *rv,
       *sv;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     sv=NULL;
@@ -13639,7 +13885,7 @@ Transform(ref,...)
       TransformImage(&clone,crop_geometry,geometry);
       for ( ; clone; clone=clone->next)
       {
-        AddImageToRegistry(clone);
+        AddImageToRegistry(sv,clone);
         rv=newRV(sv);
         av_push(av,sv_bless(rv,hv));
         SvREFCNT_dec(sv);
@@ -13705,6 +13951,8 @@ Write(ref,...)
       *perl_exception,
       *reference;
 
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
     exception=AcquireExceptionInfo();
     perl_exception=newSVpv("",0);
     number_images=0;

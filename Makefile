@@ -19,8 +19,8 @@
 #     INC => q[-I/usr/local/include/ImageMagick -I../ -I.. -I"/usr/include/ImageMagick" ]
 #     INSTALLBIN => q[/usr/local/bin]
 #     LDDLFLAGS => q[-L../magick/.libs -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic]
-#     LDFLAGS => q[-L/usr/local/lib -L/home/cristy/ImageMagick-6.6.8-0/magick/.libs -L/home/cristy/ImageMagick-6.6.8-0/magick -L/home/cristy/ImageMagick-6.6.8-0/wand/.libs -L/home/cristy/ImageMagick-6.6.8-0/wand -L../magick/.libs -lMagickCore  -fstack-protector]
-#     LIBS => [q[-L../magick/.libs -lMagickCore -lperl -lm]]
+#     LDFLAGS => q[-L/usr/local/lib -L../magick/.libs -lMagickCore  -fstack-protector]
+#     LIBS => [q[-L../magick/.libs -lMagickCore -lm -L/usr/lib64/perl5/CORE]]
 #     MAP_TARGET => q[PerlMagick]
 #     NAME => q[Image::Magick]
 #     PERLMAINCC => q[ -fopenmp]
@@ -45,18 +45,18 @@ EXE_EXT =
 FULL_AR = /usr/bin/ar
 LD = gcc
 LDDLFLAGS = -L../magick/.libs -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic
-LDFLAGS = -L/usr/local/lib -L/home/cristy/ImageMagick-6.6.8-0/magick/.libs -L/home/cristy/ImageMagick-6.6.8-0/magick -L/home/cristy/ImageMagick-6.6.8-0/wand/.libs -L/home/cristy/ImageMagick-6.6.8-0/wand -L../magick/.libs -lMagickCore  -fstack-protector
+LDFLAGS = -L/usr/local/lib -L../magick/.libs -lMagickCore  -fstack-protector
 LIBC = 
 LIB_EXT = .a
 OBJ_EXT = .o
 OSNAME = linux
-OSVERS = 2.6.32-71.el6.x86_64
+OSVERS = 2.6.32-131.2.1.el6.x86_64
 RANLIB = :
 SITELIBEXP = /usr/local/share/perl5
 SITEARCHEXP = /usr/local/lib64/perl5
 SO = so
-VENDORARCHEXP = /usr/lib64/perl5
-VENDORLIBEXP = /usr/share/perl5
+VENDORARCHEXP = /usr/lib64/perl5/vendor_perl
+VENDORLIBEXP = /usr/share/perl5/vendor_perl
 
 
 # --- MakeMaker constants section:
@@ -90,13 +90,13 @@ INSTALLPRIVLIB = /usr/share/perl5
 DESTINSTALLPRIVLIB = $(DESTDIR)$(INSTALLPRIVLIB)
 INSTALLSITELIB = /usr/local/share/perl5
 DESTINSTALLSITELIB = $(DESTDIR)$(INSTALLSITELIB)
-INSTALLVENDORLIB = /usr/share/perl5
+INSTALLVENDORLIB = /usr/share/perl5/vendor_perl
 DESTINSTALLVENDORLIB = $(DESTDIR)$(INSTALLVENDORLIB)
 INSTALLARCHLIB = /usr/lib64/perl5
 DESTINSTALLARCHLIB = $(DESTDIR)$(INSTALLARCHLIB)
 INSTALLSITEARCH = /usr/local/lib64/perl5
 DESTINSTALLSITEARCH = $(DESTDIR)$(INSTALLSITEARCH)
-INSTALLVENDORARCH = /usr/lib64/perl5
+INSTALLVENDORARCH = /usr/lib64/perl5/vendor_perl
 DESTINSTALLVENDORARCH = $(DESTDIR)$(INSTALLVENDORARCH)
 INSTALLBIN = /usr/local/bin
 DESTINSTALLBIN = $(DESTDIR)$(INSTALLBIN)
@@ -295,8 +295,8 @@ MPOLLUTE =
 # Image::Magick might depend on some other libraries:
 # See ExtUtils::Liblist for details
 #
-EXTRALIBS = -lMagickCore
-LDLOADLIBS = -lMagickCore -lm
+EXTRALIBS = -lMagickCore -L/usr/lib64/perl5/CORE
+LDLOADLIBS = -lMagickCore -lm -L/usr/lib64/perl5/CORE
 BSLOADLIBS = 
 LD_RUN_PATH = /usr/lib64
 

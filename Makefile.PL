@@ -165,7 +165,7 @@ foreach my $delegate (@tested_delegates) {
 
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
 my $INC_magick = trim(`MagickCore-config --cppflags`) . ' -I../ -I.. -I"' . $Config{'usrinc'} . '/ImageMagick" ';
-my $LIBS_magick = '-L../magick/.libs -lMagickCore -lperl -lm';
+my $LIBS_magick = '-L../magick/.libs -lMagickCore -lm -L' . $Config{'archlib'} . '/CORE';
 my $CCFLAGS_magick = trim(`MagickCore-config --cflags`) . ' -fopenmp -g -O2 -Wall -pthread ' . $Config{'ccflags'};
 my $LDFLAGS_magick   = trim(`MagickCore-config --ldflags `) . ' -L../magick/.libs -lMagickCore ' . $Config{'ldflags'};
 my $LDDLFLAGS_magick = '-L../magick/.libs -lMagickCore ' . $Config{'lddlflags'};

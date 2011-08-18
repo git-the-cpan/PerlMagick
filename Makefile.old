@@ -19,7 +19,7 @@
 #     INC => q[-I/usr/local/include/ImageMagick -I../ -I.. -I"/usr/include/ImageMagick" ]
 #     INSTALLBIN => q[/usr/local/bin]
 #     LDDLFLAGS => q[-L../magick/.libs -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic]
-#     LDFLAGS => q[-L/usr/local/lib -L../magick/.libs -lMagickCore  -fstack-protector]
+#     LDFLAGS => q[-L/usr/local/lib -L/tmp/ImageMagick-6.7.1-4/magick -L/tmp/ImageMagick-6.7.1-4/wand -L../magick/.libs -lMagickCore  -fstack-protector]
 #     LIBS => [q[-L../magick/.libs -lMagickCore -lm -L/usr/lib64/perl5/CORE]]
 #     MAP_TARGET => q[PerlMagick]
 #     NAME => q[Image::Magick]
@@ -45,7 +45,7 @@ EXE_EXT =
 FULL_AR = /usr/bin/ar
 LD = gcc
 LDDLFLAGS = -L../magick/.libs -lMagickCore -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic
-LDFLAGS = -L/usr/local/lib -L../magick/.libs -lMagickCore  -fstack-protector
+LDFLAGS = -L/usr/local/lib -L/tmp/ImageMagick-6.7.1-4/magick -L/tmp/ImageMagick-6.7.1-4/wand -L../magick/.libs -lMagickCore  -fstack-protector
 LIBC = 
 LIB_EXT = .a
 OBJ_EXT = .o
@@ -216,8 +216,8 @@ XSUBPPDIR = /usr/share/perl5/ExtUtils
 XSUBPP = $(XSUBPPDIR)$(DFSEP)xsubpp
 XSUBPPRUN = $(PERLRUN) $(XSUBPP)
 XSPROTOARG = 
-XSUBPPDEPS = /usr/share/perl5/ExtUtils/typemap $(XSUBPP)
-XSUBPPARGS = -typemap /usr/share/perl5/ExtUtils/typemap
+XSUBPPDEPS = /usr/share/perl5/ExtUtils/typemap typemap $(XSUBPP)
+XSUBPPARGS = -typemap /usr/share/perl5/ExtUtils/typemap -typemap typemap
 XSUBPP_EXTRA_ARGS = 
 
 

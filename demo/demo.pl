@@ -250,6 +250,12 @@ $example->Label('Median Filter');
 $example->MedianFilter();
 push(@$images,$example);
 
+print "Mode...\n";
+$example=$model->Clone();
+$example->Label('Mode');
+$example->Mode();
+push(@$images,$example);
+
 print "Modulate...\n";
 $example=$model->Clone();
 $example->Label('Modulate');
@@ -266,7 +272,7 @@ push(@$images,$example);
 print "Morphology...\n";
 $example=$model->Clone();
 $example->Label('Morphology');
-$example->Morphology(method=>'Dilate',kernel=>'Diamond',iterations=>3);
+$example->Morphology(method=>'Dilate',kernel=>'Diamond',iterations=>2);
 push(@$images,$example);
 
 print "Motion Blur...\n";
@@ -304,7 +310,7 @@ push(@$images,$plasma);
 print "Polaroid...\n";
 $example=$model->Clone();
 $example->Label('Polaroid');
-$example->Polaroid(caption=>'Magick',rotate=>-5.0,gravity=>'center');
+$example->Polaroid(caption=>'Magick',angle=>-5.0,gravity=>'center');
 push(@$images,$example);
 
 print "Posterize...\n";
@@ -452,7 +458,7 @@ print "Montage...\n";
 $montage=$images->Montage(geometry=>'128x160+8+4>',gravity=>'Center',
   tile=>'5x+10+200',compose=>'over',background=>'#ffffff',
   font=>'Generic.ttf',pointsize=>18,fill=>'#600',stroke=>'none',
-	shadow=>'true');
+  shadow=>'true');
 
 $logo=Image::Magick->new();
 $logo->Read('logo:');

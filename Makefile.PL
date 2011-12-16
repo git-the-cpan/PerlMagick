@@ -166,7 +166,7 @@ foreach my $delegate (@tested_delegates) {
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
 my $INC_magick = trim(`MagickCore-config --cppflags`) . ' -I../ -I.. -I"' . $Config{'usrinc'} . '/ImageMagick" ';
 my $LIBS_magick = '-L../magick/.libs -lMagickCore -lm -L' . $Config{'archlib'} . '/CORE';
-my $CCFLAGS_magick = trim(`MagickCore-config --cflags`) . ' -fopenmp -g -O2 -Wall -pthread ' . $Config{'ccflags'};
+my $CCFLAGS_magick = trim(`MagickCore-config --cflags`) . ' -g -O2 -Wall -pthread ' . $Config{'ccflags'};
 my $LDFLAGS_magick   = trim(`MagickCore-config --ldflags `) . ' -L../magick/.libs -lMagickCore ' . $Config{'ldflags'};
 my $LDDLFLAGS_magick = '-L../magick/.libs -lMagickCore ' . $Config{'lddlflags'};
 
@@ -197,7 +197,7 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.72',
+   'VERSION' => '6.74',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING'

@@ -1025,32 +1025,37 @@ static struct PackageInfo *GetPackageInfo(pTHX_ void *reference,
 %
 */
 
-static double SiPrefixToDouble(const char *string,const double interval)
+static double SiPrefixToDoubleInterval(const char *string,const double interval)
 {
   char
     *q;
 
   double
-    scale,
+    value;
+
+  value=InterpretSiPrefixValue(string,&q);
+  if (*q == '%')
+    value*=interval/100.0;
+  return(value);
+}
+
+static inline double StringToDouble(const char *restrict string,
+  char **restrict sentinal)
+{
+  return(InterpretLocaleValue(string,sentinal));
+}
+
+static double StringToDoubleInterval(const char *string,const double interval)
+{
+  char
+    *q;
+
+  double
     value;
 
   value=InterpretLocaleValue(string,&q);
-  scale=1000.0;
-  if ((*q != '\0') && (tolower((int) ((unsigned char) *(q+1))) == 'i'))
-    scale=1024.0;
-  switch (tolower((int) ((unsigned char) *q)))
-  {
-    case '%': value*=pow(scale,0)*interval/100.0; break;
-    case 'k': value*=pow(scale,1); break;
-    case 'm': value*=pow(scale,2); break;
-    case 'g': value*=pow(scale,3); break;
-    case 't': value*=pow(scale,4); break;
-    case 'p': value*=pow(scale,5); break;
-    case 'e': value*=pow(scale,6); break;
-    case 'z': value*=pow(scale,7); break;
-    case 'y': value*=pow(scale,8); break;
-    default:  break;
-  }
+  if (*q == '%')
+    value*=interval/100.0;
   return(value);
 }
 
@@ -1136,7 +1141,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=MagickResourceInfinity;
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            limit=(MagickSizeType) SiPrefixToDouble(SvPV(sval,na),100.0);
+            limit=(MagickSizeType) SiPrefixToDoubleInterval(SvPV(sval,na),
+              100.0);
           (void) SetMagickResourceLimit(AreaResource,limit);
           break;
         }
@@ -1173,7 +1179,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"bias") == 0)
         {
           for ( ; image; image=image->next)
-            image->bias=SiPrefixToDouble(SvPV(sval,na),QuantumRange);
+            image->bias=StringToDoubleInterval(SvPV(sval,na),(double)
+              QuantumRange+1.0);
           break;
         }
       if (LocaleCompare(attribute,"blue-primary") == 0)
@@ -1210,9 +1217,9 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"cache-threshold") == 0)
         {
           (void) SetMagickResourceLimit(MemoryResource,(MagickSizeType)
-            SiPrefixToDouble(SvPV(sval,na),100.0));
+            SiPrefixToDoubleInterval(SvPV(sval,na),100.0));
           (void) SetMagickResourceLimit(MapResource,(MagickSizeType)
-            (2*SiPrefixToDouble(SvPV(sval,na),100.0)));
+            (2.0*SiPrefixToDoubleInterval(SvPV(sval,na),100.0)));
           break;
         }
       if (LocaleCompare(attribute,"clip-mask") == 0)
@@ -1335,7 +1342,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=MagickResourceInfinity;
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            limit=(MagickSizeType) SiPrefixToDouble(SvPV(sval,na),100.0);
+            limit=(MagickSizeType) SiPrefixToDoubleInterval(SvPV(sval,na),
+              100.0);
           (void) SetMagickResourceLimit(DiskResource,limit);
           break;
         }
@@ -1500,9 +1508,11 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
       if (LocaleCompare(attribute,"fuzz") == 0)
         {
           if (info)
-            info->image_info->fuzz=SiPrefixToDouble(SvPV(sval,na),QuantumRange);
+            info->image_info->fuzz=StringToDoubleInterval(SvPV(sval,na),(double)
+              QuantumRange+1.0);
           for ( ; image; image=image->next)
-            image->fuzz=SiPrefixToDouble(SvPV(sval,na),QuantumRange);
+            image->fuzz=StringToDoubleInterval(SvPV(sval,na),(double)
+              QuantumRange+1.0);
           break;
         }
       if (info)
@@ -1664,7 +1674,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=MagickResourceInfinity;
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            limit=(MagickSizeType) SiPrefixToDouble(SvPV(sval,na),100.0);
+            limit=(MagickSizeType) SiPrefixToDoubleInterval(SvPV(sval,na),
+              100.0);
           (void) SetMagickResourceLimit(MapResource,limit);
           break;
         }
@@ -1710,7 +1721,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=MagickResourceInfinity;
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            limit=(MagickSizeType) SiPrefixToDouble(SvPV(sval,na),100.0);
+            limit=(MagickSizeType) SiPrefixToDoubleInterval(SvPV(sval,na),
+              100.0);
           (void) SetMagickResourceLimit(MemoryResource,limit);
           break;
         }
@@ -2050,7 +2062,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=MagickResourceInfinity;
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            limit=(MagickSizeType) SiPrefixToDouble(SvPV(sval,na),100.0);
+            limit=(MagickSizeType) SiPrefixToDoubleInterval(SvPV(sval,na),
+              100.0);
           (void) SetMagickResourceLimit(ThreadResource,limit);
           break;
         }
@@ -2081,7 +2094,8 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
 
           limit=MagickResourceInfinity;
           if (LocaleCompare(SvPV(sval,na),"unlimited") != 0)
-            limit=(MagickSizeType) SiPrefixToDouble(SvPV(sval,na),100.0);
+            limit=(MagickSizeType) SiPrefixToDoubleInterval(SvPV(sval,na),
+              100.0);
           (void) SetMagickResourceLimit(TimeResource,limit);
           break;
         }
@@ -3205,7 +3219,7 @@ Compare(ref,...)
         {
           if (LocaleCompare(attribute,"fuzz") == 0)
             {
-              image->fuzz=SiPrefixToDouble(SvPV(ST(i),na),100.0);
+              image->fuzz=StringToDoubleInterval(SvPV(ST(i),na),100.0);
               break;
             }
           ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
@@ -7660,8 +7674,8 @@ Mogrify(ref,...)
           if (attribute_flag[4] != 0)
             geometry.y=argument_list[4].integer_reference;
           if (attribute_flag[5] != 0)
-            image->fuzz=
-              SiPrefixToDouble(argument_list[5].string_reference,QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[5].string_reference,(double) QuantumRange+1.0);
           image=CropImage(image,&geometry,exception);
           break;
         }
@@ -8219,8 +8233,8 @@ Mogrify(ref,...)
               invert=MagickTrue;
             }
           if (attribute_flag[5] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[5].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[5].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[6] != 0)
             invert=(MagickBooleanType) argument_list[6].integer_reference;
           (void) FloodfillPaintImage(image,DefaultChannels,draw_info,&target,
@@ -8255,8 +8269,8 @@ Mogrify(ref,...)
             {
               if (compose != DissolveCompositeOp)
                 (void) SetImageOpacity(composite_image,(Quantum) (QuantumRange-
-                  SiPrefixToDouble(argument_list[6].string_reference,
-                  QuantumRange)));
+                  StringToDoubleInterval(argument_list[6].string_reference,
+                  (double) QuantumRange+1.0)));
               else
                 {
                   CacheView
@@ -8278,13 +8292,13 @@ Mogrify(ref,...)
                     y;
 
                   /*
-                    Handle dissolve composite operator (patch by
-                    Kevin A. McGrail).
+                    Handle dissolve composite operator.
                   */
                   (void) CloneString(&image->geometry,
                     argument_list[6].string_reference);
-                  opacity=(Quantum) (QuantumRange-SiPrefixToDouble(
-                    argument_list[6].string_reference,QuantumRange));
+                  opacity=(Quantum) (QuantumRange-StringToDoubleInterval(
+                    argument_list[6].string_reference,(double) QuantumRange+
+                    1.0));
                   if (composite_image->matte != MagickTrue)
                     (void) SetImageOpacity(composite_image,OpaqueOpacity);
                   composite_view=AcquireCacheView(composite_image);
@@ -8331,7 +8345,8 @@ Mogrify(ref,...)
                if (rotate_image == (Image *) NULL)
                  break;
             }
-          if (attribute_flag[7] && argument_list[7].integer_reference) /* tile */
+          if ((attribute_flag[7] != 0) &&
+              (argument_list[7].integer_reference != 0)) /* tile */
             {
               ssize_t
                 x,
@@ -8719,7 +8734,7 @@ Mogrify(ref,...)
           if (strchr(argument_list[0].string_reference,',') != (char *) NULL)
             (void) GammaImage(image,argument_list[0].string_reference);
           else
-            (void) GammaImageChannel(image,channel,InterpretLocaleValue(
+            (void) GammaImageChannel(image,channel,StringToDouble(
               argument_list[0].string_reference,(char **) NULL));
           break;
         }
@@ -8775,11 +8790,11 @@ Mogrify(ref,...)
             QueryMagickColor(argument_list[4].string_reference,&target,
               exception);
           if (attribute_flag[3] != 0)
-            target.opacity=SiPrefixToDouble(argument_list[3].string_reference,
-              QuantumRange);
+            target.opacity=StringToDoubleInterval(
+              argument_list[3].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[5] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[5].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[5].string_reference,(double) QuantumRange+1.0);
           invert=MagickFalse;
           if (attribute_flag[6] != 0)
             invert=(MagickBooleanType) argument_list[6].integer_reference;
@@ -8865,8 +8880,8 @@ Mogrify(ref,...)
             (void) QueryMagickColor(argument_list[1].string_reference,
               &fill_color,exception);
           if (attribute_flag[2] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[2].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[2].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[3] != 0)
             channel=(ChannelType) argument_list[3].integer_reference;
           invert=MagickFalse;
@@ -8981,8 +8996,8 @@ Mogrify(ref,...)
             flags=ParseGeometry(argument_list[0].string_reference,
               &geometry_info);
           if (attribute_flag[1] != 0)
-            geometry_info.rho=SiPrefixToDouble(argument_list[1].string_reference,
-             QuantumRange);
+            geometry_info.rho=StringToDoubleInterval(
+             argument_list[1].string_reference,(double) QuantumRange+1.0);
           (void) SolarizeImage(image,geometry_info.rho);
           break;
         }
@@ -9031,11 +9046,11 @@ Mogrify(ref,...)
               exception);
           opacity=TransparentOpacity;
           if (attribute_flag[1] != 0)
-            opacity=SiPrefixToDouble(argument_list[1].string_reference,
-              QuantumRange);
+            opacity=StringToDoubleInterval(argument_list[1].string_reference,
+              (double) QuantumRange+1.0);
           if (attribute_flag[2] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[2].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[2].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[3] == 0)
             argument_list[3].integer_reference=0;
           invert=MagickFalse;
@@ -9054,8 +9069,8 @@ Mogrify(ref,...)
             argument_list[0].string_reference="50%";
           if (attribute_flag[1] != 0)
             channel=(ChannelType) argument_list[1].integer_reference;
-          threshold=SiPrefixToDouble(argument_list[0].string_reference,
-            QuantumRange);
+          threshold=StringToDoubleInterval(argument_list[0].string_reference,
+            (double) QuantumRange+1.0);
           (void) BilevelImageChannel(image,channel,threshold);
           break;
         }
@@ -9079,8 +9094,8 @@ Mogrify(ref,...)
         case 59:  /* Trim */
         {
           if (attribute_flag[0] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[0].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[0].string_reference,(double) QuantumRange+1.0);
           image=TrimImage(image,exception);
           break;
         }
@@ -9181,8 +9196,8 @@ Mogrify(ref,...)
           if (attribute_flag[1] != 0)
             channel=(ChannelType) argument_list[1].integer_reference;
           if (attribute_flag[2] != 0)
-            image->bias=SiPrefixToDouble(argument_list[2].string_reference,
-              QuantumRange);
+            image->bias=StringToDoubleInterval(
+              argument_list[2].string_reference,(double) QuantumRange+1.0);
           av=(AV *) argument_list[0].array_reference;
           order=(size_t) sqrt(av_len(av)+1);
           kernel=(double *) AcquireQuantumMemory(order,order*sizeof(*kernel));
@@ -9524,8 +9539,8 @@ Mogrify(ref,...)
               goto PerlException;
             }
           if (attribute_flag[1] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[1].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[1].string_reference,(double) QuantumRange+1.0);
           (void) IsImagesEqual(image,argument_list[0].image_reference);
           break;
         }
@@ -9688,8 +9703,8 @@ Mogrify(ref,...)
           if (attribute_flag[4] != 0)
             geometry.y=argument_list[4].integer_reference;
           if (attribute_flag[5] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[5].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[5].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[6] != 0)
             (void) QueryColorDatabase(argument_list[6].string_reference,
               &image->background_color,exception);
@@ -9810,8 +9825,8 @@ Mogrify(ref,...)
           if (attribute_flag[4] != 0)
             geometry.y=argument_list[4].integer_reference;
           if (attribute_flag[5] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[5].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[5].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[6] != 0)
             (void) QueryColorDatabase(argument_list[6].string_reference,
               &image->background_color,exception);
@@ -10149,8 +10164,8 @@ Mogrify(ref,...)
             QueryMagickColor(argument_list[4].string_reference,&target,
               exception);
           if (attribute_flag[5] != 0)
-            image->fuzz=SiPrefixToDouble(argument_list[5].string_reference,
-              QuantumRange);
+            image->fuzz=StringToDoubleInterval(
+              argument_list[5].string_reference,(double) QuantumRange+1.0);
           if (attribute_flag[6] != 0)
             channel=(ChannelType) argument_list[6].integer_reference;
           invert=MagickFalse;
@@ -10258,8 +10273,8 @@ Mogrify(ref,...)
             flags=ParseGeometry(argument_list[0].string_reference,
               &geometry_info);
           if (attribute_flag[1] != 0)
-            geometry_info.rho=SiPrefixToDouble(
-              argument_list[1].string_reference,QuantumRange);
+            geometry_info.rho=StringToDoubleInterval(
+              argument_list[1].string_reference,(double) QuantumRange+1.0);
           image=DeskewImage(image,geometry_info.rho,exception);
           break;
         }
@@ -10500,8 +10515,8 @@ Mogrify(ref,...)
           if (attribute_flag[1] != 0)
             channel=(ChannelType) argument_list[1].integer_reference;
           if (attribute_flag[2] != 0)
-            image->bias=SiPrefixToDouble(argument_list[2].string_reference,
-              QuantumRange);
+            image->bias=StringToDoubleInterval(
+              argument_list[2].string_reference,(double) QuantumRange+1.0);
           image=FilterImageChannel(image,channel,kernel,exception);
           kernel=DestroyKernelInfo(kernel);
           break;
@@ -10555,7 +10570,7 @@ Mogrify(ref,...)
             method=argument_list[2].integer_reference;
           iterations=1;
           if (attribute_flag[3] != 0)
-            iterations=argument_list[4].integer_reference;
+            iterations=argument_list[3].integer_reference;
           image=MorphologyImageChannel(image,channel,method,iterations,kernel,
             exception);
           kernel=DestroyKernelInfo(kernel);
@@ -10681,6 +10696,8 @@ Mogrify(ref,...)
           if (next && (next != image))
             {
               image->next=next->next;
+              if (image->next != (Image *) NULL)
+                image->next->previous=image;
               DeleteImageFromRegistry(*pv,next);
             }
           sv_setiv(*pv,(IV) image);
@@ -11316,7 +11333,7 @@ Mosaic(ref)
     av_push(av,sv_bless(rv,hv));
     SvREFCNT_dec(sv);
     info=GetPackageInfo(aTHX_ (void *) av,info,exception);
-    (void) CopyMagickString(image->filename,info->image_info->filename,
+    (void) CopyMagickString(info->image_info->filename,image->filename,
       MaxTextExtent);
     SetImageInfo(info->image_info,0,&image->exception);
     exception=DestroyExceptionInfo(exception);

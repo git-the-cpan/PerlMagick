@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#  Copyright 1999-2011 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2012 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -45,7 +45,7 @@ testGetAttribute('input.miff','columns','70');
 testGetAttribute('input.miff','directory',undef);
 
 ++$test;
-testGetAttribute('input.miff','gamma','0');
+testGetAttribute('input.miff','gamma','0.454545438289642');
 
 ++$test;
 testGetAttribute('input.miff','geometry',undef);
@@ -77,7 +77,7 @@ testGetAttribute('input.miff','rows','46');
 
 ++$test;
 testGetAttribute('input.miff','signature',
-  'a698f2fe0c6c31f83d19554a6ec02bac79c961dd9a87e7ed217752e75eb615d7');
+  '6a4a257921582768b774aeeac549b7c0c0b51f665395eddf921cce53a0ad2a33');
 
 ++$test;
 testGetAttribute('input.miff','texture',undef);

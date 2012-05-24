@@ -23,7 +23,7 @@
 %                             February 1997                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2011 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2012 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
@@ -48,10 +48,6 @@
 /*
   Include declarations.
 */
-#if !defined(WIN32)
-#define MagickExport
-#endif
-
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
 #endif
@@ -99,7 +95,7 @@ extern "C" {
   if (magick_registry != (SplayTreeInfo *) NULL) \
     { \
       (void) AddValueToSplayTree(magick_registry,image,image); \
-      (sv)=newSViv((IV) image); \
+      (sv)=newSViv(PTR2IV(image)); \
     } \
 }
 
@@ -991,10 +987,10 @@ static struct PackageInfo *GetPackageInfo(pTHX_ void *reference,
     }
   if (SvREFCNT(sv) == 0)
     (void) SvREFCNT_inc(sv);
-  if (SvIOKp(sv) && (clone_info=(struct PackageInfo *) SvIV(sv)))
+  if (SvIOKp(sv) && (clone_info=INT2PTR(struct PackageInfo *,SvIV(sv))))
     return(clone_info);
   clone_info=ClonePackageInfo(package_info,exception);
-  sv_setiv(sv,(IV) clone_info);
+  sv_setiv(sv,PTR2IV(clone_info));
   return(clone_info);
 }
 
@@ -1039,8 +1035,7 @@ static double SiPrefixToDoubleInterval(const char *string,const double interval)
   return(value);
 }
 
-static inline double StringToDouble(const char *restrict string,
-  char **restrict sentinal)
+static inline double StringToDouble(const char *string,char **sentinal)
 {
   return(InterpretLocaleValue(string,sentinal));
 }
@@ -1593,7 +1588,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             y=0;
             items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
             (void) items;
-            image_view=AcquireCacheView(image);
+            image_view=AcquireAuthenticCacheView(image,exception);
             p=GetCacheViewAuthenticPixels(image_view,x,y,1,1,exception);
             if (p != (PixelPacket *) NULL)
               {
@@ -1826,7 +1821,7 @@ static void SetAttribute(pTHX_ struct PackageInfo *info,Image *image,
             y=0;
             items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
             (void) items;
-            image_view=AcquireCacheView(image);
+            image_view=AcquireAuthenticCacheView(image,exception);
             q=GetCacheViewAuthenticPixels(image_view,x,y,1,1,exception);
             indexes=GetCacheViewAuthenticIndexQueue(image_view);
             if (q != (PixelPacket *) NULL)
@@ -2596,7 +2591,7 @@ Append(ref,...)
       }
     }
     image=AppendImages(image,stack != 0 ? MagickTrue : MagickFalse,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -2685,7 +2680,7 @@ Average(ref)
         goto PerlException;
       }
     image=EvaluateImages(image,MeanEvaluateOperator,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     /*
       Create blessed Perl array for the returned image.
@@ -2837,7 +2832,7 @@ BlobToImage(ref,...)
     for (i=number_images=0; i < n; i++)
     {
       image=BlobToImage(info->image_info,list[i],length[i],exception);
-      if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+      if (image == (Image *) NULL)
         break;
       for ( ; image; image=image->next)
       {
@@ -2949,7 +2944,7 @@ Clone(ref)
     for ( ; image; image=image->next)
     {
       clone=CloneImage(image,0,0,MagickTrue,exception);
-      if ((clone == (Image *) NULL) || (exception->severity >= ErrorException))
+      if (clone == (Image *) NULL)
         break;
       AddImageToRegistry(sv,clone);
       rv=newRV(sv);
@@ -3069,7 +3064,7 @@ Coalesce(ref)
         goto PerlException;
       }
     image=CoalesceImages(image,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -3404,7 +3399,7 @@ CompareLayers(ref)
       }
     }
     image=CompareImageLayers(image,method,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -3487,7 +3482,7 @@ DESTROY(ref)
         sv=GvSV(*gvp);
         if (sv && (SvREFCNT(sv) == 1) && SvIOK(sv))
           {
-            info=(struct PackageInfo *) SvIV(sv);
+            info=INT2PTR(struct PackageInfo *,SvIV(sv));
             DestroyPackageInfo(info);
           }
         key=hv_delete(hv,message,(long) strlen(message),G_DISCARD);
@@ -3502,7 +3497,7 @@ DESTROY(ref)
         /*
           Blessed scalar = (Image *) SvIV(reference)
         */
-        image=(Image *) SvIV(reference);
+        image=INT2PTR(Image *,SvIV(reference));
         if (image != (Image *) NULL)
           DeleteImageFromRegistry(reference,image);
         break;
@@ -3717,7 +3712,7 @@ EvaluateImages(ref)
         }
       }
     image=EvaluateImages(image,op,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     /*
       Create blessed Perl array for the returned image.
@@ -4030,7 +4025,7 @@ Flatten(ref)
       }
     image->background_color=background_color;
     image=MergeImageLayers(image,FlattenLayer,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     /*
       Create blessed Perl array for the returned image.
@@ -4198,7 +4193,7 @@ Fx(ref,...)
         }
       }
     image=FxImageChannel(image,channel,expression,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -4883,7 +4878,7 @@ Get(ref,...)
               y=0;
               items=sscanf(attribute,"%*[^[][%ld%*[,/]%ld",&x,&y);
               (void) items;
-              image_view=AcquireCacheView(image);
+              image_view=AcquireVirtualCacheView(image,exception);
               p=GetCacheViewVirtualPixels(image_view,x,y,1,1,&image->exception);
               if (p != (const PixelPacket *) NULL)
                 {
@@ -6933,7 +6928,7 @@ Layers(ref,...)
         InheritException(&(layers->exception),exception);
         image=layers;
       }
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -8301,7 +8296,8 @@ Mogrify(ref,...)
                     1.0));
                   if (composite_image->matte != MagickTrue)
                     (void) SetImageOpacity(composite_image,OpaqueOpacity);
-                  composite_view=AcquireCacheView(composite_image);
+                  composite_view=AcquireAuthenticCacheView(composite_image,
+                    exception);
                   for (y=0; y < (ssize_t) composite_image->rows ; y++)
                   {
                     q=GetCacheViewAuthenticPixels(composite_view,0,y,(ssize_t)
@@ -8961,7 +8957,7 @@ Mogrify(ref,...)
 
           cluster_threshold=1.0;
           smoothing_threshold=1.5;
-          colorspace=RGBColorspace;
+          colorspace=sRGBColorspace;
           verbose=MagickFalse;
           if (attribute_flag[0] != 0)
             {
@@ -10700,7 +10696,7 @@ Mogrify(ref,...)
                 image->next->previous=image;
               DeleteImageFromRegistry(*pv,next);
             }
-          sv_setiv(*pv,(IV) image);
+          sv_setiv(*pv,PTR2IV(image));
           next=image;
         }
       if (*pv)
@@ -11101,7 +11097,7 @@ Montage(ref,...)
     }
     image=MontageImageList(info->image_info,montage_info,image,exception);
     montage_info=DestroyMontageInfo(montage_info);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     if (transparent_color.opacity != TransparentOpacity)
       for (next=image; next; next=next->next)
@@ -11236,7 +11232,7 @@ Morph(ref,...)
       }
     }
     image=MorphImages(image,number_frames,exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -11516,7 +11512,7 @@ Ping(ref,...)
       (void) CopyMagickString(package_info->image_info->filename,list[i],
         MaxTextExtent);
       image=PingImage(package_info->image_info,exception);
-      if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+      if (image == (Image *) NULL)
         break;
       if ((package_info->image_info->file != (FILE *) NULL) ||
           (package_info->image_info->blob != (void *) NULL))
@@ -13049,7 +13045,7 @@ Read(ref,...)
             MaxTextExtent);
           image=ReadImages(package_info->image_info,exception);
         }
-      if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+      if (image == (Image *) NULL)
         break;
       for ( ; image; image=image->next)
       {
@@ -13586,7 +13582,7 @@ Smush(ref,...)
     }
     image=SmushImages(image,stack != 0 ? MagickTrue : MagickFalse,offset,
       exception);
-    if ((image == (Image *) NULL) || (exception->severity >= ErrorException))
+    if (image == (Image *) NULL)
       goto PerlException;
     for ( ; image; image=image->next)
     {
@@ -13907,26 +13903,6 @@ Transform(ref,...)
               geometry=SvPV(ST(i),na);
               break;
             }
-         if (LocaleCompare(attribute,"gravity") == 0)
-           {
-             Image
-               *next;
-
-             ssize_t
-               in;
-
-             in=!SvPOK(ST(i)) ? SvIV(ST(i)) : ParseCommandOption(
-               MagickGravityOptions,MagickFalse,SvPV(ST(i),na));
-             if (in < 0)
-               {
-                 ThrowPerlException(exception,OptionError,"UnrecognizedType",
-                   SvPV(ST(i),na));
-                 return;
-               }
-             for (next=image; next; next=next->next)
-               next->gravity=(GravityType) in;
-             break;
-           }
           ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
             attribute);
           break;
@@ -13942,7 +13918,7 @@ Transform(ref,...)
     for ( ; image; image=image->next)
     {
       clone=CloneImage(image,0,0,MagickTrue,exception);
-      if ((clone == (Image *) NULL) || (exception->severity >= ErrorException))
+      if (clone == (Image *) NULL)
         goto PerlException;
       TransformImage(&clone,crop_geometry,geometry);
       for ( ; clone; clone=clone->next)

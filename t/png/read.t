@@ -19,7 +19,7 @@ chdir 't/png' || die 'Cd failed';
 # 
 print( "1-bit grayscale PNG ...\n" );
 testRead( 'input_bw.png',
-  '349c2ff9310d578051e40e80d42cfc36ca29ba93e353df175219f7448da5eeee' );
+  'b0ed82ae119a2baa1e8bf714fab26415708c47b8f07771fb5506ff101a550dbc' );
 
 #
 # 2) Test Monochrome PNG
@@ -27,7 +27,7 @@ testRead( 'input_bw.png',
 ++$test;
 print( "8-bit grayscale PNG ...\n" );
 testRead( 'input_mono.png',
-  'cda5c7a8ba8250de624af6dc825ad6772ebba3a7fa6da756c5b1ca228b62f8ac' );
+  '1502b4e5747ed8805fe9103f56f9c4097f60440b3a867fa6b1ae0ba81f12a90d' );
 
 #
 # 3) Test 16-bit Portable Network Graphics
@@ -35,15 +35,15 @@ testRead( 'input_mono.png',
 ++$test;
 print( "16-bit grayscale PNG ...\n" );
 testRead( 'input_16.png',
-  '6b6761c8108b1616e9411c4ef2564505715a37b93e86d2c824c9a4bca31bf47b',
-  '82f48df83eec5bacbe2c38f13ce7e2219e5e318f4b2974d928d0ea7f7cec65fd' );
+  'd4bed86abb1849f69f1a5afb7c5cf8798e8192ba228357f189c277198c14f5a0',
+  '30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58' );
 #
 # 4) Test 256 color pseudocolor PNG
 # 
 ++$test;
 print( "8-bit indexed-color PNG ...\n" );
 testRead( 'input_256.png',
-  '066c0047c6e7e3f4cda1c86224441bfd5f522b5805b2a9190dcfa5294d94e4bd' );
+  '4404bce58d768dda28165b81ad6618e6fd6553996a44e62486f4d46c6ac7e593' );
 
 #
 # 5) Test TrueColor PNG
@@ -51,7 +51,7 @@ testRead( 'input_256.png',
 ++$test;
 print( "24-bit Truecolor PNG ...\n" );
 testRead( 'input_truecolor.png',
-  '55913611798c087b9300b14d3baeda08a142910ad120379a9308a6b8c8b2f6e8' );
+  '610257576e33bcbf79aa1edb7f56ad2b5cfa1d9b7413db632d0b29f412a7e194' );
 
 #
 # 6) Test Multiple-image Network Graphics
@@ -59,5 +59,5 @@ testRead( 'input_truecolor.png',
 ++$test;
 print( "MNG with 24-bit Truecolor PNGs...\n" );
 testRead( 'input.mng',
-  '030111e35491010550814468283f13a8d3d621efb0031bae005bd86e9d0038c5' );
+  'ece756f9de4c618819cf88c8561630518a9cf39ce09a81bf7c78445d9f00e09d' );
 

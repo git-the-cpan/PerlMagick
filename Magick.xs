@@ -23,7 +23,7 @@
 %                             February 1997                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2012 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2013 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
@@ -357,7 +357,7 @@ static struct
       {"verbose", MagickBooleanOptions} } },
     { "Signature", },
     { "Solarize", { {"geometry", StringReference},
-      {"threshold", StringReference} } },
+      {"threshold", StringReference}, {"channel", MagickChannelOptions} } },
     { "Sync", },
     { "Texture", { {"texture", ImageReference} } },
     { "Evaluate", { {"value", RealReference},
@@ -537,7 +537,11 @@ static struct
       {"channel", MagickChannelOptions} } },
     { "Statistic", { {"geometry", StringReference},
       {"width", IntegerReference},{"height", IntegerReference},
-      {"channel", MagickChannelOptions}, {"type", MagickStatisticOptions} } }
+      {"channel", MagickChannelOptions}, {"type", MagickStatisticOptions} } },
+    { "Perceptible", { {"epsilon", RealReference},
+      {"channel", MagickChannelOptions} } },
+    { "Poly", { {"terms", ArrayReference},
+      {"channel", MagickChannelOptions} } }
   };
 
 static SplayTreeInfo
@@ -901,7 +905,7 @@ static Image *GetList(pTHX_ SV *reference,SV ***reference_vector,
       /*
         Blessed scalar, one image.
       */
-      image=(Image *) SvIV(reference);
+      image=INT2PTR(Image *,SvIV(reference));
       if (image == (Image *) NULL)
         return(NULL);
       image->previous=(Image *) NULL;
@@ -7271,6 +7275,10 @@ Mogrify(ref,...)
     ModeImage          = 272
     Statistic          = 273
     StatisticImage     = 274
+    Perceptible        = 275
+    PerceptibleImage   = 276
+    Poly               = 277
+    PolyImage          = 278
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -7594,12 +7602,8 @@ Mogrify(ref,...)
           geometry.width=0;
           geometry.height=0;
           if (attribute_flag[0] != 0)
-            {
-              flags=ParsePageGeometry(image,argument_list[0].string_reference,
-                &geometry,exception);
-              if ((flags & HeightValue) == 0)
-                geometry.height=geometry.width;
-            }
+            flags=ParsePageGeometry(image,argument_list[0].string_reference,
+              &geometry,exception);
           if (attribute_flag[1] != 0)
             geometry.width=argument_list[1].integer_reference;
           if (attribute_flag[2] != 0)
@@ -7614,7 +7618,8 @@ Mogrify(ref,...)
             QueryColorDatabase(argument_list[5].string_reference,
               &image->border_color,exception);
           if (attribute_flag[6] != 0)
-            image->compose=(CompositeOperator) argument_list[6].integer_reference;
+            image->compose=(CompositeOperator)
+              argument_list[6].integer_reference;
           image=BorderImage(image,&geometry,exception);
           break;
         }
@@ -7727,8 +7732,6 @@ Mogrify(ref,...)
             {
               flags=ParsePageGeometry(image,argument_list[0].string_reference,
                 &geometry,exception);
-              if ((flags & HeightValue) == 0)
-                geometry.height=geometry.width;
               frame_info.width=geometry.width;
               frame_info.height=geometry.height;
               frame_info.outer_bevel=geometry.x;
@@ -8994,7 +8997,10 @@ Mogrify(ref,...)
           if (attribute_flag[1] != 0)
             geometry_info.rho=StringToDoubleInterval(
              argument_list[1].string_reference,(double) QuantumRange+1.0);
-          (void) SolarizeImage(image,geometry_info.rho);
+          if (attribute_flag[2] != 0)
+            channel=(ChannelType) argument_list[2].integer_reference;
+          (void) SolarizeImageChannel(image,channel,geometry_info.rho,
+            exception);
           break;
         }
         case 53:  /* Sync */
@@ -9930,46 +9936,7 @@ Mogrify(ref,...)
         }
         case 101:  /* AutoOrient */
         {
-          switch (image->orientation)
-          {
-            case TopRightOrientation:
-            {
-              image=FlopImage(image,exception);
-              break;
-            }
-            case BottomRightOrientation:
-            {
-              image=RotateImage(image,180.0,exception);
-              break;
-            }
-            case BottomLeftOrientation:
-            {
-              image=FlipImage(image,exception);
-              break;
-            }
-            case LeftTopOrientation:
-            {
-              image=TransposeImage(image,exception);
-              break;
-            }
-            case RightTopOrientation:
-            {
-              image=RotateImage(image,90.0,exception);
-              break;
-            }
-            case RightBottomOrientation:
-            {
-              image=TransverseImage(image,exception);
-              break;
-            }
-            case LeftBottomOrientation:
-            {
-              image=RotateImage(image,270.0,exception);
-              break;
-            }
-            default:
-              break;
-          }
+          image=AutoOrientImage(image,image->orientation,exception);
           break;
         }
         case 102:  /* AdaptiveBlur */
@@ -10669,6 +10636,50 @@ Mogrify(ref,...)
             statistic=(StatisticType) argument_list[4].integer_reference;
           image=StatisticImageChannel(image,channel,statistic,
             (size_t) geometry_info.rho,(size_t) geometry_info.sigma,exception);
+          break;
+        }
+        case 138:  /* Perceptible */
+        {
+          double
+            epsilon;
+
+          epsilon=MagickEpsilon;
+          if (attribute_flag[0] != 0)
+            epsilon=argument_list[0].real_reference;
+          if (attribute_flag[1] != 0)
+            channel=(ChannelType) argument_list[1].integer_reference;
+          (void) PerceptibleImageChannel(image,channel,epsilon);
+          break;
+        }
+        case 139:  /* Poly */
+        {
+          AV
+            *av;
+
+          double
+            *terms;
+
+          size_t
+            number_terms;
+
+          if (attribute_flag[0] == 0)
+            break;
+          if (attribute_flag[1] != 0)
+            channel=(ChannelType) argument_list[1].integer_reference;
+          av=(AV *) argument_list[0].array_reference;
+          number_terms=(size_t) av_len(av);
+          terms=(double *) AcquireQuantumMemory(number_terms,sizeof(*terms));
+          if (terms == (double *) NULL)
+            {
+              ThrowPerlException(exception,ResourceLimitFatalError,
+                "MemoryAllocationFailed",PackageName);
+              goto PerlException;
+            }
+          for (j=0; j < av_len(av); j++)
+            terms[j]=(double) SvNV(*(av_fetch(av,j,0)));
+          image=PolynomialImageChannel(image,channel,number_terms >> 1,terms,
+            exception);
+          terms=(double *) RelinquishMagickMemory(terms);
           break;
         }
       }

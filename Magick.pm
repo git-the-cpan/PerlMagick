@@ -1,6 +1,6 @@
 package Image::Magick;
 
-#  Copyright 1999-2012 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2013 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -43,7 +43,7 @@ require AutoLoader;
       ConfigureError FatalErrorException
     );
 
-$VERSION = '6.77';
+$VERSION = '6.82';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -122,7 +122,7 @@ It was originally developed to be used by CGI scripts for Web pages.
 
 A web page has been set up for this extension. See:
 
-	 file:///usr/local/share/doc/ImageMagick-6.7.7/www/perl-magick.html
+	 file:///usr/local/share/doc/ImageMagick-6.8.2/www/perl-magick.html
 	 http://www.imagemagick.org/script/perl-magick.php
 
 If you have problems, go to

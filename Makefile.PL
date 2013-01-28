@@ -1,4 +1,4 @@
-#  Copyright 1999-2012 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2013 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -44,12 +44,15 @@ sub AutodetectWin32gcc {
       my (@l,@b,@i) = ( (),(),() );
 
       # try to detect 'lib' dir
+      push @l, catfile($dirpath,'lib');
       push @l, catfile($dirpath,'..','lib');
       push @l, catfile($dirpath,'..','..','lib');
       push @l, catfile($dirpath,'..','..','..','lib');
       foreach (@l) { push @libdir, $_ if (-d $_) };
 
       # try to detect 'bin' dir
+      push @b, catfile($dirpath);
+      push @b, catfile($dirpath,'bin');
       push @b, catfile($dirpath,'..');
       push @b, catfile($dirpath,'..','bin');
       push @b, catfile($dirpath,'..','..');
@@ -59,6 +62,8 @@ sub AutodetectWin32gcc {
       foreach (@b) { push @bindir, $_ if (-e "$_/convert.exe" || -e "$_/identify.exe") };
 
       # try to detect 'include' dir
+      push @i, catfile($dirpath,'include');
+      push @i, catfile($dirpath,'include','ImageMagick');
       push @i, catfile($dirpath,'..','include');
       push @i, catfile($dirpath,'..','include','ImageMagick');
       push @i, catfile($dirpath,'..','..','include');
@@ -156,11 +161,11 @@ foreach my $delegate (@tested_delegates) {
 }
 
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
-my $INC_magick = '-I../ -I.. -pthread -I/usr/include/cairo -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -pthread -I/usr/include/pango-1.0 -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/graphviz -I/usr/include/freetype2 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
-my $LIBS_magick = '-L../magick/.libs -lMagickCore -lperl -lm';
-my $CCFLAGS_magick = "$Config{'ccflags'} -fopenmp -g -O2 -Wall -pthread";
-my $LDFLAGS_magick   = "-L../magick/.libs -lMagickCore $Config{'ldflags'} -L/usr/lib";
-my $LDDLFLAGS_magick = "-L../magick/.libs -lMagickCore $Config{'lddlflags'} -L/usr/lib";
+my $INC_magick = '-I/usr/local/include/ImageMagick -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
+my $LIBS_magick = '-L/usr/local/lib -lMagickCore-Q16 -lperl -lm';
+my $CCFLAGS_magick = "$Config{'ccflags'} -I/usr/include/freetype2 -fopenmp -g -O2 -Wall -pthread -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16";
+my $LDFLAGS_magick   = "-L/usr/local/lib -lMagickCore-Q16 $Config{'ldflags'} ";
+my $LDDLFLAGS_magick = "-L/usr/local/lib -lMagickCore-Q16 $Config{'lddlflags'} ";
 
 if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
   my($Ipaths, $Lpaths) = AutodetectWin32gcc();
@@ -169,7 +174,7 @@ if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
   # Setup for strawberry perl.
   #
   $INC_magick       = "$Ipaths";
-  $LIBS_magick      = "-lMagickCore";
+  $LIBS_magick      = "-lMagickCore-Q16";
   $CCFLAGS_magick   = "$Config{'ccflags'}";
   $LDFLAGS_magick   = "$Config{'ldflags'} $Lpaths ";
   $LDDLFLAGS_magick = "$Config{'lddlflags'} $Lpaths ";
@@ -189,7 +194,7 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.77',
+   'VERSION' => '6.82',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING'
@@ -201,7 +206,7 @@ WriteMakefile
    #'CC' => 'gcc -std=gnu99 -std=gnu99',
 
    # C pre-processor flags (e.g. -I & -D options)
-   # 'CPPFLAGS' => "$Config{'cppflags'} -pthread -I/usr/include/cairo -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12 -pthread -I/usr/include/pango-1.0 -I/usr/include/freetype2 -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include -I/usr/include/graphviz -I/usr/include/freetype2 -I/usr/include/libxml2",
+   # 'CPPFLAGS' => "$Config{'cppflags'} -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2",
 
    # C compiler flags (e.g. -O -g)
    'CCFLAGS' => $CCFLAGS_magick,
@@ -229,9 +234,11 @@ WriteMakefile
 
    # Use same compiler as ImageMagick
    'PERLMAINCC'	=> ' -fopenmp',
+   'AR' => 'ar',
+   'LD' => '',
 
    # Set Perl installation prefix to ImageMagick installation prefix
-#   'PREFIX'	=> '/usr/local',
+   'PREFIX'	=> '/usr/local',
 
    # Include delegate directories in tests
    test	=> { TESTS	=>	$delegate_tests},

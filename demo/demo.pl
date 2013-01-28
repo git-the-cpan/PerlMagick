@@ -113,6 +113,7 @@ print "Composite...\n";
 $example=$model->Clone();
 $example->Label('Composite');
 $example->Composite(image=>$smile,compose=>'over',geometry=>'+35+65');
+$example->Clamp();
 push(@$images,$example);
 
 print "Contrast...\n";
@@ -163,12 +164,19 @@ print "Detect Edges...\n";
 $example=$model->Clone();
 $example->Label('Detect Edges');
 $example->Edge();
+$example->Clamp();
 push(@$images,$example);
 
 print "Emboss...\n";
 $example=$model->Clone();
 $example->Label('Emboss');
 $example->Emboss('0x1');
+push(@$images,$example);
+
+print "Encipher...\n";
+$example=$model->Clone();
+$example->Label('Encipher');
+$example->Encipher('Magick');
 push(@$images,$example);
 
 print "Equalize...\n";
@@ -241,7 +249,8 @@ push(@$images,$example);
 print "Level...\n";
 $example=$model->Clone();
 $example->Label('Level');
-$example->Level('20%');
+$example->Level('20%x');
+$example->Clamp();
 push(@$images,$example);
 
 print "Median Filter...\n";
@@ -389,6 +398,7 @@ print "Sharpen...\n";
 $example=$model->Clone();
 $example->Label('Sharpen');
 $example->Sharpen('0.0x1.0');
+$example->Clamp();
 push(@$images,$example);
 
 print "Shave...\n";
@@ -438,6 +448,7 @@ print "Unsharp Mask...\n";
 $example=$model->Clone();
 $example->Label('Unsharp Mask');
 $example->UnsharpMask('0.0x1.0');
+$example->Clamp();
 push(@$images,$example);
 
 print "Vignette...\n";

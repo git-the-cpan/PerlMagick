@@ -238,7 +238,7 @@ WriteMakefile
    'LD' => '',
 
    # Set Perl installation prefix to ImageMagick installation prefix
-   'PREFIX'	=> '/usr/local',
+   # 'PREFIX'	=> '/usr/local',
 
    # Include delegate directories in tests
    test	=> { TESTS	=>	$delegate_tests},

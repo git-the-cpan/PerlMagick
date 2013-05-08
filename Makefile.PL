@@ -162,10 +162,10 @@ foreach my $delegate (@tested_delegates) {
 
 # defaults for LIBS & INC & CCFLAGS params that we later pass to Writemakefile
 my $INC_magick = '-I/usr/local/include/ImageMagick -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2 -I"' . $Config{'usrinc'} . '/ImageMagick"';
-my $LIBS_magick = '-L/usr/local/lib -lMagickCore-Q16 -lperl -lm';
+my $LIBS_magick = '-L/usr/local/lib -lMagickCore-6.Q16 -lperl -lm';
 my $CCFLAGS_magick = "$Config{'ccflags'} -I/usr/include/freetype2 -fopenmp -g -O2 -Wall -pthread -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16";
-my $LDFLAGS_magick   = "-L/usr/local/lib -lMagickCore-Q16 $Config{'ldflags'} ";
-my $LDDLFLAGS_magick = "-L/usr/local/lib -lMagickCore-Q16 $Config{'lddlflags'} ";
+my $LDFLAGS_magick   = "-L/usr/local/lib -lMagickCore-6.Q16 $Config{'ldflags'} ";
+my $LDDLFLAGS_magick = "-L/usr/local/lib -lMagickCore-6.Q16 $Config{'lddlflags'} ";
 
 if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
   my($Ipaths, $Lpaths) = AutodetectWin32gcc();
@@ -174,7 +174,7 @@ if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
   # Setup for strawberry perl.
   #
   $INC_magick       = "$Ipaths";
-  $LIBS_magick      = "-lMagickCore-Q16";
+  $LIBS_magick      = "-lMagickCore-6.Q16";
   $CCFLAGS_magick   = "$Config{'ccflags'}";
   $LDFLAGS_magick   = "$Config{'ldflags'} $Lpaths ";
   $LDDLFLAGS_magick = "$Config{'lddlflags'} $Lpaths ";
@@ -194,7 +194,7 @@ WriteMakefile
    'AUTHOR' => 'ImageMagick Studio LLC',
 
    # Module version
-   'VERSION' => '6.82',
+   'VERSION' => '6.85',
 
    # Preprocessor defines
    'DEFINE'	=> ' -D_LARGE_FILES=1 -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING'

@@ -190,7 +190,7 @@ struct PackageInfo
 };
 
 typedef void
-  *Image__Magick;  /* data type for the Image::Magick package */
+  *Image__Magick;  /* data type for the Image::Magick::@MAGICK_ABI_NAME@ package */
 
 /*
   Static declarations.
@@ -542,6 +542,7 @@ static struct
       {"channel", MagickChannelOptions} } },
     { "Poly", { {"terms", ArrayReference},
       {"channel", MagickChannelOptions} } },
+    { "Grayscale", { {"method", MagickPixelIntensityOptions} } },
   };
 
 static SplayTreeInfo
@@ -7279,6 +7280,8 @@ Mogrify(ref,...)
     PerceptibleImage   = 276
     Poly               = 277
     PolyImage          = 278
+    Grayscale          = 279
+    GrayscaleImage     = 280
     MogrifyRegion      = 666
   PPCODE:
   {
@@ -10680,6 +10683,17 @@ Mogrify(ref,...)
           image=PolynomialImageChannel(image,channel,number_terms >> 1,terms,
             exception);
           terms=(double *) RelinquishMagickMemory(terms);
+          break;
+        }
+        case 140:  /* Grayscale */
+        {
+          PixelIntensityMethod
+            method;
+
+          method=UndefinedPixelIntensityMethod;
+          if (attribute_flag[0] != 0)
+            method=(PixelIntensityMethod) argument_list[0].integer_reference;
+          (void) GrayscaleImage(image,method);
           break;
         }
       }

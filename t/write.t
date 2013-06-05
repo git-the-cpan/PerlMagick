@@ -72,14 +72,18 @@ print("CompuServe graphics interchange format ...\n");
 testReadWrite( 'GIF:input.gif',
   'GIF:output.gif',
   q//,
-  '0c2e3c82fd375360fba16258bfa83e35b8c878fd208da9818b50e423426cc437');
+  '5a25065144213cd0230b7572bd9aef0e447c23a0622193a94ae62c9895c44bf7',
+  '5a25065144213cd0230b7572bd9aef0e447c23a0622193a94ae62c9895c44bf7',
+  '723a434701e04f1b116cb504e25a097e956fb64f5d54c719084845b7ef38c1be');
 
 print("CompuServe graphics interchange format (1987) ...\n");
 ++$test;
 testReadWrite( 'GIF87:input.gif87',
   'GIF87:output.gif87',
   q//,
-  'b68fe02737630f219fbf1f9ef3f24cf2b73c21848443a02df2cc2c0212a65657');
+  '0138e1e5c9a7ed1604ec5bbe8c22378b84fcd9abb8c36e984b051f9efc14d54e',
+  '0138e1e5c9a7ed1604ec5bbe8c22378b84fcd9abb8c36e984b051f9efc14d54e',
+  'd386accb20608fd50bd117d0d4d36fbb5c6e0add73238c76cc8ee54e51dae14a');
 
 print("Magick image file format ...\n");
 ++$test;
@@ -170,7 +174,7 @@ print("SUN 1-bit Rasterfile ...\n");
 testReadWrite( 'SUN:input.im1',
   'SUN:output.im1',
   q//,
-  '4cc91a24ddcbe4a9563b1ca063f765ec1ca4514cc3e3ba3e710f1226e49a8dd5');
+  '8922c9505ece06295a015d23e28da3727c3bc7ab22593f98e0fc8784aa16d0c2');
 
 print("SUN 8-bit Rasterfile ...\n");
 ++$test;

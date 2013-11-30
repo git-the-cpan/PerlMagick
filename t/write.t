@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#  Copyright 1999-2013 ImageMagick Studio LLC, a non-profit organization
+#  Copyright 1999-2014 ImageMagick Studio LLC, a non-profit organization
 #  dedicated to making software imaging solutions freely available.
 #
 #  You may not use this file except in compliance with the License.  You may
@@ -72,18 +72,14 @@ print("CompuServe graphics interchange format ...\n");
 testReadWrite( 'GIF:input.gif',
   'GIF:output.gif',
   q//,
-  '5a25065144213cd0230b7572bd9aef0e447c23a0622193a94ae62c9895c44bf7',
-  '5a25065144213cd0230b7572bd9aef0e447c23a0622193a94ae62c9895c44bf7',
-  '723a434701e04f1b116cb504e25a097e956fb64f5d54c719084845b7ef38c1be');
+  '5a25065144213cd0230b7572bd9aef0e447c23a0622193a94ae62c9895c44bf7' );
 
 print("CompuServe graphics interchange format (1987) ...\n");
 ++$test;
 testReadWrite( 'GIF87:input.gif87',
   'GIF87:output.gif87',
   q//,
-  '0138e1e5c9a7ed1604ec5bbe8c22378b84fcd9abb8c36e984b051f9efc14d54e',
-  '0138e1e5c9a7ed1604ec5bbe8c22378b84fcd9abb8c36e984b051f9efc14d54e',
-  'd386accb20608fd50bd117d0d4d36fbb5c6e0add73238c76cc8ee54e51dae14a');
+  '0138e1e5c9a7ed1604ec5bbe8c22378b84fcd9abb8c36e984b051f9efc14d54e' );
 
 print("Magick image file format ...\n");
 ++$test;
@@ -229,7 +225,7 @@ print("X Windows system pixmap file (color) ...\n");
 testReadWrite( 'XPM:input.xpm',
   'XPM:output.xpm',
   q//,
-  'fa51c37680393251b7011d1825df7a5ed4e0f78168afb4d6d5c59aa4d45ade12');
+  'd28c7104a30c8986c34b98a4209de5d4b8a79911a9b5c46037e62c8a2063a09c');
 
 print("CMYK format ...\n");
 ++$test;

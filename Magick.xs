@@ -23,7 +23,7 @@
 %                             February 1997                                   %
 %                                                                             %
 %                                                                             %
-%  Copyright 1999-2013 ImageMagick Studio LLC, a non-profit organization      %
+%  Copyright 1999-2014 ImageMagick Studio LLC, a non-profit organization      %
 %  dedicated to making software imaging solutions freely available.           %
 %                                                                             %
 %  You may not use this file except in compliance with the License.  You may  %
@@ -190,7 +190,7 @@ struct PackageInfo
 };
 
 typedef void
-  *Image__Magick;  /* data type for the Image::Magick::@MAGICK_ABI_NAME@ package */
+  *Image__Magick;  /* data type for the Image::Magick package */
 
 /*
   Static declarations.
@@ -3415,6 +3415,163 @@ CompareLayers(ref)
     }
     exception=DestroyExceptionInfo(exception);
     ST(0)=av_reference;
+    SvREFCNT_dec(perl_exception);
+    XSRETURN(1);
+
+  PerlException:
+    InheritPerlException(exception,perl_exception);
+    exception=DestroyExceptionInfo(exception);
+    sv_setiv(perl_exception,(IV) SvCUR(perl_exception) != 0);
+    SvPOK_on(perl_exception);
+    ST(0)=sv_2mortal(perl_exception);
+    XSRETURN(1);
+  }
+
+#
+###############################################################################
+#                                                                             #
+#                                                                             #
+#                                                                             #
+#   C o m p l e x I m a g e s                                                 #
+#                                                                             #
+#                                                                             #
+#                                                                             #
+###############################################################################
+#
+#
+void
+ComplexImages(ref)
+  Image::Magick ref=NO_INIT
+  ALIAS:
+    ComplexImages   = 1
+    compleximages   = 2
+  PPCODE:
+  {
+    AV
+      *av;
+
+    char
+      *attribute,
+      *p;
+
+    ExceptionInfo
+      *exception;
+
+    HV
+      *hv;
+
+    Image
+      *image;
+
+    ComplexOperator
+      op;
+
+    register ssize_t
+      i;
+
+    struct PackageInfo
+      *info;
+
+    SV
+      *perl_exception,
+      *reference,
+      *rv,
+      *sv;
+
+    PERL_UNUSED_VAR(ref);
+    PERL_UNUSED_VAR(ix);
+    exception=AcquireExceptionInfo();
+    perl_exception=newSVpv("",0);
+    sv=NULL;
+    if (sv_isobject(ST(0)) == 0)
+      {
+        ThrowPerlException(exception,OptionError,"ReferenceIsNotMyType",
+          PackageName);
+        goto PerlException;
+      }
+    reference=SvRV(ST(0));
+    hv=SvSTASH(reference);
+    image=SetupList(aTHX_ reference,&info,(SV ***) NULL,exception);
+    if (image == (Image *) NULL)
+      {
+        ThrowPerlException(exception,OptionError,"NoImagesDefined",
+          PackageName);
+        goto PerlException;
+      }
+    op=UndefinedComplexOperator;
+    if (items == 2)
+      {
+        ssize_t
+          in;
+
+        in=ParseCommandOption(MagickComplexOptions,MagickFalse,(char *)
+          SvPV(ST(1),na));
+        if (in < 0)
+          {
+            ThrowPerlException(exception,OptionError,"UnrecognizedType",
+              SvPV(ST(1),na));
+            return;
+          }
+        op=(ComplexOperator) in;
+      }
+    else
+      for (i=2; i < items; i+=2)
+      {
+        attribute=(char *) SvPV(ST(i-1),na);
+        switch (*attribute)
+        {
+          case 'O':
+          case 'o':
+          {
+            if (LocaleCompare(attribute,"operator") == 0)
+              {
+                ssize_t
+                  in;
+
+                in=!SvPOK(ST(i)) ? SvIV(ST(i)) : ParseCommandOption(
+                  MagickComplexOptions,MagickFalse,SvPV(ST(i),na));
+                if (in < 0)
+                  {
+                    ThrowPerlException(exception,OptionError,"UnrecognizedType",
+                      SvPV(ST(i),na));
+                    return;
+                  }
+                op=(ComplexOperator) in;
+                break;
+              }
+            ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+              attribute);
+            break;
+          }
+          default:
+          {
+            ThrowPerlException(exception,OptionError,"UnrecognizedAttribute",
+              attribute);
+            break;
+          }
+        }
+      }
+    image=ComplexImages(image,op,exception);
+    if (image == (Image *) NULL)
+      goto PerlException;
+    /*
+      Create blessed Perl array for the returned image.
+    */
+    av=newAV();
+    ST(0)=sv_2mortal(sv_bless(newRV((SV *) av),hv));
+    SvREFCNT_dec(av);
+    AddImageToRegistry(sv,image);
+    rv=newRV(sv);
+    av_push(av,sv_bless(rv,hv));
+    SvREFCNT_dec(sv);
+    info=GetPackageInfo(aTHX_ (void *) av,info,exception);
+    (void) FormatLocaleString(info->image_info->filename,MaxTextExtent,
+      "complex-%.*s",(int) (MaxTextExtent-9),
+      ((p=strrchr(image->filename,'/')) ? p+1 : image->filename));
+    (void) CopyMagickString(image->filename,info->image_info->filename,
+      MaxTextExtent);
+    SetImageInfo(info->image_info,0,exception);
+    exception=DestroyExceptionInfo(exception);
     SvREFCNT_dec(perl_exception);
     XSRETURN(1);
 
@@ -6928,7 +7085,9 @@ Layers(ref,...)
         break;
       }
     }
-    if (layers != (Image *) NULL)
+    if (layers == (Image *) NULL)
+      image=CloneImage(image,0,0,MagickTrue,exception);
+    else
       {
         InheritException(&(layers->exception),exception);
         image=layers;

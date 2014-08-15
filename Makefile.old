@@ -18,7 +18,7 @@
 #     CCFLAGS => q[-D_REENTRANT -D_GNU_SOURCE -fno-strict-aliasing -pipe -fstack-protector -I/usr/local/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -I/usr/include/freetype2 -g -O2 -Wall -pthread -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16]
 #     CONFIGURE_REQUIRES => {  }
 #     DEFINE => q[ -D_LARGE_FILES=1 -DHAVE_CONFIG_H]
-#     INC => q[-I/usr/local/include/ImageMagick -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2 -I"/usr/include/ImageMagick"]
+#     INC => q[-I/usr/local/include/ImageMagick-6 -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2 -I"/usr/include/ImageMagick-6"]
 #     INSTALLBIN => q[/usr/local/bin]
 #     LD => q[]
 #     LDDLFLAGS => q[-L/usr/local/lib -lMagickCore-6.Q16 -shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic -Wl,-z,relro  ]
@@ -29,8 +29,8 @@
 #     PERLMAINCC => q[ ]
 #     PREREQ_PM => {  }
 #     TEST_REQUIRES => {  }
-#     VERSION => q[6.85]
-#     test => { TESTS=>q[t/*.t t/bzlib/*.t t/jpeg/*.t t/jng/*.t t/jp2/*.t t/mpeg/*.t t/png/*.t t/tiff/*.t t/zlib/*.t] }
+#     VERSION => q[6.87]
+#     test => { TESTS=>q[t/*.t t/bzlib/*.t t/jpeg/*.t t/jng/*.t t/openjp2/*.t t/mpeg/*.t t/png/*.t t/tiff/*.t t/zlib/*.t] }
 
 # --- MakeMaker post_initialize section:
 
@@ -69,11 +69,11 @@ DIRFILESEP = /
 DFSEP = $(DIRFILESEP)
 NAME = Image::Magick
 NAME_SYM = Image_Magick
-VERSION = 6.85
+VERSION = 6.87
 VERSION_MACRO = VERSION
-VERSION_SYM = 6_85
+VERSION_SYM = 6_87
 DEFINE_VERSION = -D$(VERSION_MACRO)=\"$(VERSION)\"
-XS_VERSION = 6.85
+XS_VERSION = 6.87
 XS_VERSION_MACRO = XS_VERSION
 XS_DEFINE_VERSION = -D$(XS_VERSION_MACRO)=\"$(XS_VERSION)\"
 INST_ARCHLIB = blib/arch
@@ -162,7 +162,7 @@ BASEEXT = Magick
 PARENT_NAME = Image
 DLBASE = $(BASEEXT)
 VERSION_FROM = 
-INC = -I/usr/local/include/ImageMagick -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2 -I"/usr/include/ImageMagick"
+INC = -I/usr/local/include/ImageMagick-6 -DMAGICKCORE_HDRI_ENABLE=0 -DMAGICKCORE_QUANTUM_DEPTH=16 -I/usr/include/libxml2 -I"/usr/include/ImageMagick-6"
 DEFINE =  -D_LARGE_FILES=1 -DHAVE_CONFIG_H
 OBJECT = $(BASEEXT)$(OBJ_EXT)
 LDFROM = $(OBJECT)
@@ -277,7 +277,7 @@ RCS_LABEL = rcs -Nv$(VERSION_SYM): -q
 DIST_CP = best
 DIST_DEFAULT = tardist
 DISTNAME = Image-Magick
-DISTVNAME = Image-Magick-6.85
+DISTVNAME = Image-Magick-6.87
 
 
 # --- MakeMaker macro section:
@@ -544,22 +544,22 @@ clean_subdirs :
 
 clean :: clean_subdirs
 	- $(RM_F) \
-	  $(INST_ARCHAUTODIR)/extralibs.ld Magick.c \
-	  core $(BASEEXT).x \
-	  core.[0-9][0-9][0-9][0-9] $(BASEEXT).exp \
-	  $(BASEEXT).def perl.exe \
-	  perlmain.c $(MAKE_APERL_FILE) \
-	  $(BOOTSTRAP) MYMETA.json \
-	  *$(OBJ_EXT) pm_to_blib \
-	  MYMETA.yml tmon.out \
-	  *perl.core core.[0-9][0-9][0-9] \
+	  perl$(EXE_EXT) perl \
+	  $(BASEEXT).bso lib$(BASEEXT).def \
+	  Magick.c so_locations \
+	  core.[0-9][0-9][0-9][0-9][0-9] MYMETA.json \
+	  *perl.core pm_to_blib.ts \
+	  $(BOOTSTRAP) core \
+	  core.[0-9] *$(LIB_EXT) \
+	  core.[0-9][0-9][0-9][0-9] tmon.out \
+	  *$(OBJ_EXT) mon.out \
+	  blibdirs.ts perlmain.c \
+	  core.*perl.*.? perl.exe \
+	  $(MAKE_APERL_FILE) $(BASEEXT).x \
+	  MYMETA.yml $(BASEEXT).exp \
+	  $(INST_ARCHAUTODIR)/extralibs.ld $(BASEEXT).def \
 	  core.[0-9][0-9] $(INST_ARCHAUTODIR)/extralibs.all \
-	  perl$(EXE_EXT) pm_to_blib.ts \
-	  mon.out *$(LIB_EXT) \
-	  $(BASEEXT).bso blibdirs.ts \
-	  core.[0-9] so_locations \
-	  core.*perl.*.? perl \
-	  core.[0-9][0-9][0-9][0-9][0-9] lib$(BASEEXT).def 
+	  core.[0-9][0-9][0-9] pm_to_blib 
 	- $(RM_RF) \
 	  blib 
 	- $(NOECHO) $(RM_F) $(MAKEFILE_OLD)
@@ -935,7 +935,7 @@ $(MAKE_APERL_FILE) : $(FIRST_MAKEFILE) pm_to_blib
 TEST_VERBOSE=0
 TEST_TYPE=test_$(LINKTYPE)
 TEST_FILE = test.pl
-TEST_FILES = t/*.t t/bzlib/*.t t/jpeg/*.t t/jng/*.t t/jp2/*.t t/mpeg/*.t t/png/*.t t/tiff/*.t t/zlib/*.t
+TEST_FILES = t/*.t t/bzlib/*.t t/jpeg/*.t t/jng/*.t t/openjp2/*.t t/mpeg/*.t t/png/*.t t/tiff/*.t t/zlib/*.t
 TESTDB_SW = -d
 
 testdb :: testdb_$(LINKTYPE)

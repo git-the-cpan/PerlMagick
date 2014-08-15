@@ -1,5 +1,4 @@
 Changelog
-check.sh
 check.sh.in
 demo/annotate.pl
 demo/button.pl
@@ -26,12 +25,8 @@ demo/tile.gif
 demo/tree.pl
 demo/Turtle.pm
 demo/yellow-flower.gif
-Magick.pm
-Magick.pm.in
-Magick.xs
 Makefile.am
 Makefile.nt
-Makefile.PL
 Makefile.PL.in
 MANIFEST
 MANIFEST.SKIP
@@ -122,10 +117,6 @@ t/jng/input_prog.jng
 t/jng/input_rose.jng
 t/jng/read.t
 t/jng/write.t
-t/jp2/input.jp2
-t/jp2/input.jpc
-t/jp2/input.pgx
-t/jp2/read.t
 t/jpeg/input.jpg
 t/jpeg/input_plane.jpg
 t/jpeg/read.t
@@ -135,6 +126,9 @@ t/montage.t
 t/mpeg/input.m2v
 t/mpeg/input.mpg
 t/mpeg/read.t
+t/openjp2/input.jp2
+t/openjp2/input.jpc
+t/openjp2/read.t
 t/ping.t
 t/png/input_16.png
 t/png/input_256.png
@@ -277,13 +271,12 @@ t/reference/jng/write_jdaa.miff
 t/reference/jng/write_prog_idat.miff
 t/reference/jng/write_prog_jdaa.miff
 t/reference/jng/write_prog.miff
-t/reference/jp2/read_jp2.miff
-t/reference/jp2/read_jpc.miff
-t/reference/jp2/read_pgx.miff
 t/reference/jpeg/read_non_interlaced.miff
 t/reference/jpeg/read_plane_interlaced.miff
 t/reference/jpeg/write_non_interlaced.miff
 t/reference/jpeg/write_plane_interlaced.miff
+t/reference/openjp2/read_jp2.miff
+t/reference/openjp2/read_jpc.miff
 t/reference/read/gradient.miff
 t/reference/read/granite.miff
 t/reference/read/input_avs.miff

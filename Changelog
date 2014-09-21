@@ -1,3 +1,7 @@
+2014-09-21  6.89 Cristy  <quetzlzacatenango@image...>
+  * Strawberry Perl compatibility patch (reference
+    http://www.imagemagick.org/discourse-server/viewtopic.php?f=3&t=26273).
+
 2013-12-01  6.87 Cristy  <quetzlzacatenango@image...>
   * Update PerlMagick to work with ImageMagick versions 6.8.7 and above.
 

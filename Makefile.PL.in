@@ -174,7 +174,7 @@ if (($^O eq 'MSWin32') && ($Config{cc} =~ /gcc/)) {
   # Setup for strawberry perl.
   #
   $INC_magick       = "$Ipaths";
-  $LIBS_magick      = "-lMagickCore-@MAGICK_ABI_SUFFIX@";
+  $LIBS_magick      = "-lMagickCore"; # use here just plain 'MagickCore' no version info
   $CCFLAGS_magick   = "$Config{'ccflags'}";
   $LDFLAGS_magick   = "$Config{'ldflags'} $Lpaths ";
   $LDDLFLAGS_magick = "$Config{'lddlflags'} $Lpaths ";
